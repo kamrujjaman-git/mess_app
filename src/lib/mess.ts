@@ -96,6 +96,23 @@ export function getActiveMembers(members: Member[]): Member[] {
   return members.filter((m) => m.status === "active");
 }
 
+export function getAllowedMemberEmails(members: Member[]): string[] {
+  return members
+    .filter((m) => m.status === "active" && m.email.trim())
+    .map((m) => m.email.trim().toLowerCase());
+}
+
+export function userHasMessAccess(
+  userEmail: string | null | undefined,
+  adminEmail: string,
+  members: Member[]
+): boolean {
+  if (!userEmail) return false;
+  const normalized = userEmail.trim().toLowerCase();
+  if (adminEmail && normalized === adminEmail.trim().toLowerCase()) return true;
+  return getAllowedMemberEmails(members).includes(normalized);
+}
+
 export function getMemberTotalMeals(meals: MemberMeals): number {
   return meals.breakfast + meals.lunch + meals.dinner;
 }

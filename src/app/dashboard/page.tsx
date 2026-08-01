@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { AccessDeniedScreen } from "@/components/AccessDeniedScreen";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { SummaryTable } from "@/components/dashboard/SummaryTable";
@@ -47,7 +48,7 @@ const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
 ];
 
 export default function DashboardPage() {
-  const { user, loading, isAdmin, logout } = useAuth();
+  const { user, loading, accessLoading, isAdmin, hasAccess, logout } = useAuth();
   const router = useRouter();
 
   const [monthKey, setMonthKey] = useState(formatMonthKey(new Date()));
@@ -62,14 +63,14 @@ export default function DashboardPage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !hasAccess) return;
     setDataLoading(true);
     const unsub = subscribeToMonthData(monthKey, (data) => {
       setMonthData(data);
       setDataLoading(false);
     });
     return unsub;
-  }, [monthKey, user]);
+  }, [monthKey, user, hasAccess]);
 
   const shiftMonth = useCallback((delta: number) => {
     setMonthKey((prev) => {
@@ -204,11 +205,20 @@ export default function DashboardPage() {
     router.replace("/");
   }, [logout, router]);
 
-  if (loading || !user) {
+  if (loading || accessLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <AccessDeniedScreen
+        email={user.email}
+        onLogout={handleLogout}
+      />
     );
   }
 

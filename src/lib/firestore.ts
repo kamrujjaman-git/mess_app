@@ -70,6 +70,14 @@ export async function setMembers(members: Member[]): Promise<void> {
   await setDoc(doc(db, "settings", "members"), { members });
 }
 
+export function subscribeToMembers(
+  callback: (members: Member[]) => void
+): Unsubscribe {
+  return onSnapshot(doc(db, "settings", "members"), (snap) => {
+    callback(parseMembers(snap.exists() ? snap.data() : undefined));
+  });
+}
+
 export async function addMember(
   name: string,
   email: string
