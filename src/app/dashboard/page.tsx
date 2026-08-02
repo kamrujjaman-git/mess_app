@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { AccessDeniedScreen } from "@/components/AccessDeniedScreen";
@@ -47,7 +47,15 @@ const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "admin", label: "Admin", adminOnly: true },
 ];
 
-export default function DashboardPage() {
+function DashboardLoading() {
+  return (
+    <div className="flex min-h-screen flex-1 items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+    </div>
+  );
+}
+
+function DashboardContent() {
   const {
     user,
     loading,
@@ -59,17 +67,38 @@ export default function DashboardPage() {
     logout,
   } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [monthKey, setMonthKey] = useState(formatMonthKey(new Date()));
   const [monthData, setMonthData] = useState<MonthData | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>("summary");
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const tabFromUrl = searchParams.get("tab");
+    return (tabFromUrl === "summary" ||
+      tabFromUrl === "meals" ||
+      tabFromUrl === "logs" ||
+      tabFromUrl === "admin")
+      ? tabFromUrl
+      : "summary";
+  });
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/");
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
+    if (
+      tabFromUrl === "summary" ||
+      tabFromUrl === "meals" ||
+      tabFromUrl === "logs" ||
+      tabFromUrl === "admin"
+    ) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!user || !hasAccess) return;
@@ -88,6 +117,16 @@ export default function DashboardPage() {
       return formatMonthKey(date);
     });
   }, []);
+
+  const updateTab = useCallback(
+    (tab: Tab) => {
+      setActiveTab(tab);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", tab);
+      router.replace(`/dashboard?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
 
   const handleSaveMeals = useCallback(
     async (date: string, meals: Record<string, MemberMeals>) => {
@@ -282,7 +321,7 @@ export default function DashboardPage() {
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => updateTab(tab.id)}
                     className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${activeTab === tab.id
                       ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
                       : "bg-white/60 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-400 dark:hover:bg-slate-800"
@@ -347,5 +386,13 @@ export default function DashboardPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <DashboardContent />
+    </Suspense>
   );
 }
