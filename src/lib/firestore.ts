@@ -46,7 +46,17 @@ function parseMembers(data: Record<string, unknown> | undefined): Member[] {
   if (!data) return createDefaultMembers();
 
   if (Array.isArray(data.members)) {
-    return data.members as Member[];
+    return (data.members as Partial<Member>[]).map((member, index) => ({
+      id: member.id ?? `member-${index + 1}`,
+      name: String(member.name ?? `Member ${index + 1}`),
+      email: String(member.email ?? ""),
+      status:
+        member.status === "inactive" || member.active === false
+          ? "inactive"
+          : "active",
+      active:
+        member.active === false ? false : member.status !== "inactive",
+    }));
   }
 
   if (Array.isArray(data.names)) {
@@ -55,6 +65,7 @@ function parseMembers(data: Record<string, unknown> | undefined): Member[] {
       name,
       email: "",
       status: "active" as const,
+      active: true,
     }));
   }
 
@@ -88,6 +99,7 @@ export async function addMember(
     name: name.trim(),
     email: email.trim().toLowerCase(),
     status: "active",
+    active: true,
   };
   await setMembers([...members, newMember]);
   return newMember;
@@ -112,7 +124,11 @@ export async function setMemberStatus(
   const members = await getMembers();
   const index = members.findIndex((m) => m.id === memberId);
   if (index === -1) return;
-  members[index] = { ...members[index], status };
+  members[index] = {
+    ...members[index],
+    status,
+    active: status === "active",
+  };
   await setMembers(members);
 }
 
@@ -275,7 +291,17 @@ export function subscribeToMonthData(
 
   const emit = () => {
     const migratedMeals = dailyMeals.map((r) => migrateMealKeys(r, members));
-    callback({ bills, dailyMeals: migratedMeals, bazar, deposits, members });
+    callback({
+      bills: {
+        houseRent: Math.round(bills.houseRent),
+        buaBill: Math.round(bills.buaBill),
+        otherBills: Math.round(bills.otherBills),
+      },
+      dailyMeals: migratedMeals,
+      bazar,
+      deposits,
+      members,
+    });
   };
 
   const unsubMembers = onSnapshot(doc(db, "settings", "members"), (snap) => {

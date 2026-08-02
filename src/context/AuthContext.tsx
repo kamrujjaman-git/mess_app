@@ -18,7 +18,9 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { subscribeToMembers } from "@/lib/firestore";
-import { userHasMessAccess, type Member } from "@/lib/mess";
+import { isMemberActive, type Member } from "@/lib/mess";
+
+type AccessDeniedReason = "inactive" | "not-member" | null;
 
 interface AuthContextValue {
   user: User | null;
@@ -26,6 +28,7 @@ interface AuthContextValue {
   accessLoading: boolean;
   isAdmin: boolean;
   hasAccess: boolean;
+  accessDeniedReason: AccessDeniedReason;
   members: Member[];
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -43,10 +46,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = !!user && user.email?.toLowerCase() === adminEmail.toLowerCase();
 
+  const currentMember = useMemo(() => {
+    if (!user?.email) return null;
+    const normalizedEmail = user.email.trim().toLowerCase();
+    return (
+      members.find(
+        (member) => member.email.trim().toLowerCase() === normalizedEmail
+      ) ?? null
+    );
+  }, [user, members]);
+
+  const accessDeniedReason = useMemo<AccessDeniedReason>(() => {
+    if (!user) return null;
+    if (isAdmin) return null;
+    if (!currentMember) return "not-member";
+    return isMemberActive(currentMember) ? null : "inactive";
+  }, [user, isAdmin, currentMember]);
+
   const hasAccess = useMemo(() => {
-    if (!user) return false;
-    return userHasMessAccess(user.email, adminEmail, members);
-  }, [user, adminEmail, members]);
+    return !accessDeniedReason;
+  }, [accessDeniedReason]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -91,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accessLoading,
         isAdmin,
         hasAccess,
+        accessDeniedReason,
         members,
         signInWithGoogle,
         logout,

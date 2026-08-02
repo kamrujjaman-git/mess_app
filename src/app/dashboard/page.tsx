@@ -48,7 +48,16 @@ const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
 ];
 
 export default function DashboardPage() {
-  const { user, loading, accessLoading, isAdmin, hasAccess, logout } = useAuth();
+  const {
+    user,
+    loading,
+    accessLoading,
+    isAdmin,
+    hasAccess,
+    accessDeniedReason,
+    members,
+    logout,
+  } = useAuth();
   const router = useRouter();
 
   const [monthKey, setMonthKey] = useState(formatMonthKey(new Date()));
@@ -217,19 +226,29 @@ export default function DashboardPage() {
     return (
       <AccessDeniedScreen
         email={user.email}
+        reason={accessDeniedReason ?? "not-member"}
         onLogout={handleLogout}
       />
     );
   }
 
+  const currentMember = user?.email
+    ? members.find(
+      (member) =>
+        member.email?.trim().toLowerCase() === user.email?.trim().toLowerCase()
+    ) ?? null
+    : null;
+
+  const memberDisplayName = currentMember?.name?.trim() || user?.displayName?.trim() || "Member";
+
   const stats = monthData
     ? calculateMessStats(
-        monthData.dailyMeals,
-        monthData.bazar,
-        monthData.deposits,
-        monthData.bills,
-        monthData.members
-      )
+      monthData.dailyMeals,
+      monthData.bazar,
+      monthData.deposits,
+      monthData.bills,
+      monthData.members
+    )
     : null;
 
   const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
@@ -242,6 +261,7 @@ export default function DashboardPage() {
         onNextMonth={() => shiftMonth(1)}
         user={user}
         isAdmin={isAdmin}
+        memberName={memberDisplayName}
         onLogout={handleLogout}
       />
 
@@ -263,11 +283,10 @@ export default function DashboardPage() {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
-                      activeTab === tab.id
-                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
-                        : "bg-white/60 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-400 dark:hover:bg-slate-800"
-                    }`}
+                    className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${activeTab === tab.id
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
+                      : "bg-white/60 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-400 dark:hover:bg-slate-800"
+                      }`}
                   >
                     {tab.label}
                   </button>

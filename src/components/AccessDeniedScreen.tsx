@@ -4,10 +4,15 @@ import { ShieldX, LogOut } from "lucide-react";
 
 interface AccessDeniedScreenProps {
   email?: string | null;
+  reason?: "inactive" | "not-member";
   onLogout: () => void;
 }
 
-export function AccessDeniedScreen({ email, onLogout }: AccessDeniedScreenProps) {
+export function AccessDeniedScreen({
+  email,
+  reason = "not-member",
+  onLogout,
+}: AccessDeniedScreenProps) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
       <div className="glass-card w-full max-w-md rounded-3xl p-8 text-center sm:p-10">
@@ -18,7 +23,9 @@ export function AccessDeniedScreen({ email, onLogout }: AccessDeniedScreenProps)
           Access Denied
         </h1>
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 sm:text-base">
-          You are not a member of this mess.
+          {reason === "inactive"
+            ? "Access Denied: Account Inactive"
+            : "You are not a member of this mess."}
         </p>
         {email && (
           <p className="mt-2 truncate text-xs text-slate-500 dark:text-slate-500">
@@ -26,7 +33,9 @@ export function AccessDeniedScreen({ email, onLogout }: AccessDeniedScreenProps)
           </p>
         )}
         <p className="mt-4 text-xs text-slate-500 dark:text-slate-500">
-          Contact your mess admin to register your email as a member.
+          {reason === "inactive"
+            ? "Please contact your mess admin to reactivate your account."
+            : "Contact your mess admin to register your email as a member."}
         </p>
         <button
           type="button"

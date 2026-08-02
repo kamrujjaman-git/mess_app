@@ -18,6 +18,7 @@ export interface Member {
   name: string;
   email: string;
   status: MemberStatus;
+  active?: boolean;
 }
 
 export interface MemberMeals {
@@ -89,17 +90,33 @@ export function createDefaultMembers(): Member[] {
     name,
     email: "",
     status: "active" as const,
+    active: true,
   }));
 }
 
+export function normalizeMemberStatus(
+  member: Pick<Member, "status" | "active"> | null | undefined
+): MemberStatus {
+  if (!member) return "inactive";
+  if (member.status === "inactive") return "inactive";
+  if (member.active === false) return "inactive";
+  return "active";
+}
+
+export function isMemberActive(
+  member: Pick<Member, "status" | "active"> | null | undefined
+): boolean {
+  return normalizeMemberStatus(member) === "active";
+}
+
 export function getActiveMembers(members: Member[]): Member[] {
-  return members.filter((m) => m.status === "active");
+  return members.filter((member) => isMemberActive(member));
 }
 
 export function getAllowedMemberEmails(members: Member[]): string[] {
   return members
-    .filter((m) => m.status === "active" && m.email.trim())
-    .map((m) => m.email.trim().toLowerCase());
+    .filter((member) => isMemberActive(member) && member.email.trim())
+    .map((member) => member.email.trim().toLowerCase());
 }
 
 export function userHasMessAccess(
@@ -128,6 +145,11 @@ export function sumDailyMealsForMember(
   }, 0);
 }
 
+function safeRound(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value);
+}
+
 export function calculateMessStats(
   dailyRecords: DailyMealRecord[],
   bazarEntries: BazarEntry[],
@@ -138,8 +160,8 @@ export function calculateMessStats(
   const activeMembers = getActiveMembers(members);
   const activeMemberCount = activeMembers.length;
 
-  const totalBazar = Math.round(
-    bazarEntries.reduce((sum, entry) => sum + entry.amount, 0)
+  const totalBazar = safeRound(
+    bazarEntries.reduce((sum, entry) => sum + safeRound(entry.amount), 0)
   );
 
   const totalMeals = dailyRecords.reduce((sum, record) => {
@@ -153,15 +175,16 @@ export function calculateMessStats(
     );
   }, 0);
 
-  const mealRate =
-    totalMeals > 0 ? Math.round(totalBazar / totalMeals) : 0;
+  const mealRate = totalMeals > 0 ? safeRound(totalBazar / totalMeals) : 0;
 
-  const totalFixedCosts = Math.round(
-    bills.houseRent + bills.buaBill + bills.otherBills
+  const totalFixedCosts = safeRound(
+    safeRound(bills.houseRent) +
+    safeRound(bills.buaBill) +
+    safeRound(bills.otherBills)
   );
   const fixedCostPerPerson =
-    activeMemberCount > 0
-      ? Math.round(totalFixedCosts / activeMemberCount)
+    activeMemberCount > 0 && totalFixedCosts > 0
+      ? safeRound(totalFixedCosts / activeMemberCount)
       : 0;
 
   const memberSummaries: MemberSummary[] = members.map((member) => {
@@ -169,20 +192,19 @@ export function calculateMessStats(
       dailyRecords,
       member.id
     );
-    const totalDeposited = Math.round(
+    const totalDeposited = safeRound(
       depositEntries
         .filter(
           (d) =>
             d.memberId === member.id ||
             (!d.memberId && d.memberName === member.name)
         )
-        .reduce((sum, d) => sum + d.amount, 0)
+        .reduce((sum, d) => sum + safeRound(d.amount), 0)
     );
-    const mealCost = Math.round(personalTotalMeals * mealRate);
-    const mealBalance = Math.round(totalDeposited - mealCost);
-    const fixedShare =
-      member.status === "active" ? fixedCostPerPerson : 0;
-    const finalBalance = Math.round(
+    const mealCost = safeRound(personalTotalMeals * mealRate);
+    const mealBalance = safeRound(totalDeposited - mealCost);
+    const fixedShare = isMemberActive(member) ? fixedCostPerPerson : 0;
+    const finalBalance = safeRound(
       totalDeposited - (mealCost + fixedShare)
     );
 
@@ -195,7 +217,7 @@ export function calculateMessStats(
       fixedCostShare: fixedShare,
       mealBalance,
       finalBalance,
-      status: member.status,
+      status: normalizeMemberStatus(member),
     };
   });
 

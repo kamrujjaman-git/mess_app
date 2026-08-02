@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   UtensilsCrossed,
   ChevronLeft,
@@ -16,6 +17,7 @@ interface DashboardNavProps {
   onNextMonth: () => void;
   user: User;
   isAdmin: boolean;
+  memberName?: string | null;
   onLogout: () => void;
 }
 
@@ -25,8 +27,18 @@ export function DashboardNav({
   onNextMonth,
   user,
   isAdmin,
+  memberName,
   onLogout,
 }: DashboardNavProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const roleLabel = isAdmin ? "Admin" : "Member";
+  const displayName = useMemo(() => {
+    return memberName?.trim() || user?.displayName?.trim() || "Member";
+  }, [memberName, user]);
+
+  const avatarInitial = displayName?.trim()?.charAt(0)?.toUpperCase() ?? "M";
+
   return (
     <header className="glass sticky top-0 z-50 border-b border-white/20 dark:border-slate-700/50">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
@@ -59,24 +71,36 @@ export function DashboardNav({
           </button>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {isAdmin && (
-            <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:flex">
-              <Shield className="h-3 w-3" />
-              Admin
-            </span>
-          )}
-          {user.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt=""
-              className="h-8 w-8 rounded-full ring-2 ring-emerald-500/30 sm:h-9 sm:w-9"
-            />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white sm:h-9 sm:w-9">
-              {user.displayName?.[0] ?? "U"}
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:flex">
+            <Shield className="h-3 w-3" />
+            {roleLabel}
+          </span>
+
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            {user?.photoURL && !imageFailed ? (
+              <img
+                src={user.photoURL}
+                alt={displayName}
+                onError={() => setImageFailed(true)}
+                className="h-8 w-8 rounded-full object-cover ring-2 ring-emerald-500/30 sm:h-9 sm:w-9"
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white ring-2 ring-emerald-500/30 sm:h-9 sm:w-9">
+                {avatarInitial}
+              </div>
+            )}
+
+            <div className="hidden min-w-0 flex-col sm:flex">
+              <span className="max-w-[110px] truncate text-xs font-semibold text-slate-800 dark:text-slate-100">
+                {displayName}
+              </span>
+              <span className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {roleLabel}
+              </span>
             </div>
-          )}
+          </div>
+
           <button
             type="button"
             onClick={onLogout}
@@ -87,14 +111,12 @@ export function DashboardNav({
           </button>
         </div>
       </div>
-      {isAdmin && (
-        <div className="flex justify-center pb-2 sm:hidden">
-          <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-            <Shield className="h-3 w-3" />
-            Admin
-          </span>
-        </div>
-      )}
+      <div className="flex justify-center pb-2 sm:hidden">
+        <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+          <Shield className="h-3 w-3" />
+          {roleLabel}
+        </span>
+      </div>
     </header>
   );
 }
