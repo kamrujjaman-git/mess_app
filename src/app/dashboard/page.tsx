@@ -312,7 +312,11 @@ function DashboardContent() {
         ) : (
           <>
             <div className="mb-6">
-              <OverviewCards stats={stats} bills={monthData.bills} />
+              <OverviewCards
+                stats={stats}
+                bills={monthData.bills}
+                isAdmin={isAdmin}
+              />
             </div>
 
             <div className="mb-6 overflow-x-auto scrollbar-hide">
@@ -334,7 +338,7 @@ function DashboardContent() {
             </div>
 
             {activeTab === "summary" && (
-              <SummaryTable members={stats.members} />
+              <SummaryTable members={stats.members} isAdmin={isAdmin} />
             )}
 
             {activeTab === "meals" && (

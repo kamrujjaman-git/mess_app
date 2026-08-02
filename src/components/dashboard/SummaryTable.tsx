@@ -4,6 +4,7 @@ import type { MemberSummary } from "@/lib/mess";
 
 interface SummaryTableProps {
   members: MemberSummary[];
+  isAdmin?: boolean;
 }
 
 function BalanceBadge({ amount }: { amount: number }) {
@@ -28,7 +29,7 @@ function BalanceBadge({ amount }: { amount: number }) {
   );
 }
 
-export function SummaryTable({ members }: SummaryTableProps) {
+export function SummaryTable({ members, isAdmin = false }: SummaryTableProps) {
   return (
     <div className="glass-card overflow-hidden rounded-2xl">
       <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
@@ -45,7 +46,7 @@ export function SummaryTable({ members }: SummaryTableProps) {
               <th className="px-4 py-3 font-medium">Meals</th>
               <th className="px-4 py-3 font-medium">Deposited</th>
               <th className="px-4 py-3 font-medium">Meal Cost</th>
-              <th className="px-4 py-3 font-medium">Rent Share</th>
+              {isAdmin && <th className="px-4 py-3 font-medium">Rent Share</th>}
               <th className="px-4 py-3 font-medium">Final Balance</th>
             </tr>
           </thead>
@@ -53,9 +54,8 @@ export function SummaryTable({ members }: SummaryTableProps) {
             {members.map((m) => (
               <tr
                 key={m.id}
-                className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${
-                  m.status === "inactive" ? "opacity-60" : ""
-                }`}
+                className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${m.status === "inactive" ? "opacity-60" : ""
+                  }`}
               >
                 <td className="px-4 py-3 font-medium sm:px-6">
                   <span>{m.name}</span>
@@ -68,7 +68,7 @@ export function SummaryTable({ members }: SummaryTableProps) {
                 <td className="px-4 py-3">{m.totalMeals}</td>
                 <td className="px-4 py-3">৳{m.totalDeposited}</td>
                 <td className="px-4 py-3">৳{m.mealCost}</td>
-                <td className="px-4 py-3">৳{m.fixedCostShare}</td>
+                {isAdmin && <td className="px-4 py-3">৳{m.fixedCostShare}</td>}
                 <td className="px-4 py-3">
                   <BalanceBadge amount={m.finalBalance} />
                 </td>
@@ -82,9 +82,8 @@ export function SummaryTable({ members }: SummaryTableProps) {
         {members.map((m) => (
           <div
             key={m.id}
-            className={`rounded-xl bg-white/50 p-4 dark:bg-slate-800/40 ${
-              m.status === "inactive" ? "opacity-60" : ""
-            }`}
+            className={`rounded-xl bg-white/50 p-4 dark:bg-slate-800/40 ${m.status === "inactive" ? "opacity-60" : ""
+              }`}
           >
             <div className="mb-2 flex items-center justify-between">
               <span className="font-semibold">
@@ -110,10 +109,12 @@ export function SummaryTable({ members }: SummaryTableProps) {
                 <span className="text-slate-500">Meal Cost</span>
                 <p className="font-medium">৳{m.mealCost}</p>
               </div>
-              <div>
-                <span className="text-slate-500">Rent Share</span>
-                <p className="font-medium">৳{m.fixedCostShare}</p>
-              </div>
+              {isAdmin && (
+                <div>
+                  <span className="text-slate-500">Rent Share</span>
+                  <p className="font-medium">৳{m.fixedCostShare}</p>
+                </div>
+              )}
             </div>
           </div>
         ))}

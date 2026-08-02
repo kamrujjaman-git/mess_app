@@ -149,6 +149,9 @@ export function BazarDepositLog({
   }
 
   const billFields: BillField[] = ["houseRent", "buaBill", "otherBills"];
+  const visibleBillFields = isAdmin
+    ? billFields
+    : billFields.filter((field) => field !== "houseRent" && field !== "buaBill");
 
   return (
     <div className="space-y-4">
@@ -341,7 +344,7 @@ export function BazarDepositLog({
           </h2>
         </div>
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-          {billFields.map((field) => (
+          {visibleBillFields.map((field) => (
             <li key={field} className="px-4 py-3 sm:px-6">
               {editingBillField === field ? (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

@@ -6,9 +6,10 @@ import type { MessStats, MonthBills } from "@/lib/mess";
 interface OverviewCardsProps {
   stats: MessStats;
   bills: MonthBills;
+  isAdmin?: boolean;
 }
 
-export function OverviewCards({ stats, bills }: OverviewCardsProps) {
+export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsProps) {
   const cards = [
     {
       label: "Meal Rate",
@@ -40,9 +41,14 @@ export function OverviewCards({ stats, bills }: OverviewCardsProps) {
     },
   ];
 
+  const visibleCards = isAdmin ? cards : cards.filter((card) => card.label !== "Rent + Bua");
+  const gridClassName = isAdmin
+    ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+    : "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3";
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-      {cards.map((card) => (
+    <div className={gridClassName}>
+      {visibleCards.map((card) => (
         <div key={card.label} className="glass-card rounded-2xl p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">
