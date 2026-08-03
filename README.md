@@ -99,4 +99,4 @@ service cloud.firestore {
 
 ​👤 Author
 * ​Kamrujjaman — Developer & Maintainer
-​GitHub: @kamrujjaman-git
+* GitHub: @kamrujjaman-git
