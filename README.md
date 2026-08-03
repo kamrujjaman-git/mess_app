@@ -27,15 +27,10 @@ A modern, full-stack, real-time **Mess Management Web Application** designed to 
 🛠️ Tech Stack
 
 Framework: [Next.js](https://nextjs.org/) (App Router, Turbopack)
-
 Frontend: [React](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/)
-
 Backend & Database: [Firebase Firestore](https://firebase.google.com/docs/firestore)
-
 Authentication: [Firebase Auth](https://firebase.google.com/docs/auth)
-
 Deployment: [Vercel](https://vercel.com/)
-
 
 🚀 Getting Started
 
@@ -61,6 +56,13 @@ Make sure you have the following installed:
 
 3. Configure Environment Variables:
 * Create a .env.local file in the root    directory and add your Firebase  credentials & Admin configuration:
+  NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_ADMIN_EMAIL=your_admin_email@gmail.com
 
 4. Run the Development Server:
   npm run dev
