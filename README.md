@@ -98,5 +98,5 @@ service cloud.firestore {
 ​Deploy! Next.js will build and serve the application automatically.
 
 ​👤 Author
-​Kamrujjaman — Developer & Maintainer
+* ​Kamrujjaman — Developer & Maintainer
 ​GitHub: @kamrujjaman-git
