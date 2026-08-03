@@ -91,11 +91,8 @@ service cloud.firestore {
 }
 
 📦 Deployment
-​* This project is optimized for deployment on Vercel.
-​* Push your latest code to GitHub.
-​* Connect your GitHub repository to Vercel.
-​* Add all the variables from .env.local into the Environment Variables section in Vercel settings.
-​* Deploy! Next.js will build and serve the application automatically.
+This project is optimized for deployment on Vercel. Push your latest code to GitHub. Connect your GitHub repository to Vercel. Add all the variables from .env.local into the Environment Variables section in Vercel settings.
+Deploy! Next.js will build and serve the application automatically.
 
 ​👤 Author
 * ​Kamrujjaman — Developer & Maintainer
