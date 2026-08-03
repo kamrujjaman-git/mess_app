@@ -65,7 +65,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_ADMIN_EMAIL=your_admin_email@gmail.com
 
 4. Run the Development Server:
-  npm run dev
+* npm run dev
 
 5. Open in Browser:
 * Navigate to http://localhost:3000 to view the app in action.
