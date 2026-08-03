@@ -1,6 +1,12 @@
 "use client";
 
-import { TrendingUp, ShoppingCart, Utensils, Home } from "lucide-react";
+import {
+  TrendingUp,
+  ShoppingCart,
+  Utensils,
+  Home,
+  Wallet,
+} from "lucide-react";
 import type { MessStats, MonthBills } from "@/lib/mess";
 
 interface OverviewCardsProps {
@@ -10,6 +16,18 @@ interface OverviewCardsProps {
 }
 
 export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsProps) {
+  const remainingBalance = stats.remainingBalance;
+  const balanceCard = {
+    label: "Meal Balance",
+    value: `৳${Math.abs(remainingBalance).toLocaleString()}`,
+    sub: remainingBalance >= 0 ? "in mess cash" : "negative balance / due",
+    icon: Wallet,
+    color:
+      remainingBalance >= 0
+        ? "from-emerald-500 to-teal-600"
+        : "from-rose-500 to-red-600",
+  };
+
   const cards = [
     {
       label: "Meal Rate",
@@ -32,6 +50,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       icon: Utensils,
       color: "from-violet-500 to-purple-600",
     },
+    balanceCard,
     {
       label: "Rent + Bua",
       value: `৳${Math.round(bills.houseRent + bills.buaBill)}`,
@@ -43,8 +62,8 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
 
   const visibleCards = isAdmin ? cards : cards.filter((card) => card.label !== "Rent + Bua");
   const gridClassName = isAdmin
-    ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
-    : "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3";
+    ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5"
+    : "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4";
 
   return (
     <div className={gridClassName}>

@@ -39,6 +39,7 @@ import {
 } from "@/lib/firestore";
 
 type Tab = "summary" | "meals" | "logs" | "admin";
+type AdminSubTab = "entries" | "members";
 
 const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "summary", label: "Summary" },
@@ -46,6 +47,16 @@ const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "logs", label: "Bazar & Deposits" },
   { id: "admin", label: "Admin", adminOnly: true },
 ];
+
+function getTabFromUrl(tab: string | null): Tab {
+  return tab === "summary" || tab === "meals" || tab === "logs" || tab === "admin"
+    ? tab
+    : "summary";
+}
+
+function getSubTabFromUrl(subTab: string | null): AdminSubTab {
+  return subTab === "members" ? "members" : "entries";
+}
 
 function DashboardLoading() {
   return (
@@ -72,15 +83,8 @@ function DashboardContent() {
   const [monthKey, setMonthKey] = useState(formatMonthKey(new Date()));
   const [monthData, setMonthData] = useState<MonthData | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>(() => {
-    const tabFromUrl = searchParams.get("tab");
-    return (tabFromUrl === "summary" ||
-      tabFromUrl === "meals" ||
-      tabFromUrl === "logs" ||
-      tabFromUrl === "admin")
-      ? tabFromUrl
-      : "summary";
-  });
+  const activeTab = getTabFromUrl(searchParams.get("tab"));
+  const activeSubTab = getSubTabFromUrl(searchParams.get("subtab"));
 
   useEffect(() => {
     if (!loading && !user) {
@@ -88,17 +92,7 @@ function DashboardContent() {
     }
   }, [user, loading, router]);
 
-  useEffect(() => {
-    const tabFromUrl = searchParams.get("tab");
-    if (
-      tabFromUrl === "summary" ||
-      tabFromUrl === "meals" ||
-      tabFromUrl === "logs" ||
-      tabFromUrl === "admin"
-    ) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [searchParams]);
+  const currentTab = isAdmin && activeTab === "admin" ? "admin" : activeTab === "admin" ? "summary" : activeTab;
 
   useEffect(() => {
     if (!user || !hasAccess) return;
@@ -120,9 +114,21 @@ function DashboardContent() {
 
   const updateTab = useCallback(
     (tab: Tab) => {
-      setActiveTab(tab);
       const params = new URLSearchParams(searchParams.toString());
       params.set("tab", tab);
+      if (tab !== "admin") {
+        params.delete("subtab");
+      }
+      router.replace(`/dashboard?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
+  const updateAdminSubTab = useCallback(
+    (subTab: AdminSubTab) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", "admin");
+      params.set("subtab", subTab);
       router.replace(`/dashboard?${params.toString()}`);
     },
     [router, searchParams]
@@ -219,8 +225,8 @@ function DashboardContent() {
     [monthKey]
   );
 
-  const handleAddMember = useCallback(async (name: string, email: string) => {
-    await addMember(name, email);
+  const handleAddMember = useCallback(async (name: string, email: string, whatsAppNumber?: string) => {
+    await addMember(name, email, whatsAppNumber);
   }, []);
 
   const handleUpdateMember = useCallback(async (member: Member) => {
@@ -326,7 +332,7 @@ function DashboardContent() {
                     key={tab.id}
                     type="button"
                     onClick={() => updateTab(tab.id)}
-                    className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${activeTab === tab.id
+                    className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${currentTab === tab.id
                       ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
                       : "bg-white/60 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-400 dark:hover:bg-slate-800"
                       }`}
@@ -337,11 +343,11 @@ function DashboardContent() {
               </div>
             </div>
 
-            {activeTab === "summary" && (
+            {currentTab === "summary" && (
               <SummaryTable members={stats.members} isAdmin={isAdmin} />
             )}
 
-            {activeTab === "meals" && (
+            {currentTab === "meals" && (
               <DailyMealsSheet
                 records={monthData.dailyMeals}
                 members={monthData.members}
@@ -351,7 +357,7 @@ function DashboardContent() {
               />
             )}
 
-            {activeTab === "logs" && (
+            {currentTab === "logs" && (
               <BazarDepositLog
                 bazar={monthData.bazar}
                 deposits={monthData.deposits}
@@ -367,10 +373,12 @@ function DashboardContent() {
               />
             )}
 
-            {activeTab === "admin" && isAdmin && (
+            {currentTab === "admin" && isAdmin && (
               <AdminPanel
                 members={monthData.members}
                 bills={monthData.bills}
+                subTab={activeSubTab}
+                onSubTabChange={updateAdminSubTab}
                 onSaveMeals={handleSaveMeals}
                 onAddBazar={handleAddBazar}
                 onAddDeposit={handleAddDeposit}

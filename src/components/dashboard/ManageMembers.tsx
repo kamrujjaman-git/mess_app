@@ -9,13 +9,17 @@ import {
   UserCheck,
   Mail,
   User,
+  Shield,
+  ShieldOff,
+  MessageCircle,
 } from "lucide-react";
 import type { Member } from "@/lib/mess";
+import { buildWhatsAppLink, normalizeWhatsAppNumber } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
 
 interface ManageMembersProps {
   members: Member[];
-  onAddMember: (name: string, email: string) => Promise<void>;
+  onAddMember: (name: string, email: string, whatsAppNumber?: string) => Promise<void>;
   onUpdateMember: (member: Member) => Promise<void>;
   onSetMemberStatus: (memberId: string, status: Member["status"]) => Promise<void>;
 }
@@ -28,18 +32,21 @@ export function ManageMembers({
 }: ManageMembersProps) {
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newWhatsAppNumber, setNewWhatsAppNumber] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editWhatsAppNumber, setEditWhatsAppNumber] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
 
   async function handleAdd() {
     if (!newName.trim()) return;
     setSaving("add");
     try {
-      await onAddMember(newName, newEmail);
+      await onAddMember(newName, newEmail, normalizeWhatsAppNumber(newWhatsAppNumber));
       setNewName("");
       setNewEmail("");
+      setNewWhatsAppNumber("");
     } finally {
       setSaving(null);
     }
@@ -49,13 +56,19 @@ export function ManageMembers({
     setEditingId(member.id);
     setEditName(member.name);
     setEditEmail(member.email);
+    setEditWhatsAppNumber(member.whatsAppNumber ?? "");
   }
 
   async function handleSaveEdit(member: Member) {
     if (!editName.trim()) return;
     setSaving(member.id);
     try {
-      await onUpdateMember({ ...member, name: editName, email: editEmail });
+      await onUpdateMember({
+        ...member,
+        name: editName,
+        email: editEmail,
+        whatsAppNumber: normalizeWhatsAppNumber(editWhatsAppNumber),
+      });
       setEditingId(null);
     } finally {
       setSaving(null);
@@ -72,6 +85,16 @@ export function ManageMembers({
     }
   }
 
+  async function handleToggleAdminAccess(member: Member) {
+    const nextIsAdmin = !member.isAdmin;
+    setSaving(`admin-${member.id}`);
+    try {
+      await onUpdateMember({ ...member, isAdmin: nextIsAdmin });
+    } finally {
+      setSaving(null);
+    }
+  }
+
   const activeCount = members.filter((m) => m.status === "active").length;
 
   return (
@@ -83,7 +106,7 @@ export function ManageMembers({
             {activeCount} active / {members.length} total
           </span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
           <div className="relative">
             <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -104,6 +127,13 @@ export function ManageMembers({
               className={`${inputClass} pl-9`}
             />
           </div>
+          <input
+            type="text"
+            placeholder="WhatsApp number"
+            value={newWhatsAppNumber}
+            onChange={(e) => setNewWhatsAppNumber(e.target.value)}
+            className={inputClass}
+          />
           <button
             type="button"
             onClick={handleAdd}
@@ -136,13 +166,12 @@ export function ManageMembers({
             {members.map((member) => (
               <li
                 key={member.id}
-                className={`px-4 py-4 sm:px-6 ${
-                  member.status === "inactive" ? "opacity-60" : ""
-                }`}
+                className={`px-4 py-4 sm:px-6 ${member.status === "inactive" ? "opacity-60" : ""
+                  }`}
               >
                 {editingId === member.id ? (
                   <div className="space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-3">
                       <input
                         type="text"
                         value={editName}
@@ -156,6 +185,13 @@ export function ManageMembers({
                         onChange={(e) => setEditEmail(e.target.value)}
                         className={inputClass}
                         placeholder="Email"
+                      />
+                      <input
+                        type="text"
+                        value={editWhatsAppNumber}
+                        onChange={(e) => setEditWhatsAppNumber(e.target.value)}
+                        className={inputClass}
+                        placeholder="WhatsApp number"
                       />
                     </div>
                     <div className="flex gap-2">
@@ -189,22 +225,63 @@ export function ManageMembers({
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium">{member.name}</p>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                            member.status === "active"
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                              : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
-                          }`}
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${member.status === "active"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                            : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
+                            }`}
                         >
                           {member.status === "active" ? "Active" : "Inactive"}
                         </span>
+                        {member.isAdmin && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                            Admin
+                          </span>
+                        )}
                       </div>
                       {member.email && (
                         <p className="mt-0.5 truncate text-sm text-slate-500">
                           {member.email}
                         </p>
                       )}
+                      {member.whatsAppNumber && (
+                        <p className="mt-0.5 truncate text-sm text-slate-500">
+                          WhatsApp: {member.whatsAppNumber}
+                        </p>
+                      )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
+                      {member.whatsAppNumber && (
+                        <a
+                          href={buildWhatsAppLink(member, 0)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                          aria-label={`Open WhatsApp for ${member.name}`}
+                          title={`Open WhatsApp for ${member.name}`}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAdminAccess(member)}
+                        disabled={saving === `admin-${member.id}`}
+                        className={`flex h-9 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold transition-colors ${member.isAdmin
+                          ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/50 dark:text-amber-300"
+                          : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300"
+                          }`}
+                        title={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
+                        aria-label={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
+                      >
+                        {saving === `admin-${member.id}` ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : member.isAdmin ? (
+                          <ShieldOff className="h-4 w-4" />
+                        ) : (
+                          <Shield className="h-4 w-4" />
+                        )}
+                        <span>{member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}</span>
+                      </button>
                       <InlineActions
                         onEdit={() => startEdit(member)}
                         editLabel={`Edit ${member.name}`}
@@ -213,11 +290,10 @@ export function ManageMembers({
                         type="button"
                         onClick={() => handleToggleStatus(member)}
                         disabled={saving === `status-${member.id}`}
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-                          member.status === "active"
-                            ? "text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/40"
-                            : "text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                        }`}
+                        className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${member.status === "active"
+                          ? "text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/40"
+                          : "text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                          }`}
                         aria-label={
                           member.status === "active"
                             ? "Mark inactive"

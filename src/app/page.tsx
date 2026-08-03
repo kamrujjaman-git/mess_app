@@ -1,10 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
-  UtensilsCrossed,
   Loader2,
   Sparkles,
   Shield,
@@ -77,8 +77,14 @@ export default function LoginPage() {
       <main className="relative z-10 w-full max-w-md sm:max-w-lg">
         <div className="glass-card rounded-3xl p-6 sm:p-10">
           <div className="mb-8 flex flex-col items-center text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25">
-              <UtensilsCrossed className="h-8 w-8 text-white" />
+            <div className="mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 shadow-lg shadow-emerald-500/25">
+              <Image
+                src="/logo-512.png"
+                alt="Mess Logo"
+                width={64}
+                height={64}
+                className="h-full w-full object-cover"
+              />
             </div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               Mess App

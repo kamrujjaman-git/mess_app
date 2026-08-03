@@ -56,6 +56,8 @@ function parseMembers(data: Record<string, unknown> | undefined): Member[] {
           : "active",
       active:
         member.active === false ? false : member.status !== "inactive",
+      isAdmin: Boolean(member.isAdmin),
+      whatsAppNumber: String(member.whatsAppNumber ?? "").trim(),
     }));
   }
 
@@ -66,6 +68,8 @@ function parseMembers(data: Record<string, unknown> | undefined): Member[] {
       email: "",
       status: "active" as const,
       active: true,
+      isAdmin: false,
+      whatsAppNumber: "",
     }));
   }
 
@@ -91,7 +95,8 @@ export function subscribeToMembers(
 
 export async function addMember(
   name: string,
-  email: string
+  email: string,
+  whatsAppNumber?: string
 ): Promise<Member> {
   const members = await getMembers();
   const newMember: Member = {
@@ -100,6 +105,8 @@ export async function addMember(
     email: email.trim().toLowerCase(),
     status: "active",
     active: true,
+    isAdmin: false,
+    whatsAppNumber: String(whatsAppNumber ?? "").trim(),
   };
   await setMembers([...members, newMember]);
   return newMember;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Fragment } from "react";
-import { Loader2, Save, X } from "lucide-react";
+import { Loader2, Save, X, ShieldAlert } from "lucide-react";
 import type { DailyMealRecord, Member, MemberMeals } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
@@ -26,6 +26,9 @@ export function DailyMealsSheet({
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [editMeals, setEditMeals] = useState<Record<string, MemberMeals>>({});
   const [saving, setSaving] = useState(false);
+  const mealLockBanner = !isAdmin && new Date().getHours() >= 22
+    ? "Meal updates locked for tomorrow after 10:00 PM (Contact Admin)"
+    : null;
 
   function startEdit(record: DailyMealRecord) {
     setEditingDate(record.date);
@@ -86,7 +89,17 @@ export function DailyMealsSheet({
     <div className="glass-card overflow-hidden rounded-2xl">
       <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
         <h2 className="text-base font-semibold sm:text-lg">Daily Meal Sheet</h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          Tap boxes to turn meals ON/OFF and keep daily updates quick.
+        </p>
       </div>
+
+      {mealLockBanner && (
+        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200 sm:px-6">
+          <ShieldAlert className="h-4 w-4" />
+          <span>{mealLockBanner}</span>
+        </div>
+      )}
 
       <div className="hidden overflow-x-auto lg:block">
         <table className="w-full text-sm">

@@ -44,8 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
 
-  const isAdmin = !!user && user.email?.toLowerCase() === adminEmail.toLowerCase();
-
   const currentMember = useMemo(() => {
     if (!user?.email) return null;
     const normalizedEmail = user.email.trim().toLowerCase();
@@ -55,6 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ) ?? null
     );
   }, [user, members]);
+
+  const isAdmin = useMemo(() => {
+    if (!user?.email) return false;
+    const normalizedEmail = user.email.trim().toLowerCase();
+    const isPrimaryAdmin = !!adminEmail && normalizedEmail === adminEmail.trim().toLowerCase();
+    return isPrimaryAdmin || Boolean(currentMember?.isAdmin);
+  }, [user, adminEmail, currentMember]);
 
   const accessDeniedReason = useMemo<AccessDeniedReason>(() => {
     if (!user) return null;

@@ -19,6 +19,8 @@ export interface Member {
   email: string;
   status: MemberStatus;
   active?: boolean;
+  isAdmin?: boolean;
+  whatsAppNumber?: string;
 }
 
 export interface MemberMeals {
@@ -72,11 +74,14 @@ export interface MemberSummary {
   mealBalance: number;
   finalBalance: number;
   status: MemberStatus;
+  whatsAppNumber?: string;
 }
 
 export interface MessStats {
   totalMeals: number;
   totalBazar: number;
+  totalDeposits: number;
+  remainingBalance: number;
   mealRate: number;
   fixedCostPerPerson: number;
   totalFixedCosts: number;
@@ -91,6 +96,8 @@ export function createDefaultMembers(): Member[] {
     email: "",
     status: "active" as const,
     active: true,
+    isAdmin: false,
+    whatsAppNumber: "",
   }));
 }
 
@@ -111,6 +118,25 @@ export function isMemberActive(
 
 export function getActiveMembers(members: Member[]): Member[] {
   return members.filter((member) => isMemberActive(member));
+}
+
+export function normalizeWhatsAppNumber(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("880")) return digits;
+  if (digits.startsWith("0")) return `880${digits.slice(1)}`;
+  return digits;
+}
+
+export function buildWhatsAppLink(
+  member: Pick<Member, "name" | "whatsAppNumber">,
+  balanceAmount: number
+): string {
+  const normalizedNumber = normalizeWhatsAppNumber(member.whatsAppNumber ?? "");
+  if (!normalizedNumber) return "";
+  const safeName = member.name.trim() || "Member";
+  const message = `হ্যালো ${safeName}, এই মাসের আপনার বর্তমান মেস ব্যালেন্স ${Math.round(balanceAmount)} টাকা। অনুগ্রহ করে ড্যাশবোর্ড দেখুন।`;
+  return `https://wa.me/${normalizedNumber}?text=${encodeURIComponent(message)}`;
 }
 
 export function getAllowedMemberEmails(members: Member[]): string[] {
@@ -163,6 +189,12 @@ export function calculateMessStats(
   const totalBazar = safeRound(
     bazarEntries.reduce((sum, entry) => sum + safeRound(entry.amount), 0)
   );
+
+  const totalDeposits = safeRound(
+    depositEntries.reduce((sum, entry) => sum + safeRound(entry.amount), 0)
+  );
+
+  const remainingBalance = safeRound(totalDeposits - totalBazar);
 
   const totalMeals = dailyRecords.reduce((sum, record) => {
     return (
@@ -218,12 +250,15 @@ export function calculateMessStats(
       mealBalance,
       finalBalance,
       status: normalizeMemberStatus(member),
+      whatsAppNumber: member.whatsAppNumber ?? "",
     };
   });
 
   return {
     totalMeals,
     totalBazar,
+    totalDeposits,
+    remainingBalance,
     mealRate,
     fixedCostPerPerson,
     totalFixedCosts,
@@ -238,10 +273,36 @@ export function formatMonthKey(date: Date): string {
   return `${year}-${month}`;
 }
 
-export function formatMonthLabel(monthKey: string): string {
+export function formatMonthLabel(monthKey?: string): string {
+  if (!monthKey || !monthKey.includes("-")) {
+    return new Date().toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  }
+
   const [year, month] = monthKey.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const yearNum = Number(year);
+  const monthNum = Number(month);
+  if (!Number.isFinite(yearNum) || !Number.isFinite(monthNum)) {
+    return new Date().toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  const date = new Date(yearNum, monthNum - 1, 1);
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export function getTodayDateString(): string {

@@ -149,9 +149,6 @@ export function BazarDepositLog({
   }
 
   const billFields: BillField[] = ["houseRent", "buaBill", "otherBills"];
-  const visibleBillFields = isAdmin
-    ? billFields
-    : billFields.filter((field) => field !== "houseRent" && field !== "buaBill");
 
   return (
     <div className="space-y-4">
@@ -337,81 +334,83 @@ export function BazarDepositLog({
         </div>
       </div>
 
-      <div className="glass-card overflow-hidden rounded-2xl">
-        <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
-          <h2 className="text-base font-semibold sm:text-lg">
-            Monthly Fixed Bills
-          </h2>
+      {isAdmin && (
+        <div className="glass-card overflow-hidden rounded-2xl">
+          <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
+            <h2 className="text-base font-semibold sm:text-lg">
+              Monthly Fixed Bills
+            </h2>
+          </div>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {billFields.map((field) => (
+              <li key={field} className="px-4 py-3 sm:px-6">
+                {editingBillField === field ? (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <span className="min-w-[120px] text-sm font-medium">
+                      {BILL_LABELS[field]}
+                    </span>
+                    <input
+                      type="number"
+                      value={billValue}
+                      onChange={(e) => setBillValue(e.target.value)}
+                      className={`${inputClass} sm:max-w-[200px]`}
+                      placeholder="Amount (৳)"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => saveBill(field)}
+                        disabled={saving === field}
+                        className="flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white disabled:opacity-60"
+                      >
+                        {saving === field ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4" />
+                            Save
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingBillField(null)}
+                        className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600"
+                      >
+                        <X className="h-4 w-4" />
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{BILL_LABELS[field]}</p>
+                      <p className="text-lg font-bold">
+                        ৳{Math.round(bills[field])}
+                      </p>
+                    </div>
+                    {isAdmin && bills[field] > 0 && (
+                      <InlineActions
+                        onEdit={() => startEditBill(field)}
+                        onDelete={() => handleDeleteBill(field)}
+                        editLabel={`Edit ${BILL_LABELS[field]}`}
+                        deleteLabel={`Clear ${BILL_LABELS[field]}`}
+                      />
+                    )}
+                    {isAdmin && bills[field] === 0 && (
+                      <InlineActions
+                        onEdit={() => startEditBill(field)}
+                        editLabel={`Set ${BILL_LABELS[field]}`}
+                      />
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-          {visibleBillFields.map((field) => (
-            <li key={field} className="px-4 py-3 sm:px-6">
-              {editingBillField === field ? (
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <span className="min-w-[120px] text-sm font-medium">
-                    {BILL_LABELS[field]}
-                  </span>
-                  <input
-                    type="number"
-                    value={billValue}
-                    onChange={(e) => setBillValue(e.target.value)}
-                    className={`${inputClass} sm:max-w-[200px]`}
-                    placeholder="Amount (৳)"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => saveBill(field)}
-                      disabled={saving === field}
-                      className="flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white disabled:opacity-60"
-                    >
-                      {saving === field ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4" />
-                          Save
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingBillField(null)}
-                      className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600"
-                    >
-                      <X className="h-4 w-4" />
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{BILL_LABELS[field]}</p>
-                    <p className="text-lg font-bold">
-                      ৳{Math.round(bills[field])}
-                    </p>
-                  </div>
-                  {isAdmin && bills[field] > 0 && (
-                    <InlineActions
-                      onEdit={() => startEditBill(field)}
-                      onDelete={() => handleDeleteBill(field)}
-                      editLabel={`Edit ${BILL_LABELS[field]}`}
-                      deleteLabel={`Clear ${BILL_LABELS[field]}`}
-                    />
-                  )}
-                  {isAdmin && bills[field] === 0 && (
-                    <InlineActions
-                      onEdit={() => startEditBill(field)}
-                      editLabel={`Set ${BILL_LABELS[field]}`}
-                    />
-                  )}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
+      )}
     </div>
   );
 }

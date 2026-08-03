@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Save, Plus } from "lucide-react";
+import { Loader2, Save, Plus, Users, NotebookPen } from "lucide-react";
 import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
 import { getActiveMembers, getTodayDateString } from "@/lib/mess";
 import { ManageMembers } from "./ManageMembers";
@@ -12,6 +12,8 @@ type AdminSubTab = "entries" | "members";
 interface AdminPanelProps {
   members: Member[];
   bills: MonthBills;
+  subTab: AdminSubTab;
+  onSubTabChange: (subTab: AdminSubTab) => void;
   onSaveMeals: (
     date: string,
     meals: Record<string, MemberMeals>
@@ -25,7 +27,7 @@ interface AdminPanelProps {
     note: string
   ) => Promise<void>;
   onUpdateBills: (bills: MonthBills) => Promise<void>;
-  onAddMember: (name: string, email: string) => Promise<void>;
+  onAddMember: (name: string, email: string, whatsAppNumber?: string) => Promise<void>;
   onUpdateMember: (member: Member) => Promise<void>;
   onSetMemberStatus: (memberId: string, status: Member["status"]) => Promise<void>;
 }
@@ -33,6 +35,8 @@ interface AdminPanelProps {
 export function AdminPanel({
   members,
   bills,
+  subTab,
+  onSubTabChange,
   onSaveMeals,
   onAddBazar,
   onAddDeposit,
@@ -42,7 +46,6 @@ export function AdminPanel({
   onSetMemberStatus,
 }: AdminPanelProps) {
   const activeMembers = getActiveMembers(members);
-  const [subTab, setSubTab] = useState<AdminSubTab>("entries");
 
   const [mealDate, setMealDate] = useState(getTodayDateString());
   const [mealInputs, setMealInputs] = useState<Record<string, MemberMeals>>(
@@ -151,28 +154,35 @@ export function AdminPanel({
     }
   }
 
-  const subTabs: { id: AdminSubTab; label: string }[] = [
-    { id: "entries", label: "Add Entries" },
-    { id: "members", label: "Manage Members" },
+  const subTabs: { id: AdminSubTab; label: string; icon: typeof NotebookPen }[] = [
+    { id: "entries", label: "Add Entries", icon: NotebookPen },
+    { id: "members", label: "Manage Members", icon: Users },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-        {subTabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setSubTab(tab.id)}
-            className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
-              subTab === tab.id
-                ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
-                : "bg-white/60 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-400"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-1 shadow-sm backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/70">
+        <div className="grid grid-cols-2 gap-1">
+          {subTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = subTab === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => onSubTabChange(tab.id)}
+                className={`relative flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${isActive
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {subTab === "members" ? (
@@ -185,7 +195,10 @@ export function AdminPanel({
       ) : (
         <>
           <div className="glass-card rounded-2xl p-4 sm:p-6">
-            <h3 className="mb-4 text-base font-semibold">Daily Meals</h3>
+            <h3 className="mb-1 text-base font-semibold">Daily Meals</h3>
+            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+              Tap boxes to turn meals ON/OFF with quick touch-friendly controls.
+            </p>
             <div className="mb-4">
               <label className="mb-1 block text-xs font-medium text-slate-500">
                 Date
