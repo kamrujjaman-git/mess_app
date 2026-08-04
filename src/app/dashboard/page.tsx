@@ -352,7 +352,7 @@ function DashboardContent() {
                 records={monthData.dailyMeals}
                 members={monthData.members}
                 isAdmin={isAdmin}
-                onEdit={isAdmin ? handleEditMeals : undefined}
+                onEdit={handleEditMeals}
                 onDelete={isAdmin ? handleDeleteMeals : undefined}
               />
             )}
@@ -389,11 +389,6 @@ function DashboardContent() {
               />
             )}
 
-            {!isAdmin && (
-              <p className="mt-8 text-center text-xs text-slate-500 dark:text-slate-500">
-                Read-only mode — contact admin to make changes
-              </p>
-            )}
           </>
         )}
       </main>

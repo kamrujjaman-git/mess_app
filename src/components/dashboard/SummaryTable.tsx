@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, MessageCircle } from "lucide-react";
+import { Download } from "lucide-react";
 import type { MemberSummary, MessStats } from "@/lib/mess";
 import { buildWhatsAppLink, formatMonthLabel } from "@/lib/mess";
 
@@ -14,22 +14,39 @@ interface SummaryTableProps {
 function BalanceBadge({ amount }: { amount: number }) {
   if (amount === 0) {
     return (
-      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-        ৳0 Settled
+      <span className="inline-flex rounded-full bg-slate-100 px-2.75 py-1 text-[11px] font-semibold tracking-wide text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+        ৳0 SETTLED
       </span>
     );
   }
   if (amount > 0) {
     return (
-      <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-        +৳{amount} Receivable
+      <span className="inline-flex rounded-full bg-emerald-100 px-2.75 py-1 text-[11px] font-semibold tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+        +৳{amount.toLocaleString()} REFUND
       </span>
     );
   }
   return (
-    <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">
-      ৳{Math.abs(amount)} Payable
+    <span className="inline-flex rounded-full bg-rose-100 px-2.75 py-1 text-[11px] font-semibold tracking-wide text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+      -৳{Math.abs(amount).toLocaleString()} DUE
     </span>
+  );
+}
+
+function WhatsAppActionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden="true">
+      <path
+        d="M12 3.2a8.8 8.8 0 0 0-7.4 13.7l-1 3.1 3.2-1A8.8 8.8 0 1 0 12 3.2Z"
+        fill="currentColor"
+      />
+      <path
+        d="M9 8.6h6M9 11.1h3.8"
+        stroke="white"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
@@ -134,7 +151,7 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
         )}
       </div>
 
-      <div className="summary-print-table hidden overflow-x-auto md:block">
+      <div className="summary-print-table hidden overflow-x-auto overflow-y-hidden md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200/60 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
@@ -142,7 +159,7 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
               <th className="px-4 py-3 font-medium">Meals</th>
               <th className="px-4 py-3 font-medium">Deposited</th>
               <th className="px-4 py-3 font-medium">Meal Cost</th>
-              {isAdmin && <th className="px-4 py-3 font-medium">Rent Share</th>}
+              <th className="px-4 py-3 font-medium">Rent Share</th>
               <th className="px-4 py-3 font-medium">Final Balance</th>
             </tr>
           </thead>
@@ -166,11 +183,14 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                         href={buildWhatsAppLink({ name: m.name, whatsAppNumber: m.whatsAppNumber }, m.finalBalance)}
                         target="_blank"
                         rel="noreferrer"
-                        className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                        className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-500 text-white shadow-[0_10px_25px_-12px_rgba(16,185,129,0.9)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-600 sm:h-9 sm:w-auto sm:min-w-[96px] sm:gap-1.5 sm:px-3"
                         aria-label={`Open WhatsApp for ${m.name}`}
                         title={`Open WhatsApp for ${m.name}`}
                       >
-                        <MessageCircle className="h-4 w-4" />
+                        <WhatsAppActionIcon />
+                        <span className="hidden text-[11px] font-semibold uppercase tracking-wide sm:inline">
+                          WhatsApp
+                        </span>
                       </a>
                     )}
                   </div>
@@ -178,7 +198,7 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                 <td className="px-4 py-3">{m.totalMeals}</td>
                 <td className="px-4 py-3">৳{m.totalDeposited}</td>
                 <td className="px-4 py-3">৳{m.mealCost}</td>
-                {isAdmin && <td className="px-4 py-3">৳{m.fixedCostShare}</td>}
+                <td className="px-4 py-3">৳{m.fixedCostShare}</td>
                 <td className="px-4 py-3">
                   <BalanceBadge amount={m.finalBalance} />
                 </td>
@@ -188,7 +208,8 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
         </table>
       </div>
 
-      <div className="summary-mobile-cards space-y-3 p-4 md:hidden">
+      <div className="summary-mobile-cards relative space-y-3 p-4 md:hidden">
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-slate-100/80 to-transparent dark:from-slate-900/70" />
         {members.map((m) => (
           <div
             key={m.id}
@@ -210,11 +231,14 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                     href={buildWhatsAppLink({ name: m.name, whatsAppNumber: m.whatsAppNumber }, m.finalBalance)}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-500 text-white shadow-[0_10px_25px_-12px_rgba(16,185,129,0.9)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-600 sm:h-9 sm:w-auto sm:min-w-[96px] sm:gap-1.5 sm:px-3"
                     aria-label={`Open WhatsApp for ${m.name}`}
                     title={`Open WhatsApp for ${m.name}`}
                   >
-                    <MessageCircle className="h-4 w-4" />
+                    <WhatsAppActionIcon />
+                    <span className="hidden text-[11px] font-semibold uppercase tracking-wide sm:inline">
+                      WhatsApp
+                    </span>
                   </a>
                 )}
                 <BalanceBadge amount={m.finalBalance} />
@@ -233,12 +257,10 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                 <span className="text-slate-500">Meal Cost</span>
                 <p className="font-medium">৳{m.mealCost}</p>
               </div>
-              {isAdmin && (
-                <div>
-                  <span className="text-slate-500">Rent Share</span>
-                  <p className="font-medium">৳{m.fixedCostShare}</p>
-                </div>
-              )}
+              <div>
+                <span className="text-slate-500">Rent Share</span>
+                <p className="font-medium">৳{m.fixedCostShare}</p>
+              </div>
             </div>
           </div>
         ))}

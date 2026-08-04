@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Fragment } from "react";
-import { Loader2, Save, X, ShieldAlert } from "lucide-react";
+import { ChevronRight, ShieldAlert } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ui/ToastProvider";
 import type { DailyMealRecord, Member, MemberMeals } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
-import { InlineActions, inputClass } from "./InlineActions";
 
 interface DailyMealsSheetProps {
   records: DailyMealRecord[];
@@ -22,57 +23,114 @@ export function DailyMealsSheet({
   onEdit,
   onDelete,
 }: DailyMealsSheetProps) {
+  const { user } = useAuth();
+  const { success } = useToast();
   const activeMembers = getActiveMembers(members);
-  const [editingDate, setEditingDate] = useState<string | null>(null);
-  const [editMeals, setEditMeals] = useState<Record<string, MemberMeals>>({});
+  const [draftMeals, setDraftMeals] = useState<Record<string, Record<string, MemberMeals>>>({});
   const [saving, setSaving] = useState(false);
-  const mealLockBanner = !isAdmin && new Date().getHours() >= 22
-    ? "Meal updates locked for tomorrow after 10:00 PM (Contact Admin)"
-    : null;
+  const now = new Date();
+  const isAfterTenPm = now.getHours() >= 22;
+  const currentMember = activeMembers.find(
+    (member) => member.email?.trim().toLowerCase() === user?.email?.trim().toLowerCase()
+  );
+  const currentMemberId = currentMember?.id ?? null;
+  const currentUserEmail = user?.email?.trim().toLowerCase() ?? "";
+  const currentUserName = currentMember?.name?.trim().toLowerCase() ?? "";
 
-  function startEdit(record: DailyMealRecord) {
-    setEditingDate(record.date);
-    const meals: Record<string, MemberMeals> = {};
-    activeMembers.forEach((m) => {
-      meals[m.id] = record.meals[m.id] ?? {
-        breakfast: 0,
-        lunch: 0,
-        dinner: 0,
-      };
-    });
-    setEditMeals(meals);
+  function isCurrentMemberColumn(member: Member) {
+    const memberEmail = member.email?.trim().toLowerCase() ?? "";
+    const memberName = member.name?.trim().toLowerCase() ?? "";
+    return member.id === currentMemberId || memberEmail === currentUserEmail || memberName === currentUserName;
   }
 
-  async function handleSave(date: string) {
+  function getDateKey(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  const todayKey = getDateKey(now);
+  const tomorrowKey = getDateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+
+  function canEditRecord(recordDate: string) {
+    if (isAdmin) return true;
+    return recordDate === tomorrowKey && !isAfterTenPm;
+  }
+
+  function canEditMember(member: Member) {
+    return isAdmin || isCurrentMemberColumn(member);
+  }
+
+  function canEditCell(recordDate: string, member: Member) {
+    if (!canEditMember(member)) return false;
+    return canEditRecord(recordDate);
+  }
+
+  const mealLockBanner = !isAdmin && isAfterTenPm
+    ? "Tomorrow's meal selection closed at 10:00 PM."
+    : null;
+
+  function buildDisplayRows() {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const rowsLimit = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const rows: Array<{ date: string; label: string }> = [];
+
+    for (let cursor = new Date(monthStart); cursor <= rowsLimit; cursor.setDate(cursor.getDate() + 1)) {
+      const dateKey = getDateKey(cursor);
+      if (dateKey === todayKey || dateKey === tomorrowKey) {
+        continue;
+      }
+      rows.push({ date: dateKey, label: dateKey.slice(5) });
+    }
+
+    rows.push({ date: todayKey, label: "Today" });
+    rows.push({ date: tomorrowKey, label: "Tomorrow" });
+
+    return rows;
+  }
+
+  const displayRows = buildDisplayRows();
+
+  function getDraftMealValue(record: DailyMealRecord, memberId: string, field: keyof MemberMeals) {
+    const memberDraft = draftMeals[record.date]?.[memberId];
+    if (memberDraft) {
+      return memberDraft[field] ?? 0;
+    }
+    return record.meals[memberId]?.[field] ?? 0;
+  }
+
+  async function toggleMealCell(record: DailyMealRecord, member: Member, field: keyof MemberMeals) {
+    if (!canEditCell(record.date, member)) return;
+
+    const memberId = member.id;
+    const currentValue = getDraftMealValue(record, memberId, field) ?? 0;
+    const nextValue = currentValue > 0 ? 0 : 1;
+    const currentDraft = draftMeals[record.date] ?? {};
+    const nextDraft = {
+      ...currentDraft,
+      [memberId]: {
+        ...(currentDraft[memberId] ?? record.meals[memberId] ?? { breakfast: 0, lunch: 0, dinner: 0 }),
+        [field]: nextValue,
+      },
+    } as Record<string, MemberMeals>;
+
+    setDraftMeals((prev) => ({ ...prev, [record.date]: nextDraft }));
+
     if (!onEdit) return;
+
+    const mergedMeals = {
+      ...record.meals,
+      ...Object.fromEntries(Object.entries(nextDraft).map(([id, meals]) => [id, meals])),
+    } as Record<string, MemberMeals>;
+
     setSaving(true);
     try {
-      await onEdit(date, editMeals);
-      setEditingDate(null);
+      await onEdit(record.date, mergedMeals);
+      success("Meal sheet updated!", "Your meal selection has been saved.");
     } finally {
       setSaving(false);
     }
-  }
-
-  async function handleDelete(date: string) {
-    if (!onDelete || !confirm(`Delete meal entry for ${date}?`)) return;
-    await onDelete(date);
-    if (editingDate === date) setEditingDate(null);
-  }
-
-  function updateEditMeal(
-    memberId: string,
-    field: keyof MemberMeals,
-    value: string
-  ) {
-    const num = value === "" ? 0 : parseFloat(value);
-    setEditMeals((prev) => ({
-      ...prev,
-      [memberId]: {
-        ...prev[memberId],
-        [field]: isNaN(num) ? 0 : num,
-      },
-    }));
   }
 
   if (records.length === 0) {
@@ -90,7 +148,7 @@ export function DailyMealsSheet({
       <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
         <h2 className="text-base font-semibold sm:text-lg">Daily Meal Sheet</h2>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Tap boxes to turn meals ON/OFF and keep daily updates quick.
+          Select a date and update meal entries for all members.
         </p>
       </div>
 
@@ -101,7 +159,8 @@ export function DailyMealsSheet({
         </div>
       )}
 
-      <div className="hidden overflow-x-auto lg:block">
+      <div className="hidden overflow-x-auto overflow-y-hidden scroll-smooth [scrollbar-width:none] lg:block">
+        <div className="pointer-events-none absolute right-0 top-0 hidden h-full w-10 bg-gradient-to-l from-slate-100/80 to-transparent dark:from-slate-900/70 lg:block" />
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200/60 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
@@ -117,11 +176,6 @@ export function DailyMealsSheet({
                   {member.name}
                 </th>
               ))}
-              {isAdmin && (
-                <th className="sticky right-0 bg-white/80 px-3 py-3 font-medium backdrop-blur dark:bg-slate-900/80">
-                  Actions
-                </th>
-              )}
             </tr>
             <tr className="border-b border-slate-200/60 text-left text-[10px] uppercase text-slate-400 dark:border-slate-700/60">
               <th className="sticky left-0 bg-white/80 px-4 py-2 backdrop-blur dark:bg-slate-900/80 sm:px-6" />
@@ -132,212 +186,125 @@ export function DailyMealsSheet({
                   <th className="px-1 py-2 text-center font-normal">D</th>
                 </Fragment>
               ))}
-              {isAdmin && (
-                <th className="sticky right-0 bg-white/80 px-3 py-2 backdrop-blur dark:bg-slate-900/80" />
-              )}
             </tr>
           </thead>
           <tbody>
-            {records.map((record) =>
-              editingDate === record.date ? (
-                <tr
-                  key={record.date}
-                  className="border-b border-emerald-200/60 bg-emerald-50/30 dark:border-emerald-800/40 dark:bg-emerald-950/20"
-                >
-                  <td className="sticky left-0 bg-emerald-50/80 px-4 py-2 font-medium backdrop-blur dark:bg-emerald-950/40 sm:px-6">
-                    {record.date.slice(5)}
+            {displayRows.map((row) => {
+              const record = records.find((item) => item.date === row.date) ?? { date: row.date, meals: {} } as DailyMealRecord;
+              const isPast = row.date < todayKey;
+              const isTodayRow = row.label === "Today";
+              const isTomorrowRow = row.label === "Tomorrow";
+              return (
+                <tr key={row.date} className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${isTodayRow || isTomorrowRow ? "bg-emerald-50/70 dark:bg-emerald-950/20" : ""}`}>
+                  <td className="sticky left-0 whitespace-nowrap bg-white/80 px-4 py-2.5 font-medium backdrop-blur dark:bg-slate-900/80 sm:px-6">
+                    <div className="flex flex-col">
+                      <span>{row.label}</span>
+                      {!isPast && row.label !== "Today" && row.label !== "Tomorrow" && (
+                        <span className="text-[11px] font-normal text-slate-400">{record.date.slice(5)}</span>
+                      )}
+                      {row.label === "Today" && (
+                        <span className="text-[11px] font-normal text-slate-400">{todayKey.slice(5)}</span>
+                      )}
+                      {row.label === "Tomorrow" && (
+                        <span className="text-[11px] font-normal text-slate-400">{tomorrowKey.slice(5)}</span>
+                      )}
+                    </div>
                   </td>
                   {activeMembers.map((member) => (
                     <Fragment key={member.id}>
-                      {(["breakfast", "lunch", "dinner"] as const).map(
-                        (field) => (
-                          <td key={field} className="px-1 py-1">
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              value={editMeals[member.id]?.[field] || ""}
-                              onChange={(e) =>
-                                updateEditMeal(member.id, field, e.target.value)
-                              }
-                              className="w-14 rounded-lg border border-slate-200 px-1 py-1 text-center text-xs dark:border-slate-700 dark:bg-slate-800"
-                            />
+                      {(["breakfast", "lunch", "dinner"] as const).map((field) => {
+                        const isEditable = canEditCell(record.date, member);
+                        const isActive = (getDraftMealValue(record, member.id, field) ?? 0) > 0;
+                        return (
+                          <td key={field} className="px-1 py-2.5 text-center">
+                            {isEditable ? (
+                              <button
+                                type="button"
+                                onClick={() => void toggleMealCell(record, member, field)}
+                                disabled={saving}
+                                className={`mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border px-2 text-[11px] font-semibold transition ${isActive
+                                  ? "border-emerald-500 bg-emerald-500 text-white shadow-sm"
+                                  : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                  }`}
+                              >
+                                {isActive ? "ON" : "OFF"}
+                              </button>
+                            ) : (
+                              <div
+                                className={`mx-auto flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-medium ${isActive
+                                  ? "border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+                                  : "border-slate-200/70 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/40"
+                                  }`}
+                              >
+                                {isActive ? "ON" : "—"}
+                              </div>
+                            )}
                           </td>
-                        )
-                      )}
+                        );
+                      })}
                     </Fragment>
                   ))}
-                  <td className="sticky right-0 bg-emerald-50/80 px-2 py-2 backdrop-blur dark:bg-emerald-950/40">
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleSave(record.date)}
-                        disabled={saving}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-                        aria-label="Save"
-                      >
-                        {saving ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Save className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingDate(null)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        aria-label="Cancel"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </td>
                 </tr>
-              ) : (
-                <tr
-                  key={record.date}
-                  className="border-b border-slate-100 last:border-0 dark:border-slate-800"
-                >
-                  <td className="sticky left-0 whitespace-nowrap bg-white/80 px-4 py-2.5 font-medium backdrop-blur dark:bg-slate-900/80 sm:px-6">
-                    {record.date.slice(5)}
-                  </td>
-                  {activeMembers.map((member) => {
-                    const meals = record.meals[member.id] ?? {
-                      breakfast: 0,
-                      lunch: 0,
-                      dinner: 0,
-                    };
-                    return (
-                      <Fragment key={member.id}>
-                        <td className="px-1 py-2.5 text-center">
-                          {meals.breakfast || "—"}
-                        </td>
-                        <td className="px-1 py-2.5 text-center">
-                          {meals.lunch || "—"}
-                        </td>
-                        <td className="px-1 py-2.5 text-center">
-                          {meals.dinner || "—"}
-                        </td>
-                      </Fragment>
-                    );
-                  })}
-                  {isAdmin && (
-                    <td className="sticky right-0 bg-white/80 px-2 py-2 backdrop-blur dark:bg-slate-900/80">
-                      <InlineActions
-                        onEdit={() => startEdit(record)}
-                        onDelete={() => handleDelete(record.date)}
-                        editLabel={`Edit meals for ${record.date}`}
-                        deleteLabel={`Delete meals for ${record.date}`}
-                      />
-                    </td>
-                  )}
-                </tr>
-              )
-            )}
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      <div className="space-y-4 p-4 lg:hidden">
-        {records.map((record) =>
-          editingDate === record.date ? (
-            <div
-              key={record.date}
-              className="rounded-xl border-2 border-emerald-400/50 bg-emerald-50/30 p-4 dark:border-emerald-700/50 dark:bg-emerald-950/20"
-            >
-              <p className="mb-3 font-semibold">{record.date}</p>
+      <div className="relative space-y-4 p-4 lg:hidden">
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 flex items-center pr-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <span className="rounded-full border border-slate-200 bg-white/80 px-2 py-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">Swipe <ChevronRight className="ml-1 inline h-3.5 w-3.5" /></span>
+        </div>
+        {displayRows.map((row) => {
+          const record = records.find((item) => item.date === row.date) ?? { date: row.date, meals: {} } as DailyMealRecord;
+          const isPast = row.date < todayKey;
+          const isTodayRow = row.label === "Today";
+          const isTomorrowRow = row.label === "Tomorrow";
+          return (
+            <div key={row.date} className={`rounded-xl border p-4 ${isTodayRow || isTomorrowRow ? "border-emerald-300 bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/20" : "border-transparent bg-white/50 dark:bg-slate-800/40"}`}>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="font-semibold">{row.label} · {row.label === "Today" ? todayKey.slice(5) : row.label === "Tomorrow" ? tomorrowKey.slice(5) : row.label}</p>
+              </div>
               <div className="space-y-3">
                 {activeMembers.map((member) => (
-                  <div key={member.id}>
-                    <p className="mb-1 text-xs font-medium text-slate-500">
-                      {member.name}
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(["breakfast", "lunch", "dinner"] as const).map(
-                        (field) => (
-                          <input
+                  <div key={member.id} className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium">{member.name}</span>
+                    <div className="flex gap-2">
+                      {(["breakfast", "lunch", "dinner"] as const).map((field) => {
+                        const isEditable = canEditCell(record.date, member);
+                        const isActive = (getDraftMealValue(record, member.id, field) ?? 0) > 0;
+                        return isEditable ? (
+                          <button
                             key={field}
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            placeholder={field[0].toUpperCase()}
-                            value={editMeals[member.id]?.[field] || ""}
-                            onChange={(e) =>
-                              updateEditMeal(member.id, field, e.target.value)
-                            }
-                            className={inputClass}
-                          />
-                        )
-                      )}
+                            type="button"
+                            onClick={() => void toggleMealCell(record, member, field)}
+                            disabled={saving}
+                            className={`h-10 min-w-10 cursor-pointer rounded-full border px-2 text-[11px] font-semibold ${isActive
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : "border-slate-200 bg-white text-slate-600"
+                              }`}
+                          >
+                            {field[0].toUpperCase()}
+                          </button>
+                        ) : (
+                          <div
+                            key={field}
+                            className={`flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-semibold ${isActive
+                              ? "border-slate-200 bg-slate-100 text-slate-400"
+                              : "border-slate-200/70 bg-slate-50 text-slate-400"
+                              }`}
+                          >
+                            {field[0].toUpperCase()}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSave(record.date)}
-                  disabled={saving}
-                  className="flex flex-1 h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-sm font-medium text-white disabled:opacity-60"
-                >
-                  {saving ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4" />
-                      Save
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingDate(null)}
-                  className="h-10 rounded-xl px-4 text-sm font-medium text-slate-600"
-                >
-                  Cancel
-                </button>
-              </div>
             </div>
-          ) : (
-            <div
-              key={record.date}
-              className="rounded-xl bg-white/50 p-4 dark:bg-slate-800/40"
-            >
-              <div className="mb-3 flex items-center justify-between">
-                <p className="font-semibold">{record.date}</p>
-                {isAdmin && (
-                  <InlineActions
-                    onEdit={() => startEdit(record)}
-                    onDelete={() => handleDelete(record.date)}
-                  />
-                )}
-              </div>
-              <div className="space-y-2">
-                {activeMembers.map((member) => {
-                  const meals = record.meals[member.id] ?? {
-                    breakfast: 0,
-                    lunch: 0,
-                    dinner: 0,
-                  };
-                  const total =
-                    meals.breakfast + meals.lunch + meals.dinner;
-                  if (total === 0) return null;
-                  return (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <span className="font-medium">{member.name}</span>
-                      <span className="text-slate-600 dark:text-slate-400">
-                        B:{meals.breakfast} L:{meals.lunch} D:{meals.dinner}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )
-        )}
+          );
+        })}
       </div>
     </div>
   );

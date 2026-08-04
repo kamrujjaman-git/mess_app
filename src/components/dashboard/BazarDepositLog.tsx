@@ -12,6 +12,9 @@ import type {
 import { BILL_LABELS } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/ToastProvider";
+import { Wallet2, ReceiptText } from "lucide-react";
 
 interface BazarDepositLogProps {
   bazar: BazarEntry[];
@@ -47,6 +50,7 @@ export function BazarDepositLog({
   onDeleteBill,
 }: BazarDepositLogProps) {
   const activeMembers = getActiveMembers(members);
+  const { success } = useToast();
 
   const [editingBazarId, setEditingBazarId] = useState<string | null>(null);
   const [bazarDate, setBazarDate] = useState("");
@@ -84,6 +88,7 @@ export function BazarDepositLog({
         description: bazarDesc,
       });
       setEditingBazarId(null);
+      success("Bazar log saved successfully! 🎉", "The entry was updated.");
     } finally {
       setSaving(null);
     }
@@ -117,6 +122,7 @@ export function BazarDepositLog({
         note: depositNote,
       });
       setEditingDepositId(null);
+      success("Deposit logged!", "The deposit entry has been saved.");
     } finally {
       setSaving(null);
     }
@@ -134,6 +140,7 @@ export function BazarDepositLog({
     try {
       await onEditBill(field, value);
       setEditingBillField(null);
+      success("Bill updated!", "The monthly bill value has been saved.");
     } finally {
       setSaving(null);
     }
@@ -153,193 +160,237 @@ export function BazarDepositLog({
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="glass-card overflow-hidden rounded-2xl">
-          <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
-            <h2 className="text-base font-semibold sm:text-lg">Bazar Log</h2>
+        <div className="glass-card overflow-hidden rounded-2xl border border-slate-200/70 shadow-sm dark:border-slate-700/70">
+          <div className="border-b border-slate-200/60 bg-slate-50/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/40 sm:px-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold sm:text-lg">Bazar Log</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Track daily bazar spending
+                </p>
+              </div>
+              <div className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                {bazar.length} items
+              </div>
+            </div>
           </div>
           {bazar.length === 0 ? (
-            <p className="p-6 text-center text-sm text-slate-500">
-              No bazar entries
-            </p>
+            <div className="p-4 sm:p-6">
+              <EmptyState
+                icon={ReceiptText}
+                title="No bazar records found"
+                description="Add a bazar entry to get started."
+              />
+            </div>
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {bazar.map((entry) => (
-                <li key={entry.id} className="px-4 py-3 sm:px-6">
-                  {editingBazarId === entry.id ? (
-                    <div className="space-y-2">
-                      <input
-                        type="date"
-                        value={bazarDate}
-                        onChange={(e) => setBazarDate(e.target.value)}
-                        className={inputClass}
-                      />
-                      <input
-                        type="number"
-                        placeholder="Amount (৳)"
-                        value={bazarAmount}
-                        onChange={(e) => setBazarAmount(e.target.value)}
-                        className={inputClass}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Description"
-                        value={bazarDesc}
-                        onChange={(e) => setBazarDesc(e.target.value)}
-                        className={inputClass}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => saveBazar(entry.id)}
-                          disabled={saving === entry.id}
-                          className="flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white disabled:opacity-60"
-                        >
-                          {saving === entry.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Save className="h-4 w-4" />
-                              Save
-                            </>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingBazarId(null)}
-                          className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600"
-                        >
-                          <X className="h-4 w-4" />
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium">৳{entry.amount}</p>
-                        <p className="truncate text-xs text-slate-500">
-                          {entry.date}
-                          {entry.description ? ` · ${entry.description}` : ""}
-                        </p>
-                      </div>
-                      {isAdmin && (
-                        <InlineActions
-                          onEdit={() => startEditBazar(entry)}
-                          onDelete={() => onDeleteBazar?.(entry.id)}
+            <div className="overflow-x-auto overflow-y-hidden px-2 py-2 sm:px-4">
+              <ul className="min-w-[280px] divide-y divide-slate-100 dark:divide-slate-800">
+                {bazar.map((entry) => (
+                  <li key={entry.id} className="px-4 py-3 sm:px-6">
+                    {editingBazarId === entry.id ? (
+                      <div className="space-y-2">
+                        <input
+                          type="date"
+                          value={bazarDate}
+                          onChange={(e) => setBazarDate(e.target.value)}
+                          className={inputClass}
                         />
-                      )}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+                        <input
+                          type="number"
+                          placeholder="Amount (৳)"
+                          value={bazarAmount}
+                          onChange={(e) => setBazarAmount(e.target.value)}
+                          className={inputClass}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Description"
+                          value={bazarDesc}
+                          onChange={(e) => setBazarDesc(e.target.value)}
+                          className={inputClass}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => saveBazar(entry.id)}
+                            disabled={saving === entry.id}
+                            className="flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white disabled:opacity-60"
+                          >
+                            {saving === entry.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4" />
+                                Save
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingBazarId(null)}
+                            className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600"
+                          >
+                            <X className="h-4 w-4" />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-2 py-2 transition-colors hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-800/60">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-slate-800 dark:text-slate-100">
+                            ৳{entry.amount}
+                          </p>
+                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                            {entry.date}
+                            {entry.description ? ` · ${entry.description}` : ""}
+                          </p>
+                        </div>
+                        {isAdmin && (
+                          <InlineActions
+                            onEdit={() => startEditBazar(entry)}
+                            onDelete={() => onDeleteBazar?.(entry.id)}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
 
-        <div className="glass-card overflow-hidden rounded-2xl">
-          <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
-            <h2 className="text-base font-semibold sm:text-lg">Deposit Log</h2>
+        <div className="glass-card overflow-hidden rounded-2xl border border-slate-200/70 shadow-sm dark:border-slate-700/70">
+          <div className="border-b border-slate-200/60 bg-slate-50/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/40 sm:px-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold sm:text-lg">Deposit Log</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Member deposits and notes
+                </p>
+              </div>
+              <div className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                {deposits.length} items
+              </div>
+            </div>
           </div>
           {deposits.length === 0 ? (
-            <p className="p-6 text-center text-sm text-slate-500">
-              No deposits
-            </p>
+            <div className="p-4 sm:p-6">
+              <EmptyState
+                icon={Wallet2}
+                title="No deposits found"
+                description="Deposit activity will show up here."
+              />
+            </div>
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {deposits.map((entry) => (
-                <li key={entry.id} className="px-4 py-3 sm:px-6">
-                  {editingDepositId === entry.id ? (
-                    <div className="space-y-2">
-                      <select
-                        value={depositMemberId}
-                        onChange={(e) => setDepositMemberId(e.target.value)}
-                        className={inputClass}
-                      >
-                        {members.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                            {m.status === "inactive" ? " (Inactive)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        placeholder="Amount (৳)"
-                        value={depositAmount}
-                        onChange={(e) => setDepositAmount(e.target.value)}
-                        className={inputClass}
-                      />
-                      <input
-                        type="date"
-                        value={depositDate}
-                        onChange={(e) => setDepositDate(e.target.value)}
-                        className={inputClass}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Note"
-                        value={depositNote}
-                        onChange={(e) => setDepositNote(e.target.value)}
-                        className={inputClass}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => saveDeposit(entry.id)}
-                          disabled={saving === entry.id}
-                          className="flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white disabled:opacity-60"
+            <div className="overflow-x-auto overflow-y-hidden px-2 py-2 sm:px-4">
+              <ul className="min-w-[280px] divide-y divide-slate-100 dark:divide-slate-800">
+                {deposits.map((entry) => (
+                  <li key={entry.id} className="px-4 py-3 sm:px-6">
+                    {editingDepositId === entry.id ? (
+                      <div className="space-y-2">
+                        <select
+                          value={depositMemberId}
+                          onChange={(e) => setDepositMemberId(e.target.value)}
+                          className={inputClass}
                         >
-                          {saving === entry.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Save className="h-4 w-4" />
-                              Save
-                            </>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingDepositId(null)}
-                          className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600"
-                        >
-                          <X className="h-4 w-4" />
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium">
-                          {entry.memberName} — ৳{entry.amount}
-                        </p>
-                        <p className="truncate text-xs text-slate-500">
-                          {entry.date}
-                          {entry.note ? ` · ${entry.note}` : ""}
-                        </p>
-                      </div>
-                      {isAdmin && (
-                        <InlineActions
-                          onEdit={() => startEditDeposit(entry)}
-                          onDelete={() => onDeleteDeposit?.(entry.id)}
+                          {members.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                              {m.status === "inactive" ? " (Inactive)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          placeholder="Amount (৳)"
+                          value={depositAmount}
+                          onChange={(e) => setDepositAmount(e.target.value)}
+                          className={inputClass}
                         />
-                      )}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+                        <input
+                          type="date"
+                          value={depositDate}
+                          onChange={(e) => setDepositDate(e.target.value)}
+                          className={inputClass}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Note"
+                          value={depositNote}
+                          onChange={(e) => setDepositNote(e.target.value)}
+                          className={inputClass}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => saveDeposit(entry.id)}
+                            disabled={saving === entry.id}
+                            className="flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white disabled:opacity-60"
+                          >
+                            {saving === entry.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4" />
+                                Save
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDepositId(null)}
+                            className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600"
+                          >
+                            <X className="h-4 w-4" />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-2 py-2 transition-colors hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-800/60">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-slate-800 dark:text-slate-100">
+                            {entry.memberName} — ৳{entry.amount}
+                          </p>
+                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                            {entry.date}
+                            {entry.note ? ` · ${entry.note}` : ""}
+                          </p>
+                        </div>
+                        {isAdmin && (
+                          <InlineActions
+                            onEdit={() => startEditDeposit(entry)}
+                            onDelete={() => onDeleteDeposit?.(entry.id)}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       </div>
 
       {isAdmin && (
-        <div className="glass-card overflow-hidden rounded-2xl">
-          <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
-            <h2 className="text-base font-semibold sm:text-lg">
-              Monthly Fixed Bills
-            </h2>
+        <div className="glass-card overflow-hidden rounded-2xl border border-slate-200/70 shadow-sm dark:border-slate-700/70">
+          <div className="border-b border-slate-200/60 bg-slate-50/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/40 sm:px-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold sm:text-lg">
+                  Monthly Fixed Bills
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Shared household charges
+                </p>
+              </div>
+              <div className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
+                {billFields.length} items
+              </div>
+            </div>
           </div>
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {billFields.map((field) => (

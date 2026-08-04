@@ -197,7 +197,7 @@ export function AdminPanel({
           <div className="glass-card rounded-2xl p-4 sm:p-6">
             <h3 className="mb-1 text-base font-semibold">Daily Meals</h3>
             <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-              Tap boxes to turn meals ON/OFF with quick touch-friendly controls.
+              Select a date and update meal entries for all members.
             </p>
             <div className="mb-4">
               <label className="mb-1 block text-xs font-medium text-slate-500">

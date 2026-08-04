@@ -11,7 +11,6 @@ import {
   User,
   Shield,
   ShieldOff,
-  MessageCircle,
 } from "lucide-react";
 import type { Member } from "@/lib/mess";
 import { buildWhatsAppLink, normalizeWhatsAppNumber } from "@/lib/mess";
@@ -22,6 +21,23 @@ interface ManageMembersProps {
   onAddMember: (name: string, email: string, whatsAppNumber?: string) => Promise<void>;
   onUpdateMember: (member: Member) => Promise<void>;
   onSetMemberStatus: (memberId: string, status: Member["status"]) => Promise<void>;
+}
+
+function WhatsAppActionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden="true">
+      <path
+        d="M12 3.2a8.8 8.8 0 0 0-7.4 13.7l-1 3.1 3.2-1A8.8 8.8 0 1 0 12 3.2Z"
+        fill="currentColor"
+      />
+      <path
+        d="M9 8.6h6M9 11.1h3.8"
+        stroke="white"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 export function ManageMembers({
@@ -255,11 +271,14 @@ export function ManageMembers({
                           href={buildWhatsAppLink(member, 0)}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-500 text-white shadow-[0_10px_25px_-12px_rgba(16,185,129,0.9)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-600 sm:w-auto sm:min-w-[96px] sm:gap-1.5 sm:px-3"
                           aria-label={`Open WhatsApp for ${member.name}`}
                           title={`Open WhatsApp for ${member.name}`}
                         >
-                          <MessageCircle className="h-4 w-4" />
+                          <WhatsAppActionIcon />
+                          <span className="hidden text-[11px] font-semibold uppercase tracking-wide sm:inline">
+                            WhatsApp
+                          </span>
                         </a>
                       )}
                       <button

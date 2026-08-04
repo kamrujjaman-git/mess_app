@@ -68,19 +68,21 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
   return (
     <div className={gridClassName}>
       {visibleCards.map((card) => (
-        <div key={card.label} className="glass-card rounded-2xl p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between">
+        <div key={card.label} className="glass-card rounded-2xl p-3.5 sm:p-5">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">
               {card.label}
             </span>
             <div
-              className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${card.color} shadow-sm`}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${card.color} shadow-sm`}
             >
-              <card.icon className="h-4 w-4 text-white" />
+              <card.icon className="h-4.5 w-4.5 text-white" />
             </div>
           </div>
-          <p className="text-xl font-bold sm:text-2xl">{card.value}</p>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
+            {card.value}
+          </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             {card.sub}
           </p>
         </div>

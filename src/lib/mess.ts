@@ -215,7 +215,7 @@ export function calculateMessStats(
     safeRound(bills.otherBills)
   );
   const fixedCostPerPerson =
-    activeMemberCount > 0 && totalFixedCosts > 0
+    activeMemberCount > 0
       ? safeRound(totalFixedCosts / activeMemberCount)
       : 0;
 
@@ -236,9 +236,7 @@ export function calculateMessStats(
     const mealCost = safeRound(personalTotalMeals * mealRate);
     const mealBalance = safeRound(totalDeposited - mealCost);
     const fixedShare = isMemberActive(member) ? fixedCostPerPerson : 0;
-    const finalBalance = safeRound(
-      totalDeposited - (mealCost + fixedShare)
-    );
+    const finalBalance = safeRound(totalDeposited - (mealCost + fixedShare));
 
     return {
       id: member.id,
