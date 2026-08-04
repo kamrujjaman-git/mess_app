@@ -31,7 +31,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${inter.variable} h-full scroll-smooth`}
     >
-      <body className="min-h-full flex flex-col overflow-x-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 font-sans text-slate-900 antialiased transition-colors duration-300 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col overflow-x-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 font-sans text-slate-900 antialiased transition-colors duration-300 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100"
+      >
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>
         </AuthProvider>

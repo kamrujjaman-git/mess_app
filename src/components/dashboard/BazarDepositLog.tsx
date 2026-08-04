@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 import { Loader2, Save, X } from "lucide-react";
 import type {
   BazarEntry,
@@ -13,7 +14,6 @@ import { BILL_LABELS } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useToast } from "@/components/ui/ToastProvider";
 import { Wallet2, ReceiptText } from "lucide-react";
 
 interface BazarDepositLogProps {
@@ -50,7 +50,6 @@ export function BazarDepositLog({
   onDeleteBill,
 }: BazarDepositLogProps) {
   const activeMembers = getActiveMembers(members);
-  const { success } = useToast();
 
   const [editingBazarId, setEditingBazarId] = useState<string | null>(null);
   const [bazarDate, setBazarDate] = useState("");
@@ -79,7 +78,10 @@ export function BazarDepositLog({
   async function saveBazar(id: string) {
     if (!onEditBazar) return;
     const amount = Math.round(parseFloat(bazarAmount));
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0) {
+      toast.error("Please enter a valid bazar amount.");
+      return;
+    }
     setSaving(id);
     try {
       await onEditBazar(id, {
@@ -88,7 +90,10 @@ export function BazarDepositLog({
         description: bazarDesc,
       });
       setEditingBazarId(null);
-      success("Bazar log saved successfully! 🎉", "The entry was updated.");
+      toast.success("Bazar log saved successfully.");
+    } catch (error) {
+      console.error("Update bazar log failed:", error);
+      toast.error("Failed to save bazar log. Please try again.");
     } finally {
       setSaving(null);
     }
@@ -111,7 +116,10 @@ export function BazarDepositLog({
     if (!onEditDeposit) return;
     const amount = Math.round(parseFloat(depositAmount));
     const member = members.find((m) => m.id === depositMemberId);
-    if (!amount || amount <= 0 || !member) return;
+    if (!amount || amount <= 0 || !member) {
+      toast.error("Please enter a valid deposit amount and member.");
+      return;
+    }
     setSaving(id);
     try {
       await onEditDeposit(id, {
@@ -122,7 +130,10 @@ export function BazarDepositLog({
         note: depositNote,
       });
       setEditingDepositId(null);
-      success("Deposit logged!", "The deposit entry has been saved.");
+      toast.success("Deposit saved successfully.");
+    } catch (error) {
+      console.error("Update deposit failed:", error);
+      toast.error("Failed to save deposit. Please try again.");
     } finally {
       setSaving(null);
     }
@@ -140,19 +151,27 @@ export function BazarDepositLog({
     try {
       await onEditBill(field, value);
       setEditingBillField(null);
-      success("Bill updated!", "The monthly bill value has been saved.");
+      toast.success(`${BILL_LABELS[field]} updated successfully.`);
+    } catch (error) {
+      console.error("Update bill failed:", error);
+      toast.error(`Failed to update ${BILL_LABELS[field]}. Please try again.`);
     } finally {
       setSaving(null);
     }
   }
 
   async function handleDeleteBill(field: BillField) {
-    if (
-      !onDeleteBill ||
-      !confirm(`Clear ${BILL_LABELS[field]} for this month?`)
-    )
+    if (!onDeleteBill || !confirm(`Clear ${BILL_LABELS[field]} for this month?`)) {
       return;
-    await onDeleteBill(field);
+    }
+
+    try {
+      await onDeleteBill(field);
+      toast.success(`${BILL_LABELS[field]} cleared successfully.`);
+    } catch (error) {
+      console.error("Delete bill failed:", error);
+      toast.error(`Failed to clear ${BILL_LABELS[field]}. Please try again.`);
+    }
   }
 
   const billFields: BillField[] = ["houseRent", "buaBill", "otherBills"];
@@ -249,7 +268,16 @@ export function BazarDepositLog({
                         {isAdmin && (
                           <InlineActions
                             onEdit={() => startEditBazar(entry)}
-                            onDelete={() => onDeleteBazar?.(entry.id)}
+                            onDelete={async () => {
+                              if (!onDeleteBazar) return;
+                              try {
+                                await onDeleteBazar(entry.id);
+                                toast.success("Bazar entry deleted successfully.");
+                              } catch (error) {
+                                console.error("Delete bazar entry failed:", error);
+                                toast.error("Failed to delete bazar entry. Please try again.");
+                              }
+                            }}
                           />
                         )}
                       </div>
@@ -362,7 +390,16 @@ export function BazarDepositLog({
                         {isAdmin && (
                           <InlineActions
                             onEdit={() => startEditDeposit(entry)}
-                            onDelete={() => onDeleteDeposit?.(entry.id)}
+                            onDelete={async () => {
+                              if (!onDeleteDeposit) return;
+                              try {
+                                await onDeleteDeposit(entry.id);
+                                toast.success("Deposit entry deleted successfully.");
+                              } catch (error) {
+                                console.error("Delete deposit entry failed:", error);
+                                toast.error("Failed to delete deposit entry. Please try again.");
+                              }
+                            }}
                           />
                         )}
                       </div>

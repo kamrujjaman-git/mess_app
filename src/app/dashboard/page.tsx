@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -14,6 +14,8 @@ import { AdminPanel } from "@/components/dashboard/AdminPanel";
 import {
   calculateMessStats,
   formatMonthKey,
+  normalizeMealCount,
+  type DailyMealRecord,
   type MemberMeals,
   type Member,
   type MonthBills,
@@ -58,6 +60,33 @@ function getSubTabFromUrl(subTab: string | null): AdminSubTab {
   return subTab === "members" ? "members" : "entries";
 }
 
+function calculateTotalFromDailyMeals(dailyMeals: DailyMealRecord[] | undefined): number {
+  if (!dailyMeals || dailyMeals.length === 0) return 0;
+
+  return dailyMeals.reduce((sum, record) => {
+    const memberMeals = Object.values(record.meals ?? {}) as unknown[];
+    const dailyTotal = memberMeals.reduce<number>((memberSum, meals) => {
+      if (!meals || typeof meals !== "object") {
+        return memberSum + normalizeMealCount(meals);
+      }
+
+      const mealRecord = meals as Record<string, unknown>;
+      const values: unknown[] = [
+        mealRecord.breakfast,
+        mealRecord.lunch,
+        mealRecord.dinner,
+        mealRecord.b,
+        mealRecord.l,
+        mealRecord.d,
+      ];
+
+      return memberSum + values.reduce<number>((fieldSum, value) => fieldSum + normalizeMealCount(value), 0);
+    }, 0);
+
+    return sum + dailyTotal;
+  }, 0);
+}
+
 function DashboardLoading() {
   return (
     <div className="flex min-h-screen flex-1 items-center justify-center">
@@ -72,6 +101,7 @@ function DashboardContent() {
     loading,
     accessLoading,
     isAdmin,
+    isSuperAdmin,
     hasAccess,
     accessDeniedReason,
     members,
@@ -104,6 +134,44 @@ function DashboardContent() {
     return unsub;
   }, [monthKey, user, hasAccess]);
 
+  const handleOptimisticMealToggle = useCallback(
+    (date: string, memberId: string, mealType: keyof MemberMeals, nextStatus: boolean) => {
+      setMonthData((previous) => {
+        if (!previous) return previous;
+
+        const nextDailyMeals = [...previous.dailyMeals];
+        const existingIndex = nextDailyMeals.findIndex((record) => record.date === date);
+        const targetRecord = existingIndex >= 0 ? nextDailyMeals[existingIndex] : { date, meals: {} };
+        const updatedMeals = {
+          ...targetRecord.meals,
+          [memberId]: {
+            ...(targetRecord.meals[memberId] ?? { breakfast: 0, lunch: 0, dinner: 0 }),
+            [mealType]: nextStatus ? 1 : 0,
+          },
+        };
+
+        const nextRecord: DailyMealRecord = {
+          ...targetRecord,
+          meals: updatedMeals,
+        };
+
+        if (existingIndex >= 0) {
+          nextDailyMeals[existingIndex] = nextRecord;
+        } else {
+          nextDailyMeals.push(nextRecord);
+        }
+
+        nextDailyMeals.sort((a, b) => a.date.localeCompare(b.date));
+
+        return {
+          ...previous,
+          dailyMeals: nextDailyMeals,
+        };
+      });
+    },
+    []
+  );
+
   const shiftMonth = useCallback((delta: number) => {
     setMonthKey((prev) => {
       const [year, month] = prev.split("-").map(Number);
@@ -134,18 +202,49 @@ function DashboardContent() {
     [router, searchParams]
   );
 
+  const upsertMealsInLocalState = useCallback((date: string, meals: Record<string, MemberMeals>) => {
+    setMonthData((previous) => {
+      if (!previous) return previous;
+
+      const nextDailyMeals = [...previous.dailyMeals];
+      const existingIndex = nextDailyMeals.findIndex((record) => record.date === date);
+      const nextRecord: DailyMealRecord = { date, meals };
+
+      if (existingIndex >= 0) {
+        nextDailyMeals[existingIndex] = {
+          ...nextDailyMeals[existingIndex],
+          meals: {
+            ...nextDailyMeals[existingIndex].meals,
+            ...meals,
+          },
+        };
+      } else {
+        nextDailyMeals.push(nextRecord);
+      }
+
+      nextDailyMeals.sort((a, b) => a.date.localeCompare(b.date));
+
+      return {
+        ...previous,
+        dailyMeals: nextDailyMeals,
+      };
+    });
+  }, []);
+
   const handleSaveMeals = useCallback(
     async (date: string, meals: Record<string, MemberMeals>) => {
       await saveDailyMeals(monthKey, { date, meals });
+      upsertMealsInLocalState(date, meals);
     },
-    [monthKey]
+    [monthKey, upsertMealsInLocalState]
   );
 
   const handleEditMeals = useCallback(
     async (date: string, meals: Record<string, MemberMeals>) => {
       await saveDailyMeals(monthKey, { date, meals });
+      upsertMealsInLocalState(date, meals);
     },
-    [monthKey]
+    [monthKey, upsertMealsInLocalState]
   );
 
   const handleDeleteMeals = useCallback(
@@ -229,9 +328,23 @@ function DashboardContent() {
     await addMember(name, email, whatsAppNumber);
   }, []);
 
-  const handleUpdateMember = useCallback(async (member: Member) => {
-    await updateMember(member);
-  }, []);
+  const handleUpdateMember = useCallback(
+    async (member: Member) => {
+      const existingMember = members.find((m) => m.id === member.id);
+      if (
+        existingMember &&
+        existingMember.isAdmin !== member.isAdmin &&
+        !isSuperAdmin
+      ) {
+        throw new Error(
+          "Only the Main Super Admin can change admin access."
+        );
+      }
+
+      await updateMember(member);
+    },
+    [members, isSuperAdmin]
+  );
 
   const handleSetMemberStatus = useCallback(
     async (memberId: string, status: Member["status"]) => {
@@ -259,24 +372,6 @@ function DashboardContent() {
     router.replace("/");
   }, [logout, router]);
 
-  if (loading || accessLoading || !user) {
-    return (
-      <div className="flex flex-1 items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
-    return (
-      <AccessDeniedScreen
-        email={user.email}
-        reason={accessDeniedReason ?? "not-member"}
-        onLogout={handleLogout}
-      />
-    );
-  }
-
   const currentMember = user?.email
     ? members.find(
       (member) =>
@@ -296,7 +391,30 @@ function DashboardContent() {
     )
     : null;
 
+  const computedTotalMeals = useMemo(() => {
+    return calculateTotalFromDailyMeals(monthData?.dailyMeals);
+  }, [monthData?.dailyMeals]);
+
+  const dashboardStats = stats ? { ...stats, totalMeals: computedTotalMeals } : null;
   const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
+
+  if (loading || accessLoading || !user) {
+    return (
+      <div className="flex flex-1 items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <AccessDeniedScreen
+        email={user.email}
+        reason={accessDeniedReason ?? "not-member"}
+        onLogout={handleLogout}
+      />
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -319,7 +437,7 @@ function DashboardContent() {
           <>
             <div className="mb-6">
               <OverviewCards
-                stats={stats}
+                stats={dashboardStats ?? stats}
                 bills={monthData.bills}
                 isAdmin={isAdmin}
               />
@@ -354,6 +472,7 @@ function DashboardContent() {
                 isAdmin={isAdmin}
                 onEdit={handleEditMeals}
                 onDelete={isAdmin ? handleDeleteMeals : undefined}
+                onOptimisticToggle={handleOptimisticMealToggle}
               />
             )}
 

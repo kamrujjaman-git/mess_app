@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { toast } from "react-hot-toast";
 import type { MemberSummary, MessStats } from "@/lib/mess";
 import { buildWhatsAppLink, formatMonthLabel } from "@/lib/mess";
 
@@ -60,7 +61,7 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
     if (!summaryReport) {
       const error = new Error("Summary report container is not ready.");
       console.error("PDF export failed:", error);
-      window.alert("PDF export is unavailable right now. Please try again.");
+      toast.error("PDF export is unavailable right now. Please try again.");
       return;
     }
 
@@ -68,7 +69,7 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
       window.print();
     } catch (error) {
       console.error("PDF export failed:", error);
-      window.alert("PDF download failed. Please check the browser console for details.");
+      toast.error("PDF download failed. Please check the browser console for details.");
     }
   }
 
@@ -178,19 +179,16 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                         Inactive
                       </span>
                     )}
-                    {m.whatsAppNumber && (
+                    {isAdmin && m.whatsAppNumber && (
                       <a
                         href={buildWhatsAppLink({ name: m.name, whatsAppNumber: m.whatsAppNumber }, m.finalBalance)}
                         target="_blank"
                         rel="noreferrer"
-                        className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-500 text-white shadow-[0_10px_25px_-12px_rgba(16,185,129,0.9)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-600 sm:h-9 sm:w-auto sm:min-w-[96px] sm:gap-1.5 sm:px-3"
+                        className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
                         aria-label={`Open WhatsApp for ${m.name}`}
                         title={`Open WhatsApp for ${m.name}`}
                       >
                         <WhatsAppActionIcon />
-                        <span className="hidden text-[11px] font-semibold uppercase tracking-wide sm:inline">
-                          WhatsApp
-                        </span>
                       </a>
                     )}
                   </div>
@@ -226,19 +224,16 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                 )}
               </span>
               <div className="flex items-center gap-2">
-                {m.whatsAppNumber && (
+                {isAdmin && m.whatsAppNumber && (
                   <a
                     href={buildWhatsAppLink({ name: m.name, whatsAppNumber: m.whatsAppNumber }, m.finalBalance)}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-500 text-white shadow-[0_10px_25px_-12px_rgba(16,185,129,0.9)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-600 sm:h-9 sm:w-auto sm:min-w-[96px] sm:gap-1.5 sm:px-3"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
                     aria-label={`Open WhatsApp for ${m.name}`}
                     title={`Open WhatsApp for ${m.name}`}
                   >
                     <WhatsAppActionIcon />
-                    <span className="hidden text-[11px] font-semibold uppercase tracking-wide sm:inline">
-                      WhatsApp
-                    </span>
                   </a>
                 )}
                 <BalanceBadge amount={m.finalBalance} />

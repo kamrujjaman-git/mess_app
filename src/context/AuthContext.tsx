@@ -27,6 +27,7 @@ interface AuthContextValue {
   loading: boolean;
   accessLoading: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   hasAccess: boolean;
   accessDeniedReason: AccessDeniedReason;
   members: Member[];
@@ -37,10 +38,15 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessLoading, setAccessLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
 
@@ -53,6 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ) ?? null
     );
   }, [user, members]);
+
+  const isSuperAdmin = useMemo(() => {
+    return user?.email?.trim().toLowerCase() ===
+      "md.kamrujjaman092@gmail.com";
+  }, [user]);
 
   const isAdmin = useMemo(() => {
     if (!user?.email) return false;
@@ -73,6 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [accessDeniedReason]);
 
   useEffect(() => {
+    if (!mounted) return;
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
@@ -81,10 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
     return unsubscribe;
-  }, []);
+  }, [mounted]);
 
   useEffect(() => {
-    if (!user) {
+    if (!mounted || !user) {
       setMembers([]);
       return;
     }
@@ -96,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return unsubscribe;
-  }, [user]);
+  }, [mounted, user]);
 
   const signInWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
@@ -114,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         accessLoading,
         isAdmin,
+        isSuperAdmin,
         hasAccess,
         accessDeniedReason,
         members,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 import {
   Loader2,
   Save,
@@ -12,6 +13,7 @@ import {
   Shield,
   ShieldOff,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import type { Member } from "@/lib/mess";
 import { buildWhatsAppLink, normalizeWhatsAppNumber } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
@@ -46,6 +48,8 @@ export function ManageMembers({
   onUpdateMember,
   onSetMemberStatus,
 }: ManageMembersProps) {
+  const { isSuperAdmin } = useAuth();
+
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newWhatsAppNumber, setNewWhatsAppNumber] = useState("");
@@ -56,13 +60,20 @@ export function ManageMembers({
   const [saving, setSaving] = useState<string | null>(null);
 
   async function handleAdd() {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      toast.error("Please enter a member name.");
+      return;
+    }
     setSaving("add");
     try {
       await onAddMember(newName, newEmail, normalizeWhatsAppNumber(newWhatsAppNumber));
       setNewName("");
       setNewEmail("");
       setNewWhatsAppNumber("");
+      toast.success("Member added successfully.");
+    } catch (error) {
+      console.error("Add member failed:", error);
+      toast.error("Failed to add member. Please try again.");
     } finally {
       setSaving(null);
     }
@@ -76,7 +87,10 @@ export function ManageMembers({
   }
 
   async function handleSaveEdit(member: Member) {
-    if (!editName.trim()) return;
+    if (!editName.trim()) {
+      toast.error("Please enter a member name.");
+      return;
+    }
     setSaving(member.id);
     try {
       await onUpdateMember({
@@ -86,6 +100,10 @@ export function ManageMembers({
         whatsAppNumber: normalizeWhatsAppNumber(editWhatsAppNumber),
       });
       setEditingId(null);
+      toast.success("Member updated successfully.");
+    } catch (error) {
+      console.error("Update member failed:", error);
+      toast.error("Failed to update member. Please try again.");
     } finally {
       setSaving(null);
     }
@@ -96,16 +114,29 @@ export function ManageMembers({
     setSaving(`status-${member.id}`);
     try {
       await onSetMemberStatus(member.id, newStatus);
+      toast.success(`Member marked ${newStatus}.`);
+    } catch (error) {
+      console.error("Update member status failed:", error);
+      toast.error("Failed to update member status. Please try again.");
     } finally {
       setSaving(null);
     }
   }
 
   async function handleToggleAdminAccess(member: Member) {
+    if (!isSuperAdmin) {
+      toast.error("Only the Main Super Admin can change admin access.");
+      return;
+    }
+
     const nextIsAdmin = !member.isAdmin;
     setSaving(`admin-${member.id}`);
     try {
       await onUpdateMember({ ...member, isAdmin: nextIsAdmin });
+      toast.success(nextIsAdmin ? "Admin access granted." : "Admin access revoked.");
+    } catch (error) {
+      console.error("Update admin access failed:", error);
+      toast.error("Failed to update admin access. Please try again.");
     } finally {
       setSaving(null);
     }
@@ -271,36 +302,35 @@ export function ManageMembers({
                           href={buildWhatsAppLink(member, 0)}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-500 text-white shadow-[0_10px_25px_-12px_rgba(16,185,129,0.9)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-600 sm:w-auto sm:min-w-[96px] sm:gap-1.5 sm:px-3"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
                           aria-label={`Open WhatsApp for ${member.name}`}
                           title={`Open WhatsApp for ${member.name}`}
                         >
                           <WhatsAppActionIcon />
-                          <span className="hidden text-[11px] font-semibold uppercase tracking-wide sm:inline">
-                            WhatsApp
-                          </span>
                         </a>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleAdminAccess(member)}
-                        disabled={saving === `admin-${member.id}`}
-                        className={`flex h-9 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold transition-colors ${member.isAdmin
-                          ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/50 dark:text-amber-300"
-                          : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300"
-                          }`}
-                        title={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
-                        aria-label={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
-                      >
-                        {saving === `admin-${member.id}` ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : member.isAdmin ? (
-                          <ShieldOff className="h-4 w-4" />
-                        ) : (
-                          <Shield className="h-4 w-4" />
-                        )}
-                        <span>{member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}</span>
-                      </button>
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAdminAccess(member)}
+                          disabled={saving === `admin-${member.id}`}
+                          className={`flex h-9 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold transition-colors ${member.isAdmin
+                            ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/50 dark:text-amber-300"
+                            : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300"
+                            }`}
+                          title={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
+                          aria-label={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
+                        >
+                          {saving === `admin-${member.id}` ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : member.isAdmin ? (
+                            <ShieldOff className="h-4 w-4" />
+                          ) : (
+                            <Shield className="h-4 w-4" />
+                          )}
+                          <span>{member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}</span>
+                        </button>
+                      )}
                       <InlineActions
                         onEdit={() => startEdit(member)}
                         editLabel={`Edit ${member.name}`}

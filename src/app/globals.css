@@ -70,6 +70,18 @@ body {
   display: none;
 }
 
+.fast-toast,
+.fast-toast > div {
+  transition-duration: 150ms !important;
+  animation-duration: 150ms !important;
+}
+
+.fast-toast button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
 @media print {
   body {
     background: #ffffff !important;

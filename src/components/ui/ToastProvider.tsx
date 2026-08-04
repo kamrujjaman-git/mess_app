@@ -5,120 +5,128 @@ import {
     useCallback,
     useContext,
     useMemo,
-    useState,
     type ReactNode,
 } from "react";
-import { CheckCircle2, Info, XCircle } from "lucide-react";
+import toast, { Toaster, ToastBar } from "react-hot-toast";
 
 type ToastTone = "success" | "error" | "info";
 
 interface ToastItem {
-    id: string;
+    id?: string;
     title: string;
     description?: string;
     tone: ToastTone;
 }
 
 interface ToastContextValue {
-    toast: (toast: Omit<ToastItem, "id">) => void;
-    success: (title: string, description?: string) => void;
-    error: (title: string, description?: string) => void;
-    info: (title: string, description?: string) => void;
+    toast: (toastItem: Omit<ToastItem, "id">) => string | undefined;
+    success: (title: string, description?: string) => string | undefined;
+    error: (title: string, description?: string) => string | undefined;
+    info: (title: string, description?: string) => string | undefined;
     dismiss: (id: string) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-function getToneStyles(tone: ToastTone) {
-    switch (tone) {
-        case "success":
-            return "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/50 dark:text-emerald-200";
-        case "error":
-            return "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/50 dark:text-rose-200";
-        default:
-            return "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200";
-    }
-}
+function notify(item: Omit<ToastItem, "id">) {
+    const options = {
+        duration: 1000,
+        description: item.description,
+    };
 
-function getToneIcon(tone: ToastTone) {
-    switch (tone) {
+    toast.dismiss();
+
+    switch (item.tone) {
         case "success":
-            return CheckCircle2;
+            return toast.success(item.title, options);
         case "error":
-            return XCircle;
+            return toast.error(item.title, options);
         default:
-            return Info;
+            return toast(item.title, {
+                ...options,
+                icon: "ℹ️",
+            });
     }
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-    const [toasts, setToasts] = useState<ToastItem[]>([]);
-
     const dismiss = useCallback((id: string) => {
-        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+        toast.dismiss(id);
     }, []);
 
-    const toast = useCallback(
-        (item: Omit<ToastItem, "id">) => {
-            const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-            const nextToast = { ...item, id };
-            setToasts((prev) => [...prev, nextToast]);
-            window.setTimeout(() => dismiss(id), 3200);
-        },
-        [dismiss]
-    );
+    const toastHandler = useCallback((item: Omit<ToastItem, "id">) => {
+        return notify(item);
+    }, []);
 
     const success = useCallback((title: string, description?: string) => {
-        toast({ title, description, tone: "success" });
-    }, [toast]);
+        return notify({ title, description, tone: "success" });
+    }, []);
 
     const error = useCallback((title: string, description?: string) => {
-        toast({ title, description, tone: "error" });
-    }, [toast]);
+        return notify({ title, description, tone: "error" });
+    }, []);
 
     const info = useCallback((title: string, description?: string) => {
-        toast({ title, description, tone: "info" });
-    }, [toast]);
+        return notify({ title, description, tone: "info" });
+    }, []);
 
     const value = useMemo<ToastContextValue>(
-        () => ({ toast, success, error, info, dismiss }),
-        [toast, success, error, info, dismiss]
+        () => ({ toast: toastHandler, success, error, info, dismiss }),
+        [dismiss, error, info, success, toastHandler]
     );
 
     return (
         <ToastContext.Provider value={value}>
             {children}
-            <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[100] flex justify-center px-3 sm:bottom-6">
-                <div className="flex w-full max-w-md flex-col gap-2">
-                    {toasts.map((item) => {
-                        const Icon = getToneIcon(item.tone);
-                        return (
-                            <div
-                                key={item.id}
-                                className={`pointer-events-auto flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-lg backdrop-blur ${getToneStyles(item.tone)}`}
-                            >
-                                <div className="mt-0.5 shrink-0">
-                                    <Icon className="h-5 w-5" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-semibold">{item.title}</p>
-                                    {item.description && (
-                                        <p className="mt-1 text-sm/5 opacity-90">{item.description}</p>
-                                    )}
-                                </div>
-                                <button
-                                    type="button"
-                                    aria-label="Dismiss toast"
-                                    onClick={() => dismiss(item.id)}
-                                    className="rounded-full p-1 text-current/70 transition hover:text-current"
-                                >
-                                    <XCircle className="h-4 w-4" />
-                                </button>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
+            <Toaster
+                position="bottom-center"
+                reverseOrder={false}
+                gutter={12}
+                toastOptions={{
+                    duration: 1000,
+                    className: "fast-toast",
+                    style: {
+                        borderRadius: "14px",
+                        background: "#0f172a",
+                        color: "#f8fafc",
+                        boxShadow: "0 20px 45px -20px rgba(15, 23, 42, 0.55)",
+                    },
+                    success: {
+                        style: {
+                            background: "#065f46",
+                            color: "#ecfdf5",
+                        },
+                    },
+                    error: {
+                        style: {
+                            background: "#7f1d1d",
+                            color: "#fff1f2",
+                        },
+                    },
+                }}
+            >
+                {(toastItem) => (
+                    <div
+                        className="fast-toast relative"
+                        style={{
+                            opacity: toastItem.visible ? 1 : 0,
+                            transform: toastItem.visible ? "translateY(0)" : "translateY(8px)",
+                            transition: "opacity 150ms ease, transform 150ms ease",
+                        }}
+                    >
+                        <ToastBar toast={toastItem} />
+                        <button
+                            type="button"
+                            aria-label="Dismiss notification"
+                            onClick={() => toast.dismiss(toastItem.id)}
+                            className="absolute right-2.5 top-2.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold text-current/70 transition hover:text-current"
+                            style={{ lineHeight: 1 }}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )}
+            </Toaster>
         </ToastContext.Provider>
     );
 }

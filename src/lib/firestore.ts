@@ -196,7 +196,7 @@ export async function saveDailyMeals(
   monthKey: string,
   record: DailyMealRecord
 ): Promise<void> {
-  await setDoc(doc(dailyMealsCollection(monthKey), record.date), record);
+  await setDoc(doc(dailyMealsCollection(monthKey), record.date), record, { merge: true });
 }
 
 export async function deleteDailyMeals(

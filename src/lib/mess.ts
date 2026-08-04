@@ -156,8 +156,54 @@ export function userHasMessAccess(
   return getAllowedMemberEmails(members).includes(normalized);
 }
 
-export function getMemberTotalMeals(meals: MemberMeals): number {
-  return meals.breakfast + meals.lunch + meals.dinner;
+export function normalizeMealCount(value: unknown): number {
+  if (typeof value === "boolean") return value ? 1 : 0;
+  if (typeof value === "number") return Number.isFinite(value) && value > 0 ? 1 : 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") {
+      return 1;
+    }
+    const numeric = Number(normalized);
+    if (Number.isFinite(numeric)) {
+      return numeric > 0 ? 1 : 0;
+    }
+    return 0;
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const values: unknown[] = [
+      record.breakfast,
+      record.lunch,
+      record.dinner,
+      record.b,
+      record.l,
+      record.d,
+      record.B,
+      record.L,
+      record.D,
+    ];
+    return values.reduce<number>((sum, item) => sum + normalizeMealCount(item), 0);
+  }
+  return 0;
+}
+
+export function getMemberTotalMeals(meals: unknown): number {
+  if (!meals || typeof meals !== "object") {
+    return normalizeMealCount(meals);
+  }
+
+  const record = meals as Record<string, unknown>;
+  const values: unknown[] = [
+    record.breakfast,
+    record.lunch,
+    record.dinner,
+    record.b,
+    record.l,
+    record.d,
+  ];
+
+  return values.reduce<number>((sum, value) => sum + normalizeMealCount(value), 0);
 }
 
 export function sumDailyMealsForMember(

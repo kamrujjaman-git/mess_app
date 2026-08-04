@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Fragment } from "react";
+import { toast } from "react-hot-toast";
 import { ChevronRight, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/components/ui/ToastProvider";
 import type { DailyMealRecord, Member, MemberMeals } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
 
@@ -14,6 +14,8 @@ interface DailyMealsSheetProps {
   isAdmin?: boolean;
   onEdit?: (date: string, meals: Record<string, MemberMeals>) => Promise<void>;
   onDelete?: (date: string) => Promise<void>;
+  onMealUpdated?: () => Promise<void> | void;
+  onOptimisticToggle?: (date: string, memberId: string, mealType: keyof MemberMeals, nextStatus: boolean) => void;
 }
 
 export function DailyMealsSheet({
@@ -22,14 +24,15 @@ export function DailyMealsSheet({
   isAdmin = false,
   onEdit,
   onDelete,
+  onMealUpdated,
+  onOptimisticToggle,
 }: DailyMealsSheetProps) {
   const { user } = useAuth();
-  const { success } = useToast();
   const activeMembers = getActiveMembers(members);
   const [draftMeals, setDraftMeals] = useState<Record<string, Record<string, MemberMeals>>>({});
   const [saving, setSaving] = useState(false);
   const now = new Date();
-  const isAfterTenPm = now.getHours() >= 22;
+  const isAfterElevenFiftyNinePm = now.getHours() > 23 || (now.getHours() === 23 && now.getMinutes() >= 59);
   const currentMember = activeMembers.find(
     (member) => member.email?.trim().toLowerCase() === user?.email?.trim().toLowerCase()
   );
@@ -55,7 +58,7 @@ export function DailyMealsSheet({
 
   function canEditRecord(recordDate: string) {
     if (isAdmin) return true;
-    return recordDate === tomorrowKey && !isAfterTenPm;
+    return recordDate === tomorrowKey && !isAfterElevenFiftyNinePm;
   }
 
   function canEditMember(member: Member) {
@@ -67,8 +70,8 @@ export function DailyMealsSheet({
     return canEditRecord(recordDate);
   }
 
-  const mealLockBanner = !isAdmin && isAfterTenPm
-    ? "Tomorrow's meal selection closed at 10:00 PM."
+  const mealLockBanner = !isAdmin && isAfterElevenFiftyNinePm
+    ? "Tomorrow's meal selection closed at 11:59 PM."
     : null;
 
   function buildDisplayRows() {
@@ -100,6 +103,17 @@ export function DailyMealsSheet({
     return record.meals[memberId]?.[field] ?? 0;
   }
 
+  function handleMealToggleClick(
+    event: MouseEvent<HTMLButtonElement>,
+    record: DailyMealRecord,
+    member: Member,
+    field: keyof MemberMeals
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    void toggleMealCell(record, member, field);
+  }
+
   async function toggleMealCell(record: DailyMealRecord, member: Member, field: keyof MemberMeals) {
     if (!canEditCell(record.date, member)) return;
 
@@ -116,6 +130,7 @@ export function DailyMealsSheet({
     } as Record<string, MemberMeals>;
 
     setDraftMeals((prev) => ({ ...prev, [record.date]: nextDraft }));
+    onOptimisticToggle?.(record.date, memberId, field, nextValue === 1);
 
     if (!onEdit) return;
 
@@ -127,7 +142,10 @@ export function DailyMealsSheet({
     setSaving(true);
     try {
       await onEdit(record.date, mergedMeals);
-      success("Meal sheet updated!", "Your meal selection has been saved.");
+      toast.success("Meal sheet updated.");
+    } catch (error) {
+      console.error("Firestore Save Error:", error);
+      toast.error("Failed to save meal selection. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -220,7 +238,7 @@ export function DailyMealsSheet({
                             {isEditable ? (
                               <button
                                 type="button"
-                                onClick={() => void toggleMealCell(record, member, field)}
+                                onClick={(event) => handleMealToggleClick(event, record, member, field)}
                                 disabled={saving}
                                 className={`mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border px-2 text-[11px] font-semibold transition ${isActive
                                   ? "border-emerald-500 bg-emerald-500 text-white shadow-sm"
@@ -277,7 +295,7 @@ export function DailyMealsSheet({
                           <button
                             key={field}
                             type="button"
-                            onClick={() => void toggleMealCell(record, member, field)}
+                            onClick={(event) => handleMealToggleClick(event, record, member, field)}
                             disabled={saving}
                             className={`h-10 min-w-10 cursor-pointer rounded-full border px-2 text-[11px] font-semibold ${isActive
                               ? "border-emerald-500 bg-emerald-500 text-white"

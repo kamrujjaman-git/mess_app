@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  function signedIn() {
+    return request.auth != null;
+  }
+
+  function isAdmin() {
+    return signedIn() &&
+      request.auth.token.email != null &&
+      request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower();
+  }
+
+  function myMemberIds() {
+    return signedIn() && request.auth.token.email != null
+      ? get(/databases/$(database)/documents/settings/members).data.members
+          .filter(member => member.email != null && member.email.lower() == request.auth.token.email.lower())
+          .map(member => member.id)
+      : [];
+  }
+
+  match /settings/members {
+    allow read: if signedIn();
+    allow write: if isAdmin();
+  }
+
+  match /months/{monthKey} {
+    allow read: if signedIn();
+    allow create, update, delete: if isAdmin();
+  }
+
+  match /months/{monthKey}/dailyMeals/{date} {
+    allow read: if signedIn();
+    allow create, update, delete: if signedIn();
+  }
+
+  match /months/{monthKey}/bazar/{entryId} {
+    allow read: if signedIn();
+    allow create, update, delete: if isAdmin();
+  }
+
+  match /months/{monthKey}/deposits/{entryId} {
+    allow read: if signedIn();
+    allow create, update, delete: if isAdmin();
+  }
+}

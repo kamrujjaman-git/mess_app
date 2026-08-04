@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
 import { Loader2, Save, Plus, Users, NotebookPen } from "lucide-react";
 import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
 import { getActiveMembers, getTodayDateString } from "@/lib/mess";
@@ -107,6 +108,10 @@ export function AdminPanel({
     setSaving("meals");
     try {
       await onSaveMeals(mealDate, mealInputs);
+      toast.success("Daily meals saved successfully.");
+    } catch (error) {
+      console.error("Save meals failed:", error);
+      toast.error("Failed to save daily meals. Please try again.");
     } finally {
       setSaving(null);
     }
@@ -114,12 +119,19 @@ export function AdminPanel({
 
   async function handleAddBazar() {
     const amount = Math.round(parseFloat(bazarAmount));
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0) {
+      toast.error("Please enter a valid bazar amount.");
+      return;
+    }
     setSaving("bazar");
     try {
       await onAddBazar(bazarDate, amount, bazarDesc);
       setBazarAmount("");
       setBazarDesc("");
+      toast.success("Bazar entry added successfully.");
+    } catch (error) {
+      console.error("Add bazar failed:", error);
+      toast.error("Failed to add bazar entry. Please try again.");
     } finally {
       setSaving(null);
     }
@@ -128,7 +140,10 @@ export function AdminPanel({
   async function handleAddDeposit() {
     const amount = Math.round(parseFloat(depositAmount));
     const member = members.find((m) => m.id === depositMemberId);
-    if (!amount || amount <= 0 || !member) return;
+    if (!amount || amount <= 0 || !member) {
+      toast.error("Please enter a valid deposit amount and member.");
+      return;
+    }
     setSaving("deposit");
     try {
       await onAddDeposit(
@@ -140,6 +155,10 @@ export function AdminPanel({
       );
       setDepositAmount("");
       setDepositNote("");
+      toast.success("Deposit added successfully.");
+    } catch (error) {
+      console.error("Add deposit failed:", error);
+      toast.error("Failed to add deposit. Please try again.");
     } finally {
       setSaving(null);
     }
@@ -149,6 +168,10 @@ export function AdminPanel({
     setSaving("bills");
     try {
       await onUpdateBills(billInputs);
+      toast.success("Bills saved successfully.");
+    } catch (error) {
+      console.error("Save bills failed:", error);
+      toast.error("Failed to save bills. Please try again.");
     } finally {
       setSaving(null);
     }

@@ -71,24 +71,62 @@ NEXT_PUBLIC_ADMIN_EMAIL=your_admin_email@gmail.com
 * Navigate to http://localhost:3000 to view the app in action.
 
 🔒 Firestore Security Rules Setup
-* ​To enforce strict role-based data security, paste the following security rules into your Firebase Console under Firestore Database > Rules:
+* To enforce strict role-based data security while keeping monthly totals readable by every authenticated member, paste the following rules into your Firebase Console under Firestore Database > Rules:
 
 rules_version = '2';
 service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    // 1. Allow read access to authenticated users
-    match /{document=**} {
-      allow read: if request.auth != null;
-    }
-    
-    // 2. Allow write access ONLY to the designated Admin email
-    match /{document=**} {
-      allow write: if request.auth != null && 
-        request.auth.token.email.lower() == "your-admin-email@gmail.com".lower();
-    }
+  function signedIn() {
+    return request.auth != null;
+  }
+
+  function isAdmin() {
+    return signedIn() && request.auth.token.email != null &&
+      request.auth.token.email.lower() == "your-admin-email@gmail.com".lower();
+  }
+
+  function isOwnMemberRecord(memberId) {
+    return signedIn() &&
+      memberId is string &&
+      get(/databases/$(database)/documents/settings/members).data.members
+        .filter(m => m.id == memberId && m.email.lower() == request.auth.token.email.lower())
+        .size() > 0;
+  }
+
+  match /settings/members {
+    allow read: if signedIn();
+    allow write: if isAdmin();
+  }
+
+  match /months/{monthKey} {
+    allow read: if signedIn();
+    allow create, update, delete: if isAdmin();
+  }
+
+  match /months/{monthKey}/dailyMeals/{date} {
+    allow read: if signedIn();
+    allow create, update, delete: if isAdmin() || (
+      signedIn() &&
+      request.resource.data.meals != null &&
+      request.resource.data.meals.keys().hasAny(
+        get(/databases/$(database)/documents/settings/members).data.members
+          .filter(m => m.email.lower() == request.auth.token.email.lower())
+          .map(m => m.id)
+      )
+    );
+  }
+
+  match /months/{monthKey}/bazar/{entryId} {
+    allow read: if signedIn();
+    allow create, update, delete: if isAdmin();
+  }
+
+  match /months/{monthKey}/deposits/{entryId} {
+    allow read: if signedIn();
+    allow create, update, delete: if isAdmin();
   }
 }
+
+> This keeps summary reads available to all authenticated users while limiting destructive edits to the admin or, in a stricter per-member setup, to the specific member record associated with the signed-in email.
 
 📦 Deployment
 This project is optimized for deployment on Vercel. Push your latest code to GitHub. Connect your GitHub repository to Vercel. Add all the variables from .env.local into the Environment Variables section in Vercel settings.
