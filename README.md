@@ -128,6 +128,6 @@ Add all environment variables from .env.local to the Environment Variables secti
 Click Deploy.
 
 👤 Author & Maintainer
-Kamrujjaman — Developer & Maintainer
+. Kamrujjaman — Developer & Maintainer
 
-GitHub: @kamrujjaman-git
+. GitHub: github.com/kamrujjaman-git
