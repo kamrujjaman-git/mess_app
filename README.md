@@ -65,7 +65,7 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-NEXT_PUBLIC_ADMIN_EMAIL=md.kamrujjaman092@gmail.com
+NEXT_PUBLIC_ADMIN_EMAIL=your-email-id@gmail.com
 3. Run Development Server:
 npm run dev
 4. Open in Browser:
