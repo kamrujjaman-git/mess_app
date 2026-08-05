@@ -89,6 +89,17 @@ export interface MessStats {
   members: MemberSummary[];
 }
 
+export interface MonthlyArchiveData {
+  monthKey: string;
+  archivedAt: string;
+  bills: MonthBills;
+  dailyMeals: DailyMealRecord[];
+  bazar: BazarEntry[];
+  deposits: DepositEntry[];
+  members: Member[];
+  stats: MessStats;
+}
+
 export function createDefaultMembers(): Member[] {
   return DEFAULT_MEMBERS.map((name, i) => ({
     id: `member-${i + 1}`,

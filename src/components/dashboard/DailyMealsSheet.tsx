@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type MouseEvent } from "react";
-import { Fragment } from "react";
+import { Fragment, useRef, useState, type MouseEvent } from "react";
 import { toast } from "react-hot-toast";
 import { ChevronRight, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -31,6 +30,7 @@ export function DailyMealsSheet({
   const activeMembers = getActiveMembers(members);
   const [draftMeals, setDraftMeals] = useState<Record<string, Record<string, MemberMeals>>>({});
   const [saving, setSaving] = useState(false);
+  const togglingMealCells = useRef<Record<string, boolean>>({});
   const now = new Date();
   const isAfterElevenFiftyNinePm = now.getHours() > 23 || (now.getHours() === 23 && now.getMinutes() >= 59);
   const currentMember = activeMembers.find(
@@ -117,6 +117,10 @@ export function DailyMealsSheet({
   async function toggleMealCell(record: DailyMealRecord, member: Member, field: keyof MemberMeals) {
     if (!canEditCell(record.date, member)) return;
 
+    const toggleKey = `${record.date}:${member.id}:${field}`;
+    if (togglingMealCells.current[toggleKey]) return;
+    togglingMealCells.current[toggleKey] = true;
+
     const memberId = member.id;
     const currentValue = getDraftMealValue(record, memberId, field) ?? 0;
     const nextValue = currentValue > 0 ? 0 : 1;
@@ -132,7 +136,10 @@ export function DailyMealsSheet({
     setDraftMeals((prev) => ({ ...prev, [record.date]: nextDraft }));
     onOptimisticToggle?.(record.date, memberId, field, nextValue === 1);
 
-    if (!onEdit) return;
+    if (!onEdit) {
+      togglingMealCells.current[toggleKey] = false;
+      return;
+    }
 
     const mergedMeals = {
       ...record.meals,
@@ -142,12 +149,15 @@ export function DailyMealsSheet({
     setSaving(true);
     try {
       await onEdit(record.date, mergedMeals);
+      toast.dismiss();
       toast.success("Meal sheet updated.");
     } catch (error) {
       console.error("Firestore Save Error:", error);
+      toast.dismiss();
       toast.error("Failed to save meal selection. Please try again.");
     } finally {
       setSaving(false);
+      togglingMealCells.current[toggleKey] = false;
     }
   }
 
@@ -250,8 +260,8 @@ export function DailyMealsSheet({
                             ) : (
                               <div
                                 className={`mx-auto flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-medium ${isActive
-                                  ? "border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
-                                  : "border-slate-200/70 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900/40"
+                                  ? "border border-emerald-500/30 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold"
+                                  : "border border-slate-200/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                   }`}
                               >
                                 {isActive ? "ON" : "—"}
@@ -270,9 +280,6 @@ export function DailyMealsSheet({
       </div>
 
       <div className="relative space-y-4 p-4 lg:hidden">
-        <div className="pointer-events-none absolute right-0 top-0 bottom-0 flex items-center pr-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-          <span className="rounded-full border border-slate-200 bg-white/80 px-2 py-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">Swipe <ChevronRight className="ml-1 inline h-3.5 w-3.5" /></span>
-        </div>
         {displayRows.map((row) => {
           const record = records.find((item) => item.date === row.date) ?? { date: row.date, meals: {} } as DailyMealRecord;
           const isPast = row.date < todayKey;
@@ -308,8 +315,8 @@ export function DailyMealsSheet({
                           <div
                             key={field}
                             className={`flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-semibold ${isActive
-                              ? "border-slate-200 bg-slate-100 text-slate-400"
-                              : "border-slate-200/70 bg-slate-50 text-slate-400"
+                              ? "border border-emerald-500/30 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold"
+                              : "border border-slate-200/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                               }`}
                           >
                             {field[0].toUpperCase()}

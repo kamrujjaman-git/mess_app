@@ -14,6 +14,7 @@ import { BILL_LABELS } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SwipeableListItem } from "./SwipeableListItem";
 import { Wallet2, ReceiptText } from "lucide-react";
 
 interface BazarDepositLogProps {
@@ -255,32 +256,49 @@ export function BazarDepositLog({
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-2 py-2 transition-colors hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-800/60">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-slate-800 dark:text-slate-100">
-                            ৳{entry.amount}
-                          </p>
-                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                            {entry.date}
-                            {entry.description ? ` · ${entry.description}` : ""}
-                          </p>
+                      <SwipeableListItem
+                        onEdit={() => startEditBazar(entry)}
+                        onDelete={async () => {
+                          if (!onDeleteBazar) return;
+                          try {
+                            await onDeleteBazar(entry.id);
+                            toast.success("Bazar entry deleted successfully.");
+                          } catch (error) {
+                            console.error("Delete bazar entry failed:", error);
+                            toast.error("Failed to delete bazar entry. Please try again.");
+                          }
+                        }}
+                        editLabel="Edit"
+                        deleteLabel="Delete"
+                        className="rounded-3xl"
+                      >
+                        <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-2 py-2 transition-colors hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-800/60">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-slate-800 dark:text-slate-100">
+                              ৳{entry.amount}
+                            </p>
+                            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                              {entry.date}
+                              {entry.description ? ` · ${entry.description}` : ""}
+                            </p>
+                          </div>
+                          {isAdmin && (
+                            <InlineActions
+                              onEdit={() => startEditBazar(entry)}
+                              onDelete={async () => {
+                                if (!onDeleteBazar) return;
+                                try {
+                                  await onDeleteBazar(entry.id);
+                                  toast.success("Bazar entry deleted successfully.");
+                                } catch (error) {
+                                  console.error("Delete bazar entry failed:", error);
+                                  toast.error("Failed to delete bazar entry. Please try again.");
+                                }
+                              }}
+                            />
+                          )}
                         </div>
-                        {isAdmin && (
-                          <InlineActions
-                            onEdit={() => startEditBazar(entry)}
-                            onDelete={async () => {
-                              if (!onDeleteBazar) return;
-                              try {
-                                await onDeleteBazar(entry.id);
-                                toast.success("Bazar entry deleted successfully.");
-                              } catch (error) {
-                                console.error("Delete bazar entry failed:", error);
-                                toast.error("Failed to delete bazar entry. Please try again.");
-                              }
-                            }}
-                          />
-                        )}
-                      </div>
+                      </SwipeableListItem>
                     )}
                   </li>
                 ))}
@@ -377,32 +395,49 @@ export function BazarDepositLog({
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-2 py-2 transition-colors hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-800/60">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-slate-800 dark:text-slate-100">
-                            {entry.memberName} — ৳{entry.amount}
-                          </p>
-                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                            {entry.date}
-                            {entry.note ? ` · ${entry.note}` : ""}
-                          </p>
+                      <SwipeableListItem
+                        onEdit={() => startEditDeposit(entry)}
+                        onDelete={async () => {
+                          if (!onDeleteDeposit) return;
+                          try {
+                            await onDeleteDeposit(entry.id);
+                            toast.success("Deposit entry deleted successfully.");
+                          } catch (error) {
+                            console.error("Delete deposit entry failed:", error);
+                            toast.error("Failed to delete deposit entry. Please try again.");
+                          }
+                        }}
+                        editLabel="Edit"
+                        deleteLabel="Delete"
+                        className="rounded-3xl"
+                      >
+                        <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-2 py-2 transition-colors hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-800/60">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-slate-800 dark:text-slate-100">
+                              {entry.memberName} — ৳{entry.amount}
+                            </p>
+                            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                              {entry.date}
+                              {entry.note ? ` · ${entry.note}` : ""}
+                            </p>
+                          </div>
+                          {isAdmin && (
+                            <InlineActions
+                              onEdit={() => startEditDeposit(entry)}
+                              onDelete={async () => {
+                                if (!onDeleteDeposit) return;
+                                try {
+                                  await onDeleteDeposit(entry.id);
+                                  toast.success("Deposit entry deleted successfully.");
+                                } catch (error) {
+                                  console.error("Delete deposit entry failed:", error);
+                                  toast.error("Failed to delete deposit entry. Please try again.");
+                                }
+                              }}
+                            />
+                          )}
                         </div>
-                        {isAdmin && (
-                          <InlineActions
-                            onEdit={() => startEditDeposit(entry)}
-                            onDelete={async () => {
-                              if (!onDeleteDeposit) return;
-                              try {
-                                await onDeleteDeposit(entry.id);
-                                toast.success("Deposit entry deleted successfully.");
-                              } catch (error) {
-                                console.error("Delete deposit entry failed:", error);
-                                toast.error("Failed to delete deposit entry. Please try again.");
-                              }
-                            }}
-                          />
-                        )}
-                      </div>
+                      </SwipeableListItem>
                     )}
                   </li>
                 ))}

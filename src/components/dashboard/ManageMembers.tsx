@@ -267,12 +267,12 @@ export function ManageMembers({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-medium">{member.name}</p>
+                        <p className="truncate font-medium">{member.name}</p>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${member.status === "active"
+                          className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${member.status === "active"
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
                             : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
                             }`}
@@ -280,9 +280,21 @@ export function ManageMembers({
                           {member.status === "active" ? "Active" : "Inactive"}
                         </span>
                         {member.isAdmin && (
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                          <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                             Admin
                           </span>
+                        )}
+                        {member.whatsAppNumber && (
+                          <a
+                            href={buildWhatsAppLink(member, 0)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                            aria-label={`Open WhatsApp for ${member.name}`}
+                            title={`Open WhatsApp for ${member.name}`}
+                          >
+                            <WhatsAppActionIcon />
+                          </a>
                         )}
                       </div>
                       {member.email && (
@@ -296,19 +308,7 @@ export function ManageMembers({
                         </p>
                       )}
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      {member.whatsAppNumber && (
-                        <a
-                          href={buildWhatsAppLink(member, 0)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
-                          aria-label={`Open WhatsApp for ${member.name}`}
-                          title={`Open WhatsApp for ${member.name}`}
-                        >
-                          <WhatsAppActionIcon />
-                        </a>
-                      )}
+                    <div className="flex shrink-0 flex-wrap items-center gap-1">
                       {isSuperAdmin && (
                         <button
                           type="button"

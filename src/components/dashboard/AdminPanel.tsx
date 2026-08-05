@@ -15,19 +15,21 @@ interface AdminPanelProps {
   bills: MonthBills;
   subTab: AdminSubTab;
   onSubTabChange: (subTab: AdminSubTab) => void;
-  onSaveMeals: (
+  onSaveMeals?: (
     date: string,
     meals: Record<string, MemberMeals>
   ) => Promise<void>;
-  onAddBazar: (date: string, amount: number, description: string) => Promise<void>;
-  onAddDeposit: (
+  onAddBazar?: (date: string, amount: number, description: string) => Promise<void>;
+  onAddDeposit?: (
     memberId: string,
     memberName: string,
     amount: number,
     date: string,
     note: string
   ) => Promise<void>;
-  onUpdateBills: (bills: MonthBills) => Promise<void>;
+  onUpdateBills?: (bills: MonthBills) => Promise<void>;
+  onArchiveMonth?: () => Promise<void>;
+  isArchiveMode?: boolean;
   onAddMember: (name: string, email: string, whatsAppNumber?: string) => Promise<void>;
   onUpdateMember: (member: Member) => Promise<void>;
   onSetMemberStatus: (memberId: string, status: Member["status"]) => Promise<void>;
@@ -42,6 +44,8 @@ export function AdminPanel({
   onAddBazar,
   onAddDeposit,
   onUpdateBills,
+  onArchiveMonth,
+  isArchiveMode = false,
   onAddMember,
   onUpdateMember,
   onSetMemberStatus,
@@ -105,6 +109,7 @@ export function AdminPanel({
   }
 
   async function handleSaveMeals() {
+    if (!onSaveMeals) return;
     setSaving("meals");
     try {
       await onSaveMeals(mealDate, mealInputs);
@@ -118,6 +123,7 @@ export function AdminPanel({
   }
 
   async function handleAddBazar() {
+    if (!onAddBazar) return;
     const amount = Math.round(parseFloat(bazarAmount));
     if (!amount || amount <= 0) {
       toast.error("Please enter a valid bazar amount.");
@@ -138,6 +144,7 @@ export function AdminPanel({
   }
 
   async function handleAddDeposit() {
+    if (!onAddDeposit) return;
     const amount = Math.round(parseFloat(depositAmount));
     const member = members.find((m) => m.id === depositMemberId);
     if (!amount || amount <= 0 || !member) {
@@ -165,6 +172,7 @@ export function AdminPanel({
   }
 
   async function handleSaveBills() {
+    if (!onUpdateBills) return;
     setSaving("bills");
     try {
       await onUpdateBills(billInputs);
@@ -218,10 +226,23 @@ export function AdminPanel({
       ) : (
         <>
           <div className="glass-card rounded-2xl p-4 sm:p-6">
-            <h3 className="mb-1 text-base font-semibold">Daily Meals</h3>
-            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-              Select a date and update meal entries for all members.
-            </p>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-base font-semibold">Daily Meals</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Select a date and update meal entries for all members.
+                </p>
+              </div>
+              {onArchiveMonth && !isArchiveMode ? (
+                <button
+                  type="button"
+                  onClick={onArchiveMonth}
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  Archive &amp; Start New Month
+                </button>
+              ) : null}
+            </div>
             <div className="mb-4">
               <label className="mb-1 block text-xs font-medium text-slate-500">
                 Date

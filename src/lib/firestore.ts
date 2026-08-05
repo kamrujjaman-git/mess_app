@@ -7,6 +7,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  writeBatch,
   onSnapshot,
   query,
   orderBy,
@@ -24,6 +25,7 @@ import {
   createEmptyDailyMeals,
   migrateMealKeys,
   getActiveMembers,
+  MonthlyArchiveData,
 } from "./mess";
 
 function monthDoc(monthKey: string) {
@@ -286,30 +288,56 @@ export interface MonthData {
   members: Member[];
 }
 
+export async function archiveCurrentMonthData(
+  monthKey: string,
+  archive: Omit<MonthlyArchiveData, "monthKey" | "archivedAt">
+): Promise<void> {
+  const archiveDoc = doc(db, "monthly_archives", monthKey);
+  await setDoc(archiveDoc, {
+    ...archive,
+    monthKey,
+    archivedAt: new Date().toISOString(),
+  });
+}
+
+export async function getMonthlyArchive(monthKey: string): Promise<MonthlyArchiveData | null> {
+  const snap = await getDoc(doc(db, "monthly_archives", monthKey));
+  return snap.exists() ? (snap.data() as MonthlyArchiveData) : null;
+}
+
+export async function listMonthlyArchives(): Promise<string[]> {
+  const snaps = await getDocs(collection(db, "monthly_archives"));
+  return snaps.docs.map((doc) => doc.id).sort((a, b) => b.localeCompare(a));
+}
+
+export async function deleteMonthData(monthKey: string): Promise<void> {
+  const dailyMealsDocs = await getDocs(query(dailyMealsCollection(monthKey)));
+  const bazarDocs = await getDocs(query(bazarCollection(monthKey)));
+  const depositDocs = await getDocs(query(depositsCollection(monthKey)));
+
+  const batch = writeBatch(db);
+
+  dailyMealsDocs.docs.forEach((entry) => batch.delete(entry.ref));
+  bazarDocs.docs.forEach((entry) => batch.delete(entry.ref));
+  depositDocs.docs.forEach((entry) => batch.delete(entry.ref));
+
+  await batch.commit();
+  await deleteDoc(monthDoc(monthKey));
+}
+
 export function subscribeToMonthData(
   monthKey: string,
   callback: (data: MonthData) => void
 ): Unsubscribe {
   let bills: MonthBills = { houseRent: 0, buaBill: 0, otherBills: 0 };
+  let members: Member[] = [];
   let dailyMeals: DailyMealRecord[] = [];
   let bazar: BazarEntry[] = [];
   let deposits: DepositEntry[] = [];
-  let members: Member[] = createDefaultMembers();
 
-  const emit = () => {
-    const migratedMeals = dailyMeals.map((r) => migrateMealKeys(r, members));
-    callback({
-      bills: {
-        houseRent: Math.round(bills.houseRent),
-        buaBill: Math.round(bills.buaBill),
-        otherBills: Math.round(bills.otherBills),
-      },
-      dailyMeals: migratedMeals,
-      bazar,
-      deposits,
-      members,
-    });
-  };
+  function emit() {
+    callback({ bills, dailyMeals, bazar, deposits, members });
+  }
 
   const unsubMembers = onSnapshot(doc(db, "settings", "members"), (snap) => {
     members = parseMembers(snap.exists() ? snap.data() : undefined);
