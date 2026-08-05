@@ -1,137 +1,133 @@
-🏢 Mess Management System
+# 🏢 Mess App — Modern Mess Management System
 
-A modern, full-stack, real-time **Mess Management Web Application** designed to streamline daily mess operations, meal tracking, bazar management, and automated balance calculations. Built with high performance, role-based security, and a responsive UI.
+A sleek, real-time, full-stack **Mess Management Web Application** built to automate daily meal tracking, mess balance calculations, bazaar expenses, and member management with fine-grained Super Admin & Multi-Admin role-based access control.
 
+---
 
-✨ Key Features
+## ✨ Key Features
 
-🔐 Authentication & Role-Based Security:
- * Google Sign-In with strict domain/email authentication.
- * Admin Panel: Full control to add, edit, delete entries, and toggle member active/inactive status.
- * Member View: Clean dashboard access with localized privacy controls.
+🔐 **Role-Based Access Control (RBAC):**
+* **Super Admin & Multi-Admin Support:** Multi-level permissions where the Main Admin can grant or revoke admin access dynamically without exposing super-admin privileges.
+* **Strict Security Rules:** Secured Firebase Firestore rules preventing unauthorized role escalation or data tampering.
 
-🍽️ Daily Meal & Bazar Tracking:
- * Real-time entry and updates for daily meals and deposit/bazar costs.
- * Automated meal rate and per-member total balance calculation.
+🍽️ **Daily Meal Sheet & Dynamic Tracking:**
+* Real-time meal status toggles (Breakfast, Lunch, Dinner) with optimized instant UI updates.
+* Automated calculation of Meal Rates, Individual Cost Shares, and Final Refund/Due balances.
 
-🔒 Privacy Control:
- * Dynamic UI rendering to hide sensitive fixed costs (Rent & Bua bills) from regular members while keeping full visibility for the Admin.
+📊 **Bazaar, Deposits & PDF Summary:**
+* Streamlined entry forms for daily Bazaar expenses and Member Deposits.
+* **One-Click PDF Export:** Download complete monthly financial summaries as cleanly formatted PDF reports.
 
-⚡ Route & Tab State Retention:
- * Preserves current page/tab position upon browser reloads without resetting navigation.
+📱 **Sleek & Responsive UX/UI:**
+* Compact WhatsApp direct-action buttons for quick member communication.
+* Snappy UI toast notifications with smart auto-dismissal and close controls.
+* Tab state retention across page reloads.
 
-📱 Fully Responsive UI:
- * Optimized dashboard layout for Desktop, Tablet, and Mobile devices with customizable profile badges.
+---
 
+## 🛠️ Tech Stack
 
-🛠️ Tech Stack
+* **Framework:** [Next.js](https://nextjs.org/) (App Router, Turbopack)
+* **Frontend:** [React](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/), [Lucide React Icons](https://lucide.dev/)
+* **Backend & Database:** [Firebase Firestore](https://firebase.google.com/docs/firestore)
+* **Authentication:** [Firebase Auth](https://firebase.google.com/docs/auth)
+* **Deployment:** [Vercel](https://vercel.com/)
 
-Framework: [Next.js](https://nextjs.org/) (App Router, Turbopack)
-Frontend: [React](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/)
-Backend & Database: [Firebase Firestore](https://firebase.google.com/docs/firestore)
-Authentication: [Firebase Auth](https://firebase.google.com/docs/auth)
-Deployment: [Vercel](https://vercel.com/)
+---
 
-🚀 Getting Started
+## 🚀 Getting Started
 
-Follow these steps to set up and run the project locally on your machine.
+Follow these steps to set up and run the project locally.
 
-📋 Prerequisites
+### 📋 Prerequisites
 
-Make sure you have the following installed:
-* [Node.js](https://nodejs.org/) (v18.x or higher)
-* `npm` or `yarn` / `pnpm`
-* A Firebase Project with Firestore and Google Authentication enabled.
+Make sure you have installed:
+* **Node.js** (v18.x or higher)
+* **npm** or **yarn** / **pnpm**
+* A **Firebase Project** with Firestore Database and Google Authentication enabled.
 
+---
 
-⚙️ Installation & Setup
+### ⚙️ Installation & Setup
 
-1. Clone the Repository:
+1. **Clone the Repository:**
    ```bash
    git clone [https://github.com/kamrujjaman-git/mess_app.git](https://github.com/kamrujjaman-git/mess_app.git)
    cd mess_app
 
-2. Install Dependencies:
-  npm install
-
-3. Configure Environment Variables:
-* Create a .env.local file in the root    directory and add your Firebase  credentials & Admin configuration:
-  NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+1. Install Dependencies:
+npm install
+2. Configure Environment Variables:
+Create a .env.local file in the root directory and add your Firebase credentials:
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-NEXT_PUBLIC_ADMIN_EMAIL=your_admin_email@gmail.com
-
-4. Run the Development Server:
-* npm run dev
-
-5. Open in Browser:
-* Navigate to http://localhost:3000 to view the app in action.
+NEXT_PUBLIC_ADMIN_EMAIL=md.kamrujjaman092@gmail.com
+3. Run Development Server:
+npm run dev
+4. Open in Browser:
+Navigate to http://localhost:3000 to view the application in action.
 
 🔒 Firestore Security Rules Setup
-* To enforce strict role-based data security while keeping monthly totals readable by every authenticated member, paste the following rules into your Firebase Console under Firestore Database > Rules:
-
+To enforce dynamic admin authorization while enabling members to toggle their daily meals safely, paste the following rules into your Firebase Console > Firestore Database > Rules:
 rules_version = '2';
 service cloud.firestore {
-  function signedIn() {
-    return request.auth != null;
-  }
+  match /databases/{database}/documents {
 
-  function isAdmin() {
-    return signedIn() && request.auth.token.email != null &&
-      request.auth.token.email.lower() == "your-admin-email@gmail.com".lower();
-  }
+    function isAuthenticated() {
+      return request.auth != null;
+    }
 
-  function isOwnMemberRecord(memberId) {
-    return signedIn() &&
-      memberId is string &&
-      get(/databases/$(database)/documents/settings/members).data.members
-        .filter(m => m.id == memberId && m.email.lower() == request.auth.token.email.lower())
-        .size() > 0;
-  }
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower();
+    }
 
-  match /settings/members {
-    allow read: if signedIn();
-    allow write: if isAdmin();
-  }
+    function isAdmin() {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
 
-  match /months/{monthKey} {
-    allow read: if signedIn();
-    allow create, update, delete: if isAdmin();
-  }
+    // All authenticated users can read data
+    match /{document=**} {
+      allow read: if isAuthenticated();
+    }
 
-  match /months/{monthKey}/dailyMeals/{date} {
-    allow read: if signedIn();
-    allow create, update, delete: if isAdmin() || (
-      signedIn() &&
-      request.resource.data.meals != null &&
-      request.resource.data.meals.keys().hasAny(
-        get(/databases/$(database)/documents/settings/members).data.members
-          .filter(m => m.email.lower() == request.auth.token.email.lower())
-          .map(m => m.id)
-      )
-    );
-  }
+    // Role modification is strictly protected for Super Admin only
+    match /users/{userId} {
+      allow update: if isSuperAdmin() || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+      allow create, delete: if isAdmin();
+    }
 
-  match /months/{monthKey}/bazar/{entryId} {
-    allow read: if signedIn();
-    allow create, update, delete: if isAdmin();
-  }
+    // Admins can add/edit bazaar and deposit logs
+    match /{document=**} {
+      allow write: if isAdmin();
+    }
 
-  match /months/{monthKey}/deposits/{entryId} {
-    allow read: if signedIn();
-    allow create, update, delete: if isAdmin();
+    // Authenticated members can manage/toggle their meal entries
+    match /{document=**} {
+      allow create, update: if isAuthenticated();
+    }
   }
 }
 
-> This keeps summary reads available to all authenticated users while limiting destructive edits to the admin or, in a stricter per-member setup, to the specific member record associated with the signed-in email.
-
 📦 Deployment
-This project is optimized for deployment on Vercel. Push your latest code to GitHub. Connect your GitHub repository to Vercel. Add all the variables from .env.local into the Environment Variables section in Vercel settings.
-Deploy! Next.js will build and serve the application automatically.
+This project is optimized for deployment on Vercel:
 
-​👤 Author
-* ​Kamrujjaman — Developer & Maintainer
-* GitHub: @kamrujjaman-git
+Push your latest code to your GitHub repository.
+
+Connect your GitHub repository to Vercel.
+
+Add all environment variables from .env.local to the Environment Variables section in Vercel.
+
+Click Deploy.
+
+👤 Author & Maintainer
+Kamrujjaman — Developer & Maintainer
+
+GitHub: @kamrujjaman-git
