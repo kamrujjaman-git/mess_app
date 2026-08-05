@@ -8,6 +8,7 @@ import {
   UserPlus,
   UserX,
   UserCheck,
+  Trash2,
   Mail,
   User,
   Shield,
@@ -23,6 +24,7 @@ interface ManageMembersProps {
   onAddMember: (name: string, email: string, whatsAppNumber?: string) => Promise<void>;
   onUpdateMember: (member: Member) => Promise<void>;
   onSetMemberStatus: (memberId: string, status: Member["status"]) => Promise<void>;
+  onDeleteMember: (memberId: string) => Promise<void>;
 }
 
 function WhatsAppActionIcon() {
@@ -47,6 +49,7 @@ export function ManageMembers({
   onAddMember,
   onUpdateMember,
   onSetMemberStatus,
+  onDeleteMember,
 }: ManageMembersProps) {
   const { isSuperAdmin } = useAuth();
 
@@ -118,6 +121,24 @@ export function ManageMembers({
     } catch (error) {
       console.error("Update member status failed:", error);
       toast.error("Failed to update member status. Please try again.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleDeleteMember(member: Member) {
+    const confirmed = window.confirm(
+      `Permanently delete ${member.name} from the mess database? This will remove the member record and revoke login access.`
+    );
+    if (!confirmed) return;
+
+    setSaving(`delete-${member.id}`);
+    try {
+      await onDeleteMember(member.id);
+      toast.success(`${member.name} has been deleted from the mess.`);
+    } catch (error) {
+      console.error("Delete member failed:", error);
+      toast.error("Failed to delete member. Please try again.");
     } finally {
       setSaving(null);
     }
@@ -338,7 +359,7 @@ export function ManageMembers({
                       <button
                         type="button"
                         onClick={() => handleToggleStatus(member)}
-                        disabled={saving === `status-${member.id}`}
+                        disabled={saving === `status-${member.id}` || saving === `remove-${member.id}`}
                         className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${member.status === "active"
                           ? "text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/40"
                           : "text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
@@ -360,6 +381,20 @@ export function ManageMembers({
                           <UserX className="h-4 w-4" />
                         ) : (
                           <UserCheck className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMember(member)}
+                        disabled={saving === `delete-${member.id}`}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/40"
+                        title={`Delete ${member.name}`}
+                        aria-label={`Delete ${member.name}`}
+                      >
+                        {saving === `delete-${member.id}` ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
                         )}
                       </button>
                     </div>

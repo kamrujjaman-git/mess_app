@@ -40,6 +40,7 @@ import {
   setMemberStatus,
   deleteBazarEntry,
   deleteDepositEntry,
+  deleteMember,
   archiveCurrentMonthData,
   getMonthlyArchive,
   listMonthlyArchives,
@@ -391,6 +392,13 @@ function DashboardContent() {
     [members, isSuperAdmin]
   );
 
+  const handleDeleteMember = useCallback(
+    async (memberId: string) => {
+      await deleteMember(memberId);
+    },
+    []
+  );
+
   const handleSetMemberStatus = useCallback(
     async (memberId: string, status: Member["status"]) => {
       await setMemberStatus(memberId, status);
@@ -630,6 +638,7 @@ function DashboardContent() {
                 onAddMember={handleAddMember}
                 onUpdateMember={handleUpdateMember}
                 onSetMemberStatus={handleSetMemberStatus}
+                onDeleteMember={handleDeleteMember}
                 onArchiveMonth={handleArchiveMonth}
                 isArchiveMode={isArchiveView}
               />

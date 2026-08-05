@@ -17,10 +17,10 @@ import {
   type User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { subscribeToMembers } from "@/lib/firestore";
+import { getUserByUid, subscribeToMembers } from "@/lib/firestore";
 import { isMemberActive, type Member } from "@/lib/mess";
 
-type AccessDeniedReason = "inactive" | "not-member" | null;
+type AccessDeniedReason = "inactive" | "not-member" | "removed" | null;
 
 interface AuthContextValue {
   user: User | null;
@@ -43,6 +43,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [accessLoading, setAccessLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
+  const [currentUserDoc, setCurrentUserDoc] = useState<Member | null>(null);
+  const [membersReady, setMembersReady] = useState(false);
+  const [userDocReady, setUserDocReady] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -51,14 +54,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
 
   const currentMember = useMemo(() => {
-    if (!user?.email) return null;
-    const normalizedEmail = user.email.trim().toLowerCase();
+    if (!user) return null;
+    if (currentUserDoc) return currentUserDoc;
+
+    const normalizedEmail = user.email?.trim().toLowerCase();
+    if (!normalizedEmail) return null;
+
     return (
       members.find(
         (member) => member.email.trim().toLowerCase() === normalizedEmail
       ) ?? null
     );
-  }, [user, members]);
+  }, [user, members, currentUserDoc]);
 
   const isSuperAdmin = useMemo(() => {
     return user?.email?.trim().toLowerCase() ===
@@ -76,6 +83,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return null;
     if (isAdmin) return null;
     if (!currentMember) return "not-member";
+
+    if (currentMember.isBlocked || currentMember.isRemoved) {
+      return "removed";
+    }
+
+    if (currentMember.status === "inactive") {
+      return "inactive";
+    }
+
     return isMemberActive(currentMember) ? null : "inactive";
   }, [user, isAdmin, currentMember]);
 
@@ -84,12 +100,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [accessDeniedReason]);
 
   useEffect(() => {
+    if (!user) {
+      setAccessLoading(false);
+      return;
+    }
+    setAccessLoading(!(membersReady && userDocReady));
+  }, [membersReady, userDocReady, user]);
+
+  useEffect(() => {
     if (!mounted) return;
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
       if (!firebaseUser) {
+        setCurrentUserDoc(null);
+        setMembers([]);
+        setMembersReady(false);
+        setUserDocReady(false);
         setAccessLoading(false);
       }
     });
@@ -99,14 +127,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!mounted || !user) {
       setMembers([]);
+      setCurrentUserDoc(null);
+      setMembersReady(false);
+      setUserDocReady(false);
+      setAccessLoading(false);
       return;
     }
 
     setAccessLoading(true);
+    setCurrentUserDoc(null);
+    setMembersReady(false);
+    setUserDocReady(false);
+
     const unsubscribe = subscribeToMembers((fetchedMembers) => {
       setMembers(fetchedMembers);
-      setAccessLoading(false);
+      setMembersReady(true);
     });
+
+    getUserByUid(user.uid)
+      .then(async (memberDoc) => {
+        if (memberDoc) {
+          setCurrentUserDoc(memberDoc);
+        } else if (user.email) {
+          // Fallback: try finding a users doc by email (in case member id is not uid)
+          try {
+            const byEmail = await (await import('@/lib/firestore')).getUserByEmail(user.email.trim().toLowerCase());
+            if (byEmail) setCurrentUserDoc(byEmail);
+          } catch (err) {
+            console.error('Failed to lookup user by email fallback:', err);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load user record by UID:", error);
+      })
+      .finally(() => {
+        setUserDocReady(true);
+      });
 
     return unsubscribe;
   }, [mounted, user]);
@@ -117,7 +174,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await signOut(auth);
+    setUser(null);
+    setLoading(false);
+    setAccessLoading(false);
+    setMembers([]);
+    setCurrentUserDoc(null);
+    setMembersReady(false);
+    setUserDocReady(false);
+
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+      throw error;
+    }
   }, []);
 
   return (

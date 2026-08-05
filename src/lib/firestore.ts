@@ -11,6 +11,7 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
   Unsubscribe,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -52,13 +53,18 @@ function parseMembers(data: Record<string, unknown> | undefined): Member[] {
       id: member.id ?? `member-${index + 1}`,
       name: String(member.name ?? `Member ${index + 1}`),
       email: String(member.email ?? ""),
-      status:
-        member.status === "inactive" || member.active === false
+      status: member.status === "removed"
+        ? "removed"
+        : member.status === "inactive" || member.active === false
           ? "inactive"
           : "active",
       active:
-        member.active === false ? false : member.status !== "inactive",
+        member.active === false
+          ? false
+          : member.status !== "inactive" && member.status !== "removed",
       isAdmin: Boolean(member.isAdmin),
+      isBlocked: Boolean(member.isBlocked),
+      isRemoved: Boolean(member.isRemoved) || member.status === "removed",
       whatsAppNumber: String(member.whatsAppNumber ?? "").trim(),
     }));
   }
@@ -81,6 +87,62 @@ function parseMembers(data: Record<string, unknown> | undefined): Member[] {
 export async function getMembers(): Promise<Member[]> {
   const snap = await getDoc(doc(db, "settings", "members"));
   return parseMembers(snap.exists() ? snap.data() : undefined);
+}
+
+export async function getUserByUid(uid: string): Promise<Member | null> {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+
+  const status = data.status === "removed"
+    ? "removed"
+    : data.status === "inactive" || data.active === false
+      ? "inactive"
+      : "active";
+
+  return {
+    id: uid,
+    name: String(data.name ?? ""),
+    email: String(data.email ?? ""),
+    status,
+    active: data.active === false ? false : status !== "inactive" && status !== "removed",
+    isAdmin: Boolean(data.isAdmin),
+    isBlocked: Boolean(data.isBlocked),
+    isRemoved: Boolean(data.isRemoved) || status === "removed",
+    whatsAppNumber: String(data.whatsAppNumber ?? "").trim(),
+  };
+}
+
+export async function getUserByEmail(email: string): Promise<Member | null> {
+  const q = query(collection(db, "users"), where("email", "==", email));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  const data = d.data();
+  const status = data.status === "removed"
+    ? "removed"
+    : data.status === "inactive" || data.active === false
+      ? "inactive"
+      : "active";
+
+  return {
+    id: d.id,
+    name: String(data.name ?? ""),
+    email: String(data.email ?? ""),
+    status,
+    active: data.active === false ? false : status !== "inactive" && status !== "removed",
+    isAdmin: Boolean(data.isAdmin),
+    isBlocked: Boolean(data.isBlocked),
+    isRemoved: Boolean(data.isRemoved) || status === "removed",
+    whatsAppNumber: String(data.whatsAppNumber ?? "").trim(),
+  };
+}
+
+export async function updateUserEmail(userDocId: string, email: string, name?: string): Promise<void> {
+  const userRef = doc(db, "users", userDocId);
+  const payload: Record<string, unknown> = { email };
+  if (typeof name !== "undefined") payload.name = name;
+  await setDoc(userRef, payload, { merge: true });
 }
 
 export async function setMembers(members: Member[]): Promise<void> {
@@ -124,6 +186,20 @@ export async function updateMember(updated: Member): Promise<void> {
     email: updated.email.trim().toLowerCase(),
   };
   await setMembers(members);
+  try {
+    // Also sync the email/name to the users collection doc if present
+    await updateUserEmail(updated.id, updated.email.trim().toLowerCase(), updated.name.trim());
+  } catch (error) {
+    // Non-fatal: if users doc doesn't exist or update fails, still keep members in settings
+    console.error("Failed to sync user doc email for member:", error);
+  }
+}
+
+export async function deleteMember(memberId: string): Promise<void> {
+  const members = await getMembers();
+  const remainingMembers = members.filter((member) => member.id !== memberId);
+  const userDoc = doc(db, "users", memberId);
+  await Promise.all([deleteDoc(userDoc), setMembers(remainingMembers)]);
 }
 
 export async function setMemberStatus(
@@ -137,6 +213,9 @@ export async function setMemberStatus(
     ...members[index],
     status,
     active: status === "active",
+    ...(status === "active"
+      ? { isRemoved: false, isBlocked: false }
+      : {}),
   };
   await setMembers(members);
 }

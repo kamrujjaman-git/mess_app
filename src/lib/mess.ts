@@ -11,7 +11,7 @@ export const DEFAULT_MEMBERS = [
 
 export type MemberName = string;
 
-export type MemberStatus = "active" | "inactive";
+export type MemberStatus = "active" | "inactive" | "removed";
 
 export interface Member {
   id: string;
@@ -20,6 +20,8 @@ export interface Member {
   status: MemberStatus;
   active?: boolean;
   isAdmin?: boolean;
+  isBlocked?: boolean;
+  isRemoved?: boolean;
   whatsAppNumber?: string;
 }
 
@@ -116,7 +118,7 @@ export function normalizeMemberStatus(
   member: Pick<Member, "status" | "active"> | null | undefined
 ): MemberStatus {
   if (!member) return "inactive";
-  if (member.status === "inactive") return "inactive";
+  if (member.status === "inactive" || member.status === "removed") return "inactive";
   if (member.active === false) return "inactive";
   return "active";
 }

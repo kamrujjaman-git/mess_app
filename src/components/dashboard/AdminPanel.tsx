@@ -33,6 +33,7 @@ interface AdminPanelProps {
   onAddMember: (name: string, email: string, whatsAppNumber?: string) => Promise<void>;
   onUpdateMember: (member: Member) => Promise<void>;
   onSetMemberStatus: (memberId: string, status: Member["status"]) => Promise<void>;
+  onDeleteMember: (memberId: string) => Promise<void>;
 }
 
 export function AdminPanel({
@@ -49,6 +50,7 @@ export function AdminPanel({
   onAddMember,
   onUpdateMember,
   onSetMemberStatus,
+  onDeleteMember,
 }: AdminPanelProps) {
   const activeMembers = getActiveMembers(members);
 
@@ -222,6 +224,7 @@ export function AdminPanel({
           onAddMember={onAddMember}
           onUpdateMember={onUpdateMember}
           onSetMemberStatus={onSetMemberStatus}
+          onDeleteMember={onDeleteMember}
         />
       ) : (
         <>

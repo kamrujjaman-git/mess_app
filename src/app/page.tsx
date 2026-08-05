@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { AccessDeniedScreen } from "@/components/AccessDeniedScreen";
 import {
   Loader2,
   Sparkles,
@@ -35,16 +36,22 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
-  const { user, loading, signInWithGoogle } = useAuth();
+  const { user, loading, accessLoading, hasAccess, accessDeniedReason, logout, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && !accessLoading && user && hasAccess) {
       router.replace("/dashboard");
     }
-  }, [user, loading, router]);
+  }, [user, loading, accessLoading, hasAccess, router]);
+
+  useEffect(() => {
+    if (!loading && !accessLoading && !user) {
+      router.replace("/");
+    }
+  }, [user, loading, accessLoading, router]);
 
   async function handleSignIn() {
     setSigningIn(true);
@@ -58,10 +65,22 @@ export default function LoginPage() {
     }
   }
 
-  if (loading || user) {
+  if (loading || accessLoading) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  if (user && !hasAccess) {
+    return (
+      <div className="min-h-screen">
+        <AccessDeniedScreen
+          email={user.email}
+          reason={accessDeniedReason ?? "inactive"}
+          onLogout={logout}
+        />
       </div>
     );
   }

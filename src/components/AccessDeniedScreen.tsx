@@ -4,7 +4,7 @@ import { ShieldX, LogOut } from "lucide-react";
 
 interface AccessDeniedScreenProps {
   email?: string | null;
-  reason?: "inactive" | "not-member";
+  reason?: "inactive" | "not-member" | "removed";
   onLogout: () => void;
 }
 
@@ -13,6 +13,20 @@ export function AccessDeniedScreen({
   reason = "not-member",
   onLogout,
 }: AccessDeniedScreenProps) {
+  const message =
+    reason === "inactive"
+      ? "Your account has been deactivated by the admin. Please contact the mess manager."
+      : reason === "removed"
+        ? "Access Denied: Account Removed"
+        : "You are not a member of this mess.";
+
+  const details =
+    reason === "inactive"
+      ? "Your account has been deactivated by the admin. Please contact the mess manager."
+      : reason === "removed"
+        ? "Your access has been revoked. Contact your mess admin for help."
+        : "Contact your mess admin to register your email as a member.";
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
       <div className="glass-card w-full max-w-md rounded-3xl p-8 text-center sm:p-10">
@@ -23,9 +37,7 @@ export function AccessDeniedScreen({
           Access Denied
         </h1>
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 sm:text-base">
-          {reason === "inactive"
-            ? "Access Denied: Account Inactive"
-            : "You are not a member of this mess."}
+          {message}
         </p>
         {email && (
           <p className="mt-2 truncate text-xs text-slate-500 dark:text-slate-500">
@@ -33,9 +45,7 @@ export function AccessDeniedScreen({
           </p>
         )}
         <p className="mt-4 text-xs text-slate-500 dark:text-slate-500">
-          {reason === "inactive"
-            ? "Please contact your mess admin to reactivate your account."
-            : "Contact your mess admin to register your email as a member."}
+          {details}
         </p>
         <button
           type="button"

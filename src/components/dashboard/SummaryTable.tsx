@@ -160,7 +160,7 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
               <th className="px-4 py-3 font-medium">Meals</th>
               <th className="px-4 py-3 font-medium">Deposited</th>
               <th className="px-4 py-3 font-medium">Meal Cost</th>
-              <th className="px-4 py-3 font-medium">Rent Share</th>
+              {isAdmin && <th className="px-4 py-3 font-medium">Rent Share</th>}
               <th className="px-4 py-3 font-medium">Final Balance</th>
             </tr>
           </thead>
@@ -196,7 +196,7 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                 <td className="px-4 py-3">{m.totalMeals}</td>
                 <td className="px-4 py-3">৳{m.totalDeposited}</td>
                 <td className="px-4 py-3">৳{m.mealCost}</td>
-                <td className="px-4 py-3">৳{m.fixedCostShare}</td>
+                {isAdmin && <td className="px-4 py-3">৳{m.fixedCostShare}</td>}
                 <td className="px-4 py-3">
                   <BalanceBadge amount={m.finalBalance} />
                 </td>
@@ -252,10 +252,12 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                 <span className="text-slate-500">Meal Cost</span>
                 <p className="font-medium">৳{m.mealCost}</p>
               </div>
-              <div>
-                <span className="text-slate-500">Rent Share</span>
-                <p className="font-medium">৳{m.fixedCostShare}</p>
-              </div>
+              {isAdmin ? (
+                <div>
+                  <span className="text-slate-500">Rent Share</span>
+                  <p className="font-medium">৳{m.fixedCostShare}</p>
+                </div>
+              ) : null}
             </div>
           </div>
         ))}
