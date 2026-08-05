@@ -7,7 +7,8 @@ import {
     useMemo,
     type ReactNode,
 } from "react";
-import toast, { Toaster, ToastBar } from "react-hot-toast";
+import toast, { Toaster, resolveValue } from "react-hot-toast";
+import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 
 type ToastTone = "success" | "error" | "info";
 
@@ -30,7 +31,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 function notify(item: Omit<ToastItem, "id">) {
     const options = {
-        duration: 1000,
+        duration: 3500,
         description: item.description,
     };
 
@@ -44,7 +45,7 @@ function notify(item: Omit<ToastItem, "id">) {
         default:
             return toast(item.title, {
                 ...options,
-                icon: "ℹ️",
+                icon: "info",
             });
     }
 }
@@ -82,50 +83,75 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 position="bottom-center"
                 reverseOrder={false}
                 gutter={12}
+                containerStyle={{ bottom: 24 }}
                 toastOptions={{
-                    duration: 1000,
-                    className: "fast-toast",
+                    duration: 3500,
                     style: {
-                        borderRadius: "14px",
-                        background: "#0f172a",
-                        color: "#f8fafc",
-                        boxShadow: "0 20px 45px -20px rgba(15, 23, 42, 0.55)",
-                    },
-                    success: {
-                        style: {
-                            background: "#065f46",
-                            color: "#ecfdf5",
-                        },
-                    },
-                    error: {
-                        style: {
-                            background: "#7f1d1d",
-                            color: "#fff1f2",
-                        },
+                        background: "transparent",
+                        boxShadow: "none",
+                        padding: 0,
+                        margin: 0,
+                        maxWidth: "none",
                     },
                 }}
             >
-                {(toastItem) => (
-                    <div
-                        className="fast-toast relative"
-                        style={{
-                            opacity: toastItem.visible ? 1 : 0,
-                            transform: toastItem.visible ? "translateY(0)" : "translateY(8px)",
-                            transition: "opacity 150ms ease, transform 150ms ease",
-                        }}
-                    >
-                        <ToastBar toast={toastItem} />
-                        <button
-                            type="button"
-                            aria-label="Dismiss notification"
-                            onClick={() => toast.dismiss(toastItem.id)}
-                            className="absolute right-2.5 top-2.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold text-current/70 transition hover:text-current"
-                            style={{ lineHeight: 1 }}
+                {(toastItem) => {
+                    const isSuccess = toastItem.type === "success";
+                    const isError = toastItem.type === "error";
+
+                    return (
+                        <div
+                            className={`
+                flex items-center justify-between gap-4 
+                min-w-[320px] max-w-md px-5 py-3 rounded-full 
+                bg-slate-950/65 backdrop-blur-xl -webkit-backdrop-blur-xl
+                border border-white/20 
+                shadow-[0_12px_40px_rgba(0,0,0,0.4)] 
+                text-white transition-all duration-300 ease-out
+                ${toastItem.visible
+                                    ? "opacity-100 translate-y-0 scale-100"
+                                    : "opacity-0 translate-y-4 scale-95 pointer-events-none"
+                                }
+            `}
                         >
-                            ✕
-                        </button>
-                    </div>
-                )}
+                            {/* Left Icon & Pure White Bold Text */}
+                            <div className="flex items-center gap-3">
+                                {isSuccess && (
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 stroke-[2.2] drop-shadow" />
+                                )}
+                                {isError && (
+                                    <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 stroke-[2.2] drop-shadow" />
+                                )}
+                                {!isSuccess && !isError && (
+                                    <Info className="w-5 h-5 text-sky-400 flex-shrink-0 stroke-[2.2] drop-shadow" />
+                                )}
+
+                                <span className="text-sm font-semibold text-white tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                                    {resolveValue(toastItem.message, toastItem)}
+                                </span>
+                            </div>
+
+                            {/* iOS Style Frosted Glass Circular Close Button */}
+                            <button
+                                type="button"
+                                aria-label="Dismiss notification"
+                                onClick={() => toast.dismiss(toastItem.id)}
+                                className="
+                    w-7 h-7 rounded-full 
+                    bg-white/20 hover:bg-white/30 
+                    text-white 
+                    flex items-center justify-center 
+                    transition-all duration-200 ease-in-out 
+                    flex-shrink-0 ml-auto cursor-pointer 
+                    border border-white/30
+                    shadow-sm active:scale-90
+                "
+                            >
+                                <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                            </button>
+                        </div>
+                    );
+                }}
             </Toaster>
         </ToastContext.Provider>
     );
