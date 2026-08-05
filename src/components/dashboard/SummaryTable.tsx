@@ -95,9 +95,6 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
               />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-                Mess Name
-              </p>
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 Mess App
               </h2>

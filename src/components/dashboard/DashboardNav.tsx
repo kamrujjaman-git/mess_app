@@ -11,6 +11,7 @@ import {
   Moon,
 } from "lucide-react";
 import { formatMonthLabel } from "@/lib/mess";
+import { useAuth } from "@/context/AuthContext";
 import type { User } from "firebase/auth";
 
 interface DashboardNavProps {
@@ -32,6 +33,7 @@ export function DashboardNav({
   memberName,
   onLogout,
 }: DashboardNavProps) {
+  const { isAdmin: authIsAdmin, isSuperAdmin } = useAuth();
   const [imageFailed, setImageFailed] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
@@ -49,7 +51,7 @@ export function DashboardNav({
     window.localStorage.setItem("theme", isDark ? "dark" : "light");
   }, [isDark]);
 
-  const roleLabel = isAdmin ? "Admin" : "Member";
+  const roleLabel = isSuperAdmin ? "Super Admin" : isAdmin || authIsAdmin ? "Admin" : "Member";
   const displayName = useMemo(() => {
     return memberName?.trim() || user?.displayName?.trim() || "Member";
   }, [memberName, user]);

@@ -52,6 +52,7 @@ export function ManageMembers({
   onDeleteMember,
 }: ManageMembersProps) {
   const { isSuperAdmin } = useAuth();
+  const primaryAdminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").trim().toLowerCase();
 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -146,7 +147,7 @@ export function ManageMembers({
 
   async function handleToggleAdminAccess(member: Member) {
     if (!isSuperAdmin) {
-      toast.error("Only the Main Super Admin can change admin access.");
+      toast.error("Only the Super Admin can change admin access.");
       return;
     }
 
@@ -300,11 +301,15 @@ export function ManageMembers({
                         >
                           {member.status === "active" ? "Active" : "Inactive"}
                         </span>
-                        {member.isAdmin && (
+                        {primaryAdminEmail && member.email?.trim().toLowerCase() === primaryAdminEmail ? (
+                          <span className="flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            Super Admin
+                          </span>
+                        ) : member.isAdmin ? (
                           <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                             Admin
                           </span>
-                        )}
+                        ) : null}
                         {member.whatsAppNumber && (
                           <a
                             href={buildWhatsAppLink(member, 0)}
