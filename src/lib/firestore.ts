@@ -89,6 +89,24 @@ export async function getMembers(): Promise<Member[]> {
   return parseMembers(snap.exists() ? snap.data() : undefined);
 }
 
+export async function getActiveMemberEmails(): Promise<string[]> {
+  const members = await getMembers();
+  return members
+    .filter(
+      (member) =>
+        member.status === "active" &&
+        typeof member.email === "string" &&
+        member.email.trim().length > 0
+    )
+    .map((member) => member.email.trim());
+}
+
+export function getTargetEmail(emails: Array<string | null | undefined>): string {
+  return emails
+    .map((email) => String(email ?? "").trim())
+    .find((email) => email.length > 0 && email.includes("@")) ?? "";
+}
+
 export async function getUserByUid(uid: string): Promise<Member | null> {
   const snap = await getDoc(doc(db, "users", uid));
   if (!snap.exists()) return null;
@@ -275,16 +293,28 @@ export async function getDailyMeals(
 
 export async function saveDailyMeals(
   monthKey: string,
-  record: DailyMealRecord
+  record: DailyMealRecord,
+  performedBy: string = "System"
 ): Promise<void> {
   await setDoc(doc(dailyMealsCollection(monthKey), record.date), record, { merge: true });
+  await createActivityLog(
+    "Meal Entry Saved",
+    `Saved meal entries for ${record.date}.`,
+    performedBy
+  );
 }
 
 export async function deleteDailyMeals(
   monthKey: string,
-  date: string
+  date: string,
+  performedBy: string = "System"
 ): Promise<void> {
   await deleteDoc(doc(dailyMealsCollection(monthKey), date));
+  await createActivityLog(
+    "Meal Entry Deleted",
+    `Deleted meal entries for ${date}.`,
+    performedBy
+  );
 }
 
 export async function getBazarEntries(
@@ -295,32 +325,70 @@ export async function getBazarEntries(
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as BazarEntry);
 }
 
+function normalizeBazarBuyerIds(entry: Omit<BazarEntry, "id">): string[] {
+  const buyerIds = Array.isArray(entry.buyerIds)
+    ? entry.buyerIds.filter((id): id is string => Boolean(id && String(id).trim()))
+    : [];
+
+  if (buyerIds.length > 0) return buyerIds;
+
+  if (entry.buyerId && String(entry.buyerId).trim()) {
+    return [String(entry.buyerId).trim()];
+  }
+
+  return [];
+}
+
 export async function addBazarEntry(
   monthKey: string,
-  entry: Omit<BazarEntry, "id">
+  entry: Omit<BazarEntry, "id">,
+  performedBy: string = "System"
 ): Promise<void> {
+  const buyerIds = normalizeBazarBuyerIds(entry);
   await addDoc(bazarCollection(monthKey), {
     ...entry,
     amount: Math.round(entry.amount),
+    buyerIds,
+    buyerId: buyerIds[0] ?? null,
   });
+  await createActivityLog(
+    "Bazar Entry Added",
+    `Added a bazar entry of ৳${Math.round(entry.amount)} for ${entry.date}${entry.description ? ` — ${entry.description}` : ""}${buyerIds.length ? ` by ${buyerIds.length} buyer(s)` : ""}.`,
+    performedBy
+  );
 }
 
 export async function updateBazarEntry(
   monthKey: string,
   id: string,
-  entry: Omit<BazarEntry, "id">
+  entry: Omit<BazarEntry, "id">,
+  performedBy: string = "System"
 ): Promise<void> {
+  const buyerIds = normalizeBazarBuyerIds(entry);
   await updateDoc(doc(bazarCollection(monthKey), id), {
     ...entry,
     amount: Math.round(entry.amount),
+    buyerIds,
+    buyerId: buyerIds[0] ?? null,
   });
+  await createActivityLog(
+    "Bazar Entry Updated",
+    `Updated bazar entry for ${entry.date} to ৳${Math.round(entry.amount)}${entry.description ? ` — ${entry.description}` : ""}${buyerIds.length ? ` by ${buyerIds.length} buyer(s)` : ""}.`,
+    performedBy
+  );
 }
 
 export async function deleteBazarEntry(
   monthKey: string,
-  id: string
+  id: string,
+  performedBy: string = "System"
 ): Promise<void> {
   await deleteDoc(doc(bazarCollection(monthKey), id));
+  await createActivityLog(
+    "Bazar Entry Deleted",
+    `Deleted a bazar entry from ${monthKey}.`,
+    performedBy
+  );
 }
 
 export async function getDepositEntries(
@@ -333,30 +401,48 @@ export async function getDepositEntries(
 
 export async function addDepositEntry(
   monthKey: string,
-  entry: Omit<DepositEntry, "id">
+  entry: Omit<DepositEntry, "id">,
+  performedBy: string = "System"
 ): Promise<void> {
   await addDoc(depositsCollection(monthKey), {
     ...entry,
     amount: Math.round(entry.amount),
   });
+  await createActivityLog(
+    "Deposit Added",
+    `Added a deposit of ৳${Math.round(entry.amount)} for ${entry.memberName} on ${entry.date}${entry.note ? ` — ${entry.note}` : ""}.`,
+    performedBy
+  );
 }
 
 export async function updateDepositEntry(
   monthKey: string,
   id: string,
-  entry: Omit<DepositEntry, "id">
+  entry: Omit<DepositEntry, "id">,
+  performedBy: string = "System"
 ): Promise<void> {
   await updateDoc(doc(depositsCollection(monthKey), id), {
     ...entry,
     amount: Math.round(entry.amount),
   });
+  await createActivityLog(
+    "Deposit Updated",
+    `Updated deposit for ${entry.memberName} on ${entry.date} to ৳${Math.round(entry.amount)}${entry.note ? ` — ${entry.note}` : ""}.`,
+    performedBy
+  );
 }
 
 export async function deleteDepositEntry(
   monthKey: string,
-  id: string
+  id: string,
+  performedBy: string = "System"
 ): Promise<void> {
   await deleteDoc(doc(depositsCollection(monthKey), id));
+  await createActivityLog(
+    "Deposit Deleted",
+    `Deleted a deposit entry from ${monthKey}.`,
+    performedBy
+  );
 }
 
 export interface MonthData {
@@ -402,6 +488,64 @@ export async function deleteMonthData(monthKey: string): Promise<void> {
 
   await batch.commit();
   await deleteDoc(monthDoc(monthKey));
+}
+
+export interface ActivityLog {
+  id: string;
+  action: string;
+  details: string;
+  performedBy: string;
+  timestamp: string;
+}
+
+export async function createActivityLog(
+  action: string,
+  details: string,
+  performedBy: string
+): Promise<ActivityLog> {
+  const activityRef = doc(collection(db, "activity_logs"));
+  const log: ActivityLog = {
+    id: activityRef.id,
+    action: action.trim() || "Activity",
+    details: details.trim() || "No details provided.",
+    performedBy: performedBy.trim() || "System",
+    timestamp: new Date().toISOString(),
+  };
+
+  await setDoc(activityRef, log);
+  return log;
+}
+
+export async function getActivityLogs(): Promise<ActivityLog[]> {
+  const q = query(collection(db, "activity_logs"), orderBy("timestamp", "desc"));
+  const snap = await getDocs(q);
+
+  return snap.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...(docSnap.data() as Omit<ActivityLog, "id">),
+  })) as ActivityLog[];
+}
+
+export async function deleteActivityLog(logId: string): Promise<void> {
+  await deleteDoc(doc(db, "activity_logs", logId));
+}
+
+export function getMonthKeyFromTimestamp(timestamp: string): string | null {
+  const value = new Date(timestamp);
+  if (Number.isNaN(value.getTime())) return null;
+
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+export function isActivityLogForMonth(
+  log: Pick<ActivityLog, "timestamp">,
+  monthKey: string | null | undefined
+): boolean {
+  if (!monthKey) return true;
+  const logMonthKey = getMonthKeyFromTimestamp(log.timestamp);
+  return logMonthKey === monthKey;
 }
 
 export function subscribeToMonthData(

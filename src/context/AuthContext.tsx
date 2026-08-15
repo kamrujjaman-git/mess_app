@@ -28,6 +28,7 @@ interface AuthContextValue {
   accessLoading: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  canDeleteNotifications: boolean;
   hasAccess: boolean;
   accessDeniedReason: AccessDeniedReason;
   members: Member[];
@@ -70,8 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isSuperAdmin = useMemo(() => {
     if (!user?.email || !normalizedAdminEmail) return false;
-    return user.email.trim().toLowerCase() === normalizedAdminEmail;
+    const normalizedUserEmail = user.email.trim().toLowerCase();
+    return normalizedUserEmail === normalizedAdminEmail;
   }, [user, normalizedAdminEmail]);
+
+  const canDeleteNotifications = useMemo(() => isSuperAdmin, [isSuperAdmin]);
 
   const isAdmin = useMemo(() => {
     if (!user?.email) return false;
@@ -199,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accessLoading,
         isAdmin,
         isSuperAdmin,
+        canDeleteNotifications,
         hasAccess,
         accessDeniedReason,
         members,

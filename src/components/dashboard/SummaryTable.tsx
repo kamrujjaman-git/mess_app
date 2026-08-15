@@ -168,9 +168,9 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                 className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${m.status === "inactive" ? "opacity-60" : ""
                   }`}
               >
-                <td className="px-4 py-3 font-medium sm:px-6">
+                <td className="max-w-[180px] break-words px-4 py-3 font-medium sm:px-6">
                   <div className="flex items-center gap-2">
-                    <span>{m.name}</span>
+                    <span className="break-words">{m.name}</span>
                     {m.status === "inactive" && (
                       <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500 dark:bg-slate-700">
                         Inactive
@@ -212,7 +212,7 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
               }`}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="font-semibold">
+              <span className="break-words font-semibold">
                 {m.name}
                 {m.status === "inactive" && (
                   <span className="ml-2 text-xs font-normal text-slate-500">

@@ -10,7 +10,7 @@ import type {
   Member,
   BillField,
 } from "@/lib/mess";
-import { BILL_LABELS } from "@/lib/mess";
+import { BILL_LABELS, getBazarBuyerLabel, normalizeBazarBuyerIds } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -56,6 +56,7 @@ export function BazarDepositLog({
   const [bazarDate, setBazarDate] = useState("");
   const [bazarAmount, setBazarAmount] = useState("");
   const [bazarDesc, setBazarDesc] = useState("");
+  const [bazarBuyerIds, setBazarBuyerIds] = useState<string[]>([]);
 
   const [editingDepositId, setEditingDepositId] = useState<string | null>(null);
   const [depositMemberId, setDepositMemberId] = useState("");
@@ -74,7 +75,18 @@ export function BazarDepositLog({
     setBazarDate(entry.date);
     setBazarAmount(String(entry.amount));
     setBazarDesc(entry.description);
+    setBazarBuyerIds(normalizeBazarBuyerIds(entry));
   }
+
+  function toggleBazarBuyerSelection(memberId: string) {
+    setBazarBuyerIds((previous) =>
+      previous.includes(memberId)
+        ? previous.filter((id) => id !== memberId)
+        : [...previous, memberId]
+    );
+  }
+
+  const buyerNames = (entry: BazarEntry) => getBazarBuyerLabel(entry, members);
 
   async function saveBazar(id: string) {
     if (!onEditBazar) return;
@@ -83,14 +95,20 @@ export function BazarDepositLog({
       toast.error("Please enter a valid bazar amount.");
       return;
     }
+    if (bazarBuyerIds.length === 0) {
+      toast.error("Please select at least one buyer for this bazar entry.");
+      return;
+    }
     setSaving(id);
     try {
       await onEditBazar(id, {
         date: bazarDate,
         amount,
         description: bazarDesc,
+        buyerIds: bazarBuyerIds,
       });
       setEditingBazarId(null);
+      setBazarBuyerIds([]);
       toast.success("Bazar log saved successfully.");
     } catch (error) {
       console.error("Update bazar log failed:", error);
@@ -229,6 +247,29 @@ export function BazarDepositLog({
                           onChange={(e) => setBazarDesc(e.target.value)}
                           className={inputClass}
                         />
+                        <div className="space-y-2">
+                          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">
+                            Buyers
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {activeMembers.map((member) => {
+                              const isSelected = bazarBuyerIds.includes(member.id);
+                              return (
+                                <button
+                                  key={member.id}
+                                  type="button"
+                                  onClick={() => toggleBazarBuyerSelection(member.id)}
+                                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${isSelected
+                                      ? "border-emerald-600 bg-emerald-600 text-white"
+                                      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-600/60 dark:hover:bg-slate-700"
+                                    }`}
+                                >
+                                  {member.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -274,12 +315,15 @@ export function BazarDepositLog({
                       >
                         <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-2 py-2 transition-colors hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-800/60">
                           <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-slate-800 dark:text-slate-100">
+                            <p className="break-words font-semibold text-slate-800 dark:text-slate-100">
                               ৳{entry.amount}
                             </p>
-                            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                            <p className="break-words text-xs text-slate-500 dark:text-slate-400">
                               {entry.date}
                               {entry.description ? ` · ${entry.description}` : ""}
+                            </p>
+                            <p className="mt-1 break-words text-[11px] text-slate-500 dark:text-slate-400">
+                              Buyers: {buyerNames(entry)}
                             </p>
                           </div>
                           {isAdmin && (

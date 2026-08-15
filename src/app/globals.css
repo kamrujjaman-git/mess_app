@@ -82,6 +82,37 @@ body {
   cursor: pointer;
 }
 
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+[onclick],
+.cursor-pointer,
+button *,
+a *,
+[role="button"] *,
+svg[onclick],
+[aria-expanded],
+[aria-controls],
+[data-slot="tab"],
+[data-state="active"],
+[data-state="selected"],
+[role="tab"],
+[role="menuitem"],
+[role="option"],
+[role="switch"],
+[role="checkbox"],
+[role="radio"],
+[title],
+summary {
+  cursor: pointer !important;
+}
+
 @media print {
   body {
     background: #ffffff !important;

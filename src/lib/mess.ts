@@ -41,6 +41,41 @@ export interface BazarEntry {
   date: string;
   amount: number;
   description: string;
+  buyerIds?: string[];
+  buyerId?: string | null;
+}
+
+export function normalizeBazarBuyerIds(
+  entry?: Pick<BazarEntry, "buyerIds" | "buyerId"> | null
+): string[] {
+  const ids = Array.isArray(entry?.buyerIds)
+    ? entry.buyerIds.filter((id): id is string => Boolean(id && String(id).trim()))
+    : [];
+
+  if (ids.length > 0) return ids;
+
+  if (typeof entry?.buyerId === "string" && entry.buyerId.trim()) {
+    return [entry.buyerId.trim()];
+  }
+
+  return [];
+}
+
+export function getBazarBuyerLabel(
+  entry: Pick<BazarEntry, "buyerIds" | "buyerId">,
+  members: Member[]
+): string {
+  const buyerIds = normalizeBazarBuyerIds(entry);
+
+  if (buyerIds.length === 0) {
+    return "Unassigned";
+  }
+
+  const buyerNames = buyerIds
+    .map((id) => members.find((member) => member.id === id)?.name ?? id)
+    .filter(Boolean);
+
+  return buyerNames.length > 0 ? buyerNames.join(", ") : "Unassigned";
 }
 
 export interface DepositEntry {

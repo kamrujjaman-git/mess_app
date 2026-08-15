@@ -3,16 +3,26 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Bell,
   ChevronLeft,
   ChevronRight,
   LogOut,
   Shield,
   Sun,
   Moon,
+  X,
 } from "lucide-react";
 import { formatMonthLabel } from "@/lib/mess";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "firebase/auth";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import {
+  deleteActivityLog,
+  isActivityLogForMonth,
+  type ActivityLog,
+} from "@/lib/firestore";
+import { SwipeableListItem } from "./SwipeableListItem";
 
 interface DashboardNavProps {
   monthKey: string;
@@ -33,9 +43,12 @@ export function DashboardNav({
   memberName,
   onLogout,
 }: DashboardNavProps) {
-  const { isAdmin: authIsAdmin, isSuperAdmin } = useAuth();
+  const { isAdmin: authIsAdmin, isSuperAdmin, canDeleteNotifications } = useAuth();
   const [imageFailed, setImageFailed] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string | null>(null);
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem("theme");
@@ -51,12 +64,68 @@ export function DashboardNav({
     window.localStorage.setItem("theme", isDark ? "dark" : "light");
   }, [isDark]);
 
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      query(collection(db, "activity_logs"), orderBy("timestamp", "desc")),
+      (snapshot) => {
+        const logs = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...(docSnap.data() as Omit<ActivityLog, "id">),
+        })) as ActivityLog[];
+        setActivityLogs(logs);
+      },
+      (error) => {
+        console.error("Could not subscribe to activity logs:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const storedLastSeen = window.localStorage.getItem("mess_activity_last_seen");
+    setLastSeenTimestamp(storedLastSeen ?? null);
+  }, []);
+
+  const visibleActivityLogs = useMemo(
+    () => activityLogs.filter((log) => isActivityLogForMonth(log, monthKey)),
+    [activityLogs, monthKey]
+  );
+
+  const unreadCount = useMemo(() => {
+    if (!visibleActivityLogs.length) return 0;
+    const threshold = lastSeenTimestamp ? new Date(lastSeenTimestamp).getTime() : 0;
+    return visibleActivityLogs.filter((log) => new Date(log.timestamp).getTime() > threshold).length;
+  }, [visibleActivityLogs, lastSeenTimestamp]);
+
   const roleLabel = isSuperAdmin ? "Super Admin" : isAdmin || authIsAdmin ? "Admin" : "Member";
   const displayName = useMemo(() => {
     return memberName?.trim() || user?.displayName?.trim() || "Member";
   }, [memberName, user]);
 
   const avatarInitial = displayName?.trim()?.charAt(0)?.toUpperCase() ?? "M";
+
+  function handleBellClick() {
+    const nextState = !showNotifications;
+    setShowNotifications(nextState);
+
+    if (nextState) {
+      const newestTimestamp = visibleActivityLogs[0]?.timestamp ?? new Date().toISOString();
+      setLastSeenTimestamp(newestTimestamp);
+      window.localStorage.setItem("mess_activity_last_seen", newestTimestamp);
+    }
+  }
+
+  async function handleDeleteActivityLog(logId: string) {
+    if (!canDeleteNotifications) return;
+    if (!window.confirm("Delete this notification?")) return;
+
+    try {
+      await deleteActivityLog(logId);
+    } catch (error) {
+      console.error("Failed to delete activity log:", error);
+    }
+  }
 
   return (
     <header className="glass sticky top-0 z-50 border-b border-white/20 dark:border-slate-700/50">
@@ -97,6 +166,21 @@ export function DashboardNav({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-3">
+          <button
+            type="button"
+            onClick={handleBellClick}
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-800"
+            aria-label="Open notifications"
+            title="Notifications"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            ) : null}
+          </button>
+
           <button
             type="button"
             onClick={() => setIsDark((prev) => !prev)}
@@ -152,6 +236,86 @@ export function DashboardNav({
           {roleLabel}
         </span>
       </div>
+
+      {showNotifications ? (
+        <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-[1px]">
+          <button
+            type="button"
+            aria-label="Close notifications"
+            className="absolute inset-0 h-full w-full"
+            onClick={() => setShowNotifications(false)}
+          />
+          <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 dark:border-slate-700 dark:bg-slate-900 sm:rounded-l-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+              <div>
+                <h2 className="text-base font-semibold">Activity Log</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNotifications(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                aria-label="Close drawer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-3 overflow-y-auto p-3">
+              {visibleActivityLogs.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                  No notifications for this month yet.
+                </div>
+              ) : (
+                visibleActivityLogs.map((log) => {
+                  const content = (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            {log.action}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {log.performedBy}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
+                          {new Date(log.timestamp).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                        {log.details}
+                      </p>
+                    </div>
+                  );
+
+                  if (!canDeleteNotifications) {
+                    return <div key={log.id}>{content}</div>;
+                  }
+
+                  return (
+                    <SwipeableListItem
+                      key={log.id}
+                      onDelete={() => handleDeleteActivityLog(log.id)}
+                      deleteLabel="Delete"
+                      className="rounded-2xl"
+                    >
+                      {content}
+                    </SwipeableListItem>
+                  );
+                })
+              )}
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </header>
   );
 }

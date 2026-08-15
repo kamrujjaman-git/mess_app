@@ -45,6 +45,7 @@ import {
   getMonthlyArchive,
   listMonthlyArchives,
   deleteMonthData,
+  createActivityLog,
   type MonthData,
 } from "@/lib/firestore";
 
@@ -126,6 +127,12 @@ function DashboardContent() {
   const [dataLoading, setDataLoading] = useState(true);
   const activeTab = getTabFromUrl(searchParams.get("tab"));
   const activeSubTab = getSubTabFromUrl(searchParams.get("subtab"));
+  const currentMember = user?.email
+    ? members.find(
+      (member) =>
+        member.email?.trim().toLowerCase() === user.email?.trim().toLowerCase()
+    ) ?? null
+    : null;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -279,39 +286,60 @@ function DashboardContent() {
 
   const handleSaveMeals = useCallback(
     async (date: string, meals: Record<string, MemberMeals>) => {
-      await saveDailyMeals(monthKey, { date, meals });
+      await saveDailyMeals(
+        monthKey,
+        { date, meals },
+        currentMember?.name || user?.displayName || "Admin"
+      );
       upsertMealsInLocalState(date, meals);
     },
-    [monthKey, upsertMealsInLocalState]
+    [currentMember?.name, monthKey, upsertMealsInLocalState, user?.displayName]
   );
 
   const handleEditMeals = useCallback(
     async (date: string, meals: Record<string, MemberMeals>) => {
-      await saveDailyMeals(monthKey, { date, meals });
+      await saveDailyMeals(
+        monthKey,
+        { date, meals },
+        currentMember?.name || user?.displayName || "Admin"
+      );
       upsertMealsInLocalState(date, meals);
     },
-    [monthKey, upsertMealsInLocalState]
+    [currentMember?.name, monthKey, upsertMealsInLocalState, user?.displayName]
   );
 
   const handleDeleteMeals = useCallback(
     async (date: string) => {
-      await deleteDailyMeals(monthKey, date);
+      await deleteDailyMeals(
+        monthKey,
+        date,
+        currentMember?.name || user?.displayName || "Admin"
+      );
     },
-    [monthKey]
+    [currentMember?.name, monthKey, user?.displayName]
   );
 
   const handleAddBazar = useCallback(
-    async (date: string, amount: number, description: string) => {
-      await addBazarEntry(monthKey, { date, amount, description });
+    async (date: string, amount: number, description: string, buyerIds: string[] = []) => {
+      await addBazarEntry(
+        monthKey,
+        { date, amount, description, buyerIds },
+        currentMember?.name || user?.displayName || "Admin"
+      );
     },
-    [monthKey]
+    [currentMember?.name, monthKey, user?.displayName]
   );
 
   const handleEditBazar = useCallback(
-    async (id: string, entry: { date: string; amount: number; description: string }) => {
-      await updateBazarEntry(monthKey, id, entry);
+    async (id: string, entry: { date: string; amount: number; description: string; buyerIds?: string[]; buyerId?: string | null }) => {
+      await updateBazarEntry(
+        monthKey,
+        id,
+        entry,
+        currentMember?.name || user?.displayName || "Admin"
+      );
     },
-    [monthKey]
+    [currentMember?.name, monthKey, user?.displayName]
   );
 
   const handleAddDeposit = useCallback(
@@ -322,15 +350,19 @@ function DashboardContent() {
       date: string,
       note: string
     ) => {
-      await addDepositEntry(monthKey, {
-        memberId,
-        memberName,
-        amount,
-        date,
-        note,
-      });
+      await addDepositEntry(
+        monthKey,
+        {
+          memberId,
+          memberName,
+          amount,
+          date,
+          note,
+        },
+        currentMember?.name || user?.displayName || "Admin"
+      );
     },
-    [monthKey]
+    [currentMember?.name, monthKey, user?.displayName]
   );
 
   const handleEditDeposit = useCallback(
@@ -344,9 +376,14 @@ function DashboardContent() {
         note: string;
       }
     ) => {
-      await updateDepositEntry(monthKey, id, entry);
+      await updateDepositEntry(
+        monthKey,
+        id,
+        entry,
+        currentMember?.name || user?.displayName || "Admin"
+      );
     },
-    [monthKey]
+    [currentMember?.name, monthKey, user?.displayName]
   );
 
   const handleUpdateBills = useCallback(
@@ -408,29 +445,30 @@ function DashboardContent() {
 
   const handleDeleteBazar = useCallback(
     async (id: string) => {
-      await deleteBazarEntry(monthKey, id);
+      await deleteBazarEntry(
+        monthKey,
+        id,
+        currentMember?.name || user?.displayName || "Admin"
+      );
     },
-    [monthKey]
+    [currentMember?.name, monthKey, user?.displayName]
   );
 
   const handleDeleteDeposit = useCallback(
     async (id: string) => {
-      await deleteDepositEntry(monthKey, id);
+      await deleteDepositEntry(
+        monthKey,
+        id,
+        currentMember?.name || user?.displayName || "Admin"
+      );
     },
-    [monthKey]
+    [currentMember?.name, monthKey, user?.displayName]
   );
 
   const handleLogout = useCallback(async () => {
     await logout();
     router.replace("/");
   }, [logout, router]);
-
-  const currentMember = user?.email
-    ? members.find(
-      (member) =>
-        member.email?.trim().toLowerCase() === user.email?.trim().toLowerCase()
-    ) ?? null
-    : null;
 
   const memberDisplayName = currentMember?.name?.trim() || user?.displayName?.trim() || "Member";
 
@@ -641,6 +679,7 @@ function DashboardContent() {
                 onDeleteMember={handleDeleteMember}
                 onArchiveMonth={handleArchiveMonth}
                 isArchiveMode={isArchiveView}
+                performedBy={memberDisplayName}
               />
             )}
 

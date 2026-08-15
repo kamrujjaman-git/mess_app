@@ -7,6 +7,7 @@ import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
 import { getActiveMembers, getTodayDateString } from "@/lib/mess";
 import { ManageMembers } from "./ManageMembers";
 import { inputClass } from "./InlineActions";
+import { getTargetEmail } from "@/lib/firestore";
 
 type AdminSubTab = "entries" | "members";
 
@@ -19,7 +20,7 @@ interface AdminPanelProps {
     date: string,
     meals: Record<string, MemberMeals>
   ) => Promise<void>;
-  onAddBazar?: (date: string, amount: number, description: string) => Promise<void>;
+  onAddBazar?: (date: string, amount: number, description: string, buyerIds: string[]) => Promise<void>;
   onAddDeposit?: (
     memberId: string,
     memberName: string,
@@ -34,6 +35,7 @@ interface AdminPanelProps {
   onUpdateMember: (member: Member) => Promise<void>;
   onSetMemberStatus: (memberId: string, status: Member["status"]) => Promise<void>;
   onDeleteMember: (memberId: string) => Promise<void>;
+  performedBy?: string;
 }
 
 export function AdminPanel({
@@ -51,6 +53,7 @@ export function AdminPanel({
   onUpdateMember,
   onSetMemberStatus,
   onDeleteMember,
+  performedBy = "System",
 }: AdminPanelProps) {
   const activeMembers = getActiveMembers(members);
 
@@ -68,6 +71,7 @@ export function AdminPanel({
   const [bazarDate, setBazarDate] = useState(getTodayDateString());
   const [bazarAmount, setBazarAmount] = useState("");
   const [bazarDesc, setBazarDesc] = useState("");
+  const [selectedBuyerIds, setSelectedBuyerIds] = useState<string[]>([]);
 
   const [depositMemberId, setDepositMemberId] = useState(
     activeMembers[0]?.id ?? ""
@@ -110,11 +114,52 @@ export function AdminPanel({
     }));
   }
 
+  function triggerBackgroundEmailNotification({
+    email,
+    subject,
+    html,
+  }: {
+    email: string;
+    subject: string;
+    html: string;
+  }) {
+    if (!email || !email.includes("@")) return;
+
+    void fetch("/api/send-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, subject, html }),
+    }).catch((error) => {
+      console.error("Background email notification failed:", error);
+    });
+  }
+
   async function handleSaveMeals() {
     if (!onSaveMeals) return;
     setSaving("meals");
     try {
       await onSaveMeals(mealDate, mealInputs);
+      const mealCount = Object.values(mealInputs).reduce(
+        (count, entry) =>
+          count + (entry?.breakfast ?? 0) + (entry?.lunch ?? 0) + (entry?.dinner ?? 0),
+        0
+      );
+      const targetEmail = activeMembers[0]?.email?.trim() ?? "";
+
+      triggerBackgroundEmailNotification({
+        email: targetEmail,
+        subject: `Meal update for ${mealDate}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6;">
+            <h2 style="margin: 0 0 12px; color: #059669;">Meal Entry Updated</h2>
+            <p style="margin: 0 0 8px;">Meal entries were saved for <strong>${mealDate}</strong>.</p>
+            <p style="margin: 0 0 8px;"><strong>Total entries:</strong> ${mealCount}</p>
+            <p style="margin: 0; color: #475569;">Updated by: ${performedBy}</p>
+          </div>
+        `,
+      });
       toast.success("Daily meals saved successfully.");
     } catch (error) {
       console.error("Save meals failed:", error);
@@ -124,6 +169,14 @@ export function AdminPanel({
     }
   }
 
+  function toggleBuyerSelection(memberId: string) {
+    setSelectedBuyerIds((previous) =>
+      previous.includes(memberId)
+        ? previous.filter((id) => id !== memberId)
+        : [...previous, memberId]
+    );
+  }
+
   async function handleAddBazar() {
     if (!onAddBazar) return;
     const amount = Math.round(parseFloat(bazarAmount));
@@ -131,11 +184,38 @@ export function AdminPanel({
       toast.error("Please enter a valid bazar amount.");
       return;
     }
+    if (selectedBuyerIds.length === 0) {
+      toast.error("Please select at least one buyer for this bazar entry.");
+      return;
+    }
     setSaving("bazar");
     try {
-      await onAddBazar(bazarDate, amount, bazarDesc);
+      await onAddBazar(bazarDate, amount, bazarDesc, selectedBuyerIds);
+      const buyerNames = selectedBuyerIds
+        .map((id) => members.find((member) => member.id === id)?.name ?? id)
+        .join(", ");
+      const targetBuyer = selectedBuyerIds
+        .map((id) => members.find((member) => member.id === id))
+        .find((member): member is Member => Boolean(member?.email && member.email.trim().length > 0));
+      const targetEmail = targetBuyer?.email.trim() ?? activeMembers[0]?.email.trim() ?? "";
+
+      triggerBackgroundEmailNotification({
+        email: targetEmail,
+        subject: `Bazar update for ${bazarDate}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6;">
+            <h2 style="margin: 0 0 12px; color: #2563eb;">Bazar Entry Added</h2>
+            <p style="margin: 0 0 8px;"><strong>Amount:</strong> ৳${amount}</p>
+            <p style="margin: 0 0 8px;"><strong>Date:</strong> ${bazarDate}</p>
+            <p style="margin: 0 0 8px;"><strong>Buyer(s):</strong> ${buyerNames}</p>
+            ${bazarDesc ? `<p style="margin: 0 0 8px;"><strong>Description:</strong> ${bazarDesc}</p>` : ""}
+            <p style="margin: 0; color: #475569;">Updated by: ${performedBy}</p>
+          </div>
+        `,
+      });
       setBazarAmount("");
       setBazarDesc("");
+      setSelectedBuyerIds([]);
       toast.success("Bazar entry added successfully.");
     } catch (error) {
       console.error("Add bazar failed:", error);
@@ -162,6 +242,20 @@ export function AdminPanel({
         depositDate,
         depositNote
       );
+      triggerBackgroundEmailNotification({
+        email: member.email.trim(),
+        subject: `Deposit received on ${depositDate}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6;">
+            <h2 style="margin: 0 0 12px; color: #7c3aed;">Deposit Recorded</h2>
+            <p style="margin: 0 0 8px;"><strong>Member:</strong> ${member.name}</p>
+            <p style="margin: 0 0 8px;"><strong>Amount:</strong> ৳${amount}</p>
+            <p style="margin: 0 0 8px;"><strong>Date:</strong> ${depositDate}</p>
+            ${depositNote ? `<p style="margin: 0 0 8px;"><strong>Note:</strong> ${depositNote}</p>` : ""}
+            <p style="margin: 0; color: #475569;">Updated by: ${performedBy}</p>
+          </div>
+        `,
+      });
       setDepositAmount("");
       setDepositNote("");
       toast.success("Deposit added successfully.");
@@ -332,6 +426,33 @@ export function AdminPanel({
                   onChange={(e) => setBazarDesc(e.target.value)}
                   className={inputClass}
                 />
+                <div className="space-y-2">
+                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                    Buyers
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {activeMembers.length === 0 ? (
+                      <p className="text-sm text-slate-500">No active members available.</p>
+                    ) : (
+                      activeMembers.map((member) => {
+                        const isSelected = selectedBuyerIds.includes(member.id);
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => toggleBuyerSelection(member.id)}
+                            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${isSelected
+                              ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-600/60 dark:hover:bg-slate-700"
+                              }`}
+                          >
+                            {member.name}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
               </div>
               <button
                 type="button"
