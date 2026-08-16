@@ -61,14 +61,15 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
   ];
 
   const visibleCards = isAdmin ? cards : cards.filter((card) => card.label !== "Rent + Bua");
-  const gridClassName = isAdmin
-    ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5"
-    : "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4";
 
   return (
-    <div className={gridClassName}>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
       {visibleCards.map((card) => (
-        <div key={card.label} className="glass-card rounded-2xl p-3.5 sm:p-5">
+        <div
+          key={card.label}
+          className={`glass-card rounded-2xl p-3.5 sm:p-5 ${isAdmin && card.label === "Rent + Bua" ? "col-span-2 sm:col-span-1" : ""
+            }`}
+        >
           <div className="mb-3 flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">
               {card.label}

@@ -614,8 +614,8 @@ function DashboardContent() {
               />
             </div>
 
-            <div className="mb-6 overflow-x-auto scrollbar-hide">
-              <div className="flex gap-2 pb-1">
+            <div className="mb-6 overflow-x-auto whitespace-nowrap scrollbar-none px-2 py-1">
+              <div className="flex gap-2">
                 {visibleTabs.map((tab) => (
                   <button
                     key={tab.id}

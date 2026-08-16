@@ -334,13 +334,13 @@ export function ManageMembers({
                         </p>
                       )}
                     </div>
-                    <div className="flex shrink-0 flex-wrap items-center gap-1">
+                    <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:justify-start">
                       {isSuperAdmin && (
                         <button
                           type="button"
                           onClick={() => handleToggleAdminAccess(member)}
                           disabled={saving === `admin-${member.id}`}
-                          className={`flex h-9 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold transition-colors ${member.isAdmin
+                          className={`flex h-9 items-center justify-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold transition-colors sm:text-xs ${member.isAdmin
                             ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/50 dark:text-amber-300"
                             : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300"
                             }`}
@@ -354,7 +354,9 @@ export function ManageMembers({
                           ) : (
                             <Shield className="h-4 w-4" />
                           )}
-                          <span>{member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}</span>
+                          <span className="whitespace-nowrap">
+                            {member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
+                          </span>
                         </button>
                       )}
                       <InlineActions

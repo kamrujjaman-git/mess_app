@@ -128,9 +128,9 @@ export function DashboardNav({
   }
 
   return (
-    <header className="glass sticky top-0 z-50 border-b border-white/20 dark:border-slate-700/50">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2 sm:gap-3">
+    <header className="glass sticky top-0 z-50 w-full max-w-full overflow-hidden border-b border-white/20 bg-white/95 backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/95">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-10 sm:w-10">
             <Image
               src="/logo-512.png"
@@ -147,35 +147,35 @@ export function DashboardNav({
           <button
             type="button"
             onClick={onPrevMonth}
-            className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 sm:h-9 sm:w-9"
             aria-label="Previous month"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
-          <span className="min-w-[120px] text-center text-sm font-semibold sm:min-w-[160px] sm:text-base">
+          <span className="min-w-[100px] text-center text-xs font-semibold sm:min-w-[160px] sm:text-base">
             {formatMonthLabel(monthKey)}
           </span>
           <button
             type="button"
             onClick={onNextMonth}
-            className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 sm:h-9 sm:w-9"
             aria-label="Next month"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-3">
+        <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-3">
           <button
             type="button"
             onClick={handleBellClick}
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-800"
+            className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-800 sm:h-9 sm:w-9"
             aria-label="Open notifications"
             title="Notifications"
           >
-            <Bell className="h-4 w-4" />
+            <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             {unreadCount > 0 ? (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white sm:h-5 sm:min-w-5 sm:text-[10px]">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             ) : null}
@@ -184,11 +184,11 @@ export function DashboardNav({
           <button
             type="button"
             onClick={() => setIsDark((prev) => !prev)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-800"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-800 sm:h-9 sm:w-9"
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {isDark ? <Sun className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Moon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
           </button>
 
           <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:flex">
@@ -202,10 +202,10 @@ export function DashboardNav({
                 src={user.photoURL}
                 alt={displayName}
                 onError={() => setImageFailed(true)}
-                className="h-8 w-8 rounded-full object-cover ring-2 ring-emerald-500/30 sm:h-9 sm:w-9"
+                className="h-7 w-7 rounded-full object-cover ring-2 ring-emerald-500/30 sm:h-9 sm:w-9"
               />
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white ring-2 ring-emerald-500/30 sm:h-9 sm:w-9">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white ring-2 ring-emerald-500/30 sm:h-9 sm:w-9 sm:text-sm">
                 {avatarInitial}
               </div>
             )}
@@ -223,10 +223,10 @@ export function DashboardNav({
           <button
             type="button"
             onClick={onLogout}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:h-10 sm:w-10"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:h-10 sm:w-10"
             aria-label="Logout"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
       </div>
