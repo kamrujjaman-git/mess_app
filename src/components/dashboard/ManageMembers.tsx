@@ -289,7 +289,7 @@ export function ManageMembers({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="mt-2 flex flex-col gap-2 sm:mt-0 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate font-medium">{member.name}</p>
@@ -334,13 +334,14 @@ export function ManageMembers({
                         </p>
                       )}
                     </div>
-                    <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:justify-start">
+
+                    <div className="flex items-center justify-start gap-2 sm:gap-3">
                       {isSuperAdmin && (
                         <button
                           type="button"
                           onClick={() => handleToggleAdminAccess(member)}
                           disabled={saving === `admin-${member.id}`}
-                          className={`flex h-9 items-center justify-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold transition-colors sm:text-xs ${member.isAdmin
+                          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors sm:h-9 sm:px-3 sm:text-xs ${member.isAdmin
                             ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/50 dark:text-amber-300"
                             : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300"
                             }`}
@@ -348,62 +349,65 @@ export function ManageMembers({
                           aria-label={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
                         >
                           {saving === `admin-${member.id}` ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
                           ) : member.isAdmin ? (
-                            <ShieldOff className="h-4 w-4" />
+                            <ShieldOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           ) : (
-                            <Shield className="h-4 w-4" />
+                            <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           )}
                           <span className="whitespace-nowrap">
                             {member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
                           </span>
                         </button>
                       )}
-                      <InlineActions
-                        onEdit={() => startEdit(member)}
-                        editLabel={`Edit ${member.name}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(member)}
-                        disabled={saving === `status-${member.id}` || saving === `remove-${member.id}`}
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${member.status === "active"
-                          ? "text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/40"
-                          : "text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                          }`}
-                        aria-label={
-                          member.status === "active"
-                            ? "Mark inactive"
-                            : "Reactivate member"
-                        }
-                        title={
-                          member.status === "active"
-                            ? "Mark Inactive"
-                            : "Reactivate"
-                        }
-                      >
-                        {saving === `status-${member.id}` ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : member.status === "active" ? (
-                          <UserX className="h-4 w-4" />
-                        ) : (
-                          <UserCheck className="h-4 w-4" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteMember(member)}
-                        disabled={saving === `delete-${member.id}`}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/40"
-                        title={`Delete ${member.name}`}
-                        aria-label={`Delete ${member.name}`}
-                      >
-                        {saving === `delete-${member.id}` ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </button>
+
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <InlineActions
+                          onEdit={() => startEdit(member)}
+                          editLabel={`Edit ${member.name}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(member)}
+                          disabled={saving === `status-${member.id}` || saving === `remove-${member.id}`}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors sm:h-9 sm:w-9 ${member.status === "active"
+                            ? "text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/40"
+                            : "text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                            }`}
+                          aria-label={
+                            member.status === "active"
+                              ? "Mark inactive"
+                              : "Reactivate member"
+                          }
+                          title={
+                            member.status === "active"
+                              ? "Mark Inactive"
+                              : "Reactivate"
+                          }
+                        >
+                          {saving === `status-${member.id}` ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
+                          ) : member.status === "active" ? (
+                            <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          ) : (
+                            <UserCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMember(member)}
+                          disabled={saving === `delete-${member.id}`}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 sm:h-9 sm:w-9"
+                          title={`Delete ${member.name}`}
+                          aria-label={`Delete ${member.name}`}
+                        >
+                          {saving === `delete-${member.id}` ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
