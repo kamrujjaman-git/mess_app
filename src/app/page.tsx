@@ -47,12 +47,6 @@ export default function LoginPage() {
     }
   }, [user, loading, accessLoading, hasAccess, router]);
 
-  useEffect(() => {
-    if (!loading && !accessLoading && !user) {
-      router.replace("/");
-    }
-  }, [user, loading, accessLoading, router]);
-
   async function handleSignIn() {
     setSigningIn(true);
     setError("");

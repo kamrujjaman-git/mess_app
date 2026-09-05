@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Funnel, X } from "lucide-react";
+import { Search, Funnel } from "lucide-react";
 
 export interface FilterOption {
     value: string;

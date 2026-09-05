@@ -27,7 +27,6 @@ import {
 import {
   subscribeToMonthData,
   saveDailyMeals,
-  deleteDailyMeals,
   addBazarEntry,
   updateBazarEntry,
   addDepositEntry,
@@ -45,7 +44,6 @@ import {
   getMonthlyArchive,
   listMonthlyArchives,
   deleteMonthData,
-  createActivityLog,
   type MonthData,
 } from "@/lib/firestore";
 
@@ -123,6 +121,8 @@ function DashboardContent() {
   const [monthData, setMonthData] = useState<MonthData | null>(null);
   const [archiveMonthKey, setArchiveMonthKey] = useState("");
   const [archiveData, setArchiveData] = useState<MonthlyArchiveData | null>(null);
+  const [archiveLoadedKey, setArchiveLoadedKey] = useState("");
+  const [monthLoadedKey, setMonthLoadedKey] = useState("");
   const [archiveKeys, setArchiveKeys] = useState<string[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const activeTab = getTabFromUrl(searchParams.get("tab"));
@@ -145,9 +145,9 @@ function DashboardContent() {
 
   useEffect(() => {
     if (!user || !hasAccess) return;
-    setDataLoading(true);
     const unsub = subscribeToMonthData(monthKey, (data) => {
       setMonthData(data);
+      setMonthLoadedKey(monthKey);
       setDataLoading(false);
     });
     return unsub;
@@ -168,15 +168,14 @@ function DashboardContent() {
 
   useEffect(() => {
     if (!archiveMonthKey) {
-      setArchiveData(null);
       return;
     }
 
     const loadArchive = async () => {
-      setDataLoading(true);
       try {
         const archive = await getMonthlyArchive(archiveMonthKey);
         setArchiveData(archive);
+        setArchiveLoadedKey(archiveMonthKey);
       } catch (error) {
         console.error("Failed to load archive snapshot:", error);
       } finally {
@@ -306,17 +305,6 @@ function DashboardContent() {
       upsertMealsInLocalState(date, meals);
     },
     [currentMember?.name, monthKey, upsertMealsInLocalState, user?.displayName]
-  );
-
-  const handleDeleteMeals = useCallback(
-    async (date: string) => {
-      await deleteDailyMeals(
-        monthKey,
-        date,
-        currentMember?.name || user?.displayName || "Admin"
-      );
-    },
-    [currentMember?.name, monthKey, user?.displayName]
   );
 
   const handleAddBazar = useCallback(
@@ -520,6 +508,8 @@ function DashboardContent() {
 
   const displayedMonthData = archiveData ?? monthData;
   const displayedStats = isArchiveView ? archiveStats : stats;
+  const currentDataReady = monthLoadedKey === monthKey &&
+    (!isArchiveView || archiveLoadedKey === archiveMonthKey);
 
   const computedTotalMeals = useMemo(() => {
     return calculateTotalFromDailyMeals(displayedMonthData?.dailyMeals);
@@ -561,7 +551,7 @@ function DashboardContent() {
       />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        {dataLoading || !monthData || !stats ? (
+        {dataLoading || !currentDataReady || !monthData || !stats ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
           </div>
@@ -642,7 +632,6 @@ function DashboardContent() {
                 members={monthData.members}
                 isAdmin={isAdmin}
                 onEdit={handleEditMeals}
-                onDelete={isAdmin ? handleDeleteMeals : undefined}
                 onOptimisticToggle={handleOptimisticMealToggle}
               />
             )}

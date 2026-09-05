@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import Image from "next/image";
 import { toast } from "react-hot-toast";
 import type { MemberSummary, MessStats } from "@/lib/mess";
 import { buildWhatsAppLink, formatMonthLabel } from "@/lib/mess";
@@ -86,7 +87,7 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="h-11 w-11 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
-              <img
+              <Image
                 src="/logo-512.png"
                 alt="Mess App Logo"
                 width={40}

@@ -17,7 +17,7 @@ import {
   type User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getUserByUid, subscribeToMembers } from "@/lib/firestore";
+import { getUserByEmail, getUserByUid, subscribeToMembers } from "@/lib/firestore";
 import { isMemberActive, type Member } from "@/lib/mess";
 
 type AccessDeniedReason = "inactive" | "not-member" | "removed" | null;
@@ -39,18 +39,12 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [accessLoading, setAccessLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
   const [currentUserDoc, setCurrentUserDoc] = useState<Member | null>(null);
   const [membersReady, setMembersReady] = useState(false);
   const [userDocReady, setUserDocReady] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
   const normalizedAdminEmail = adminEmail.trim().toLowerCase();
@@ -104,45 +98,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !accessDeniedReason;
   }, [accessDeniedReason]);
 
-  useEffect(() => {
-    if (!user) {
-      setAccessLoading(false);
-      return;
-    }
-    setAccessLoading(!(membersReady && userDocReady));
-  }, [membersReady, userDocReady, user]);
+  const accessLoading = Boolean(user && (!membersReady || !userDocReady));
 
   useEffect(() => {
-    if (!mounted) return;
-
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
-      if (!firebaseUser) {
-        setCurrentUserDoc(null);
-        setMembers([]);
-        setMembersReady(false);
-        setUserDocReady(false);
-        setAccessLoading(false);
-      }
-    });
-    return unsubscribe;
-  }, [mounted]);
-
-  useEffect(() => {
-    if (!mounted || !user) {
-      setMembers([]);
       setCurrentUserDoc(null);
       setMembersReady(false);
       setUserDocReady(false);
-      setAccessLoading(false);
-      return;
-    }
+      if (!firebaseUser) setMembers([]);
+    });
+    return unsubscribe;
+  }, []);
 
-    setAccessLoading(true);
-    setCurrentUserDoc(null);
-    setMembersReady(false);
-    setUserDocReady(false);
+  useEffect(() => {
+    if (!user) return;
 
     const unsubscribe = subscribeToMembers((fetchedMembers) => {
       setMembers(fetchedMembers);
@@ -156,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (user.email) {
           // Fallback: try finding a users doc by email (in case member id is not uid)
           try {
-            const byEmail = await (await import('@/lib/firestore')).getUserByEmail(user.email.trim().toLowerCase());
+            const byEmail = await getUserByEmail(user.email.trim().toLowerCase());
             if (byEmail) setCurrentUserDoc(byEmail);
           } catch (err) {
             console.error('Failed to lookup user by email fallback:', err);
@@ -171,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
     return unsubscribe;
-  }, [mounted, user]);
+  }, [user]);
 
   const signInWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
@@ -181,7 +152,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     setUser(null);
     setLoading(false);
-    setAccessLoading(false);
     setMembers([]);
     setCurrentUserDoc(null);
     setMembersReady(false);

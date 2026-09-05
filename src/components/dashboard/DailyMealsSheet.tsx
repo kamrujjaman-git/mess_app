@@ -2,7 +2,7 @@
 
 import { Fragment, useRef, useState, type MouseEvent } from "react";
 import { toast } from "react-hot-toast";
-import { ChevronRight, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { DailyMealRecord, Member, MemberMeals } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
@@ -12,8 +12,6 @@ interface DailyMealsSheetProps {
   members: Member[];
   isAdmin?: boolean;
   onEdit?: (date: string, meals: Record<string, MemberMeals>) => Promise<void>;
-  onDelete?: (date: string) => Promise<void>;
-  onMealUpdated?: () => Promise<void> | void;
   onOptimisticToggle?: (date: string, memberId: string, mealType: keyof MemberMeals, nextStatus: boolean) => void;
 }
 
@@ -22,8 +20,6 @@ export function DailyMealsSheet({
   members,
   isAdmin = false,
   onEdit,
-  onDelete,
-  onMealUpdated,
   onOptimisticToggle,
 }: DailyMealsSheetProps) {
   const { user } = useAuth();
@@ -282,7 +278,6 @@ export function DailyMealsSheet({
       <div className="relative space-y-4 p-4 lg:hidden">
         {displayRows.map((row) => {
           const record = records.find((item) => item.date === row.date) ?? { date: row.date, meals: {} } as DailyMealRecord;
-          const isPast = row.date < todayKey;
           const isTodayRow = row.label === "Today";
           const isTomorrowRow = row.label === "Tomorrow";
           return (

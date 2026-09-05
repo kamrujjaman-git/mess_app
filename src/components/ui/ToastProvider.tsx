@@ -9,7 +9,7 @@ import {
     useEffect,
     type ReactNode,
 } from "react";
-import toast, { Toaster, resolveValue } from "react-hot-toast";
+import toast, { Toaster, resolveValue, type Toast } from "react-hot-toast";
 import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 
 type ToastTone = "success" | "error" | "info";
@@ -90,11 +90,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
     const value = useMemo<ToastContextValue>(() => ({ toast: toastHandler, success, error, info, dismiss }), [dismiss, error, info, success, toastHandler]);
 
-    function ToastItemRenderer({ toastItem }: { toastItem: any }) {
+    function ToastItemRenderer({ toastItem }: { toastItem: Toast }) {
         useEffect(() => {
             registerToast(toastItem.id);
             return () => unregisterToast(toastItem.id);
-            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [toastItem.id]);
 
         const isSuccess = toastItem.type === "success";

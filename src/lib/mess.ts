@@ -420,19 +420,3 @@ export function createEmptyDailyMeals(
   return { date, meals };
 }
 
-export function migrateMealKeys(
-  record: DailyMealRecord,
-  members: Member[]
-): DailyMealRecord {
-  const migrated: Record<string, MemberMeals> = { ...record.meals };
-
-  for (const member of members) {
-    if (migrated[member.id]) continue;
-    if (migrated[member.name]) {
-      migrated[member.id] = migrated[member.name];
-      delete migrated[member.name];
-    }
-  }
-
-  return { ...record, meals: migrated };
-}

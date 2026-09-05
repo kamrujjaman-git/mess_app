@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { Loader2, Save, Plus, Users, NotebookPen } from "lucide-react";
 import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
 import { getActiveMembers, getTodayDateString } from "@/lib/mess";
 import { ManageMembers } from "./ManageMembers";
 import { inputClass } from "./InlineActions";
-import { getTargetEmail } from "@/lib/firestore";
 
 type AdminSubTab = "entries" | "members";
 
@@ -80,24 +79,12 @@ export function AdminPanel({
   const [depositDate, setDepositDate] = useState(getTodayDateString());
   const [depositNote, setDepositNote] = useState("");
 
-  const [billInputs, setBillInputs] = useState(bills);
+  const [billDraft, setBillDraft] = useState<MonthBills | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
-
-  useEffect(() => {
-    setBillInputs(bills);
-  }, [bills]);
-
-  useEffect(() => {
-    setMealInputs(() => {
-      const initial: Record<string, MemberMeals> = {};
-      getActiveMembers(members).forEach((m) => {
-        initial[m.id] = { breakfast: 0, lunch: 0, dinner: 0 };
-      });
-      return initial;
-    });
-    const active = getActiveMembers(members);
-    setDepositMemberId(active[0]?.id ?? "");
-  }, [members]);
+  const billInputs = billDraft ?? bills;
+  const selectedDepositMemberId = activeMembers.some((member) => member.id === depositMemberId)
+    ? depositMemberId
+    : activeMembers[0]?.id ?? "";
 
   function updateMeal(
     memberId: string,
@@ -129,6 +116,7 @@ export function AdminPanel({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Mess-App-Request": "1",
       },
       body: JSON.stringify({ email, subject, html }),
     }).catch((error) => {
@@ -272,6 +260,7 @@ export function AdminPanel({
     setSaving("bills");
     try {
       await onUpdateBills(billInputs);
+      setBillDraft(null);
       toast.success("Bills saved successfully.");
     } catch (error) {
       console.error("Save bills failed:", error);
@@ -475,7 +464,7 @@ export function AdminPanel({
               <h3 className="mb-4 text-base font-semibold">Add Deposit</h3>
               <div className="space-y-3">
                 <select
-                  value={depositMemberId}
+                  value={selectedDepositMemberId}
                   onChange={(e) => setDepositMemberId(e.target.value)}
                   className={inputClass}
                 >
@@ -538,8 +527,8 @@ export function AdminPanel({
                   type="number"
                   value={billInputs.houseRent || ""}
                   onChange={(e) =>
-                    setBillInputs((prev) => ({
-                      ...prev,
+                    setBillDraft((prev) => ({
+                      ...(prev ?? bills),
                       houseRent: Math.round(parseFloat(e.target.value) || 0),
                     }))
                   }
@@ -554,8 +543,8 @@ export function AdminPanel({
                   type="number"
                   value={billInputs.buaBill || ""}
                   onChange={(e) =>
-                    setBillInputs((prev) => ({
-                      ...prev,
+                    setBillDraft((prev) => ({
+                      ...(prev ?? bills),
                       buaBill: Math.round(parseFloat(e.target.value) || 0),
                     }))
                   }
@@ -570,8 +559,8 @@ export function AdminPanel({
                   type="number"
                   value={billInputs.otherBills || ""}
                   onChange={(e) =>
-                    setBillInputs((prev) => ({
-                      ...prev,
+                    setBillDraft((prev) => ({
+                      ...(prev ?? bills),
                       otherBills: Math.round(parseFloat(e.target.value) || 0),
                     }))
                   }

@@ -24,7 +24,6 @@ import {
   BillField,
   createDefaultMembers,
   createEmptyDailyMeals,
-  migrateMealKeys,
   getActiveMembers,
   MonthlyArchiveData,
 } from "./mess";
@@ -101,12 +100,6 @@ export async function getActiveMemberEmails(): Promise<string[]> {
     .map((member) => member.email.trim());
 }
 
-export function getTargetEmail(emails: Array<string | null | undefined>): string {
-  return emails
-    .map((email) => String(email ?? "").trim())
-    .find((email) => email.length > 0 && email.includes("@")) ?? "";
-}
-
 export async function getUserByUid(uid: string): Promise<Member | null> {
   const snap = await getDoc(doc(db, "users", uid));
   if (!snap.exists()) return null;
@@ -164,7 +157,10 @@ export async function updateUserEmail(userDocId: string, email: string, name?: s
 }
 
 export async function setMembers(members: Member[]): Promise<void> {
-  await setDoc(doc(db, "settings", "members"), { members });
+  const adminEmails = members
+    .filter((member) => member.isAdmin === true && member.email.trim())
+    .map((member) => member.email.trim().toLowerCase());
+  await setDoc(doc(db, "settings", "members"), { members, adminEmails });
 }
 
 export function subscribeToMembers(
@@ -198,6 +194,7 @@ export async function updateMember(updated: Member): Promise<void> {
   const members = await getMembers();
   const index = members.findIndex((m) => m.id === updated.id);
   if (index === -1) return;
+  const previousMember = members[index];
   members[index] = {
     ...updated,
     name: updated.name.trim(),
@@ -205,10 +202,29 @@ export async function updateMember(updated: Member): Promise<void> {
   };
   await setMembers(members);
   try {
-    // Also sync the email/name to the users collection doc if present
-    await updateUserEmail(updated.id, updated.email.trim().toLowerCase(), updated.name.trim());
+    const emails = [previousMember.email, updated.email]
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+    const userSnapshots = await Promise.all(
+      [...new Set(emails)].map((email) =>
+        getDocs(query(collection(db, "users"), where("email", "==", email)))
+      )
+    );
+    const userDocs = userSnapshots.flatMap((snapshot) => snapshot.docs);
+    await Promise.all(
+      userDocs.map((userDoc) =>
+        updateDoc(userDoc.ref, {
+          email: updated.email.trim().toLowerCase(),
+          name: updated.name.trim(),
+          isAdmin: Boolean(updated.isAdmin),
+          status: updated.status,
+          active: updated.active !== false,
+          isBlocked: Boolean(updated.isBlocked),
+          isRemoved: Boolean(updated.isRemoved),
+        })
+      )
+    );
   } catch (error) {
-    // Non-fatal: if users doc doesn't exist or update fails, still keep members in settings
     console.error("Failed to sync user doc email for member:", error);
   }
 }

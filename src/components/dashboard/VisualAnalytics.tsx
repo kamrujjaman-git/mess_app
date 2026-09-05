@@ -12,13 +12,9 @@ import {
     PieChart,
     ResponsiveContainer,
     Tooltip,
-    TooltipProps,
     XAxis,
     YAxis,
 } from "recharts";
-
-type ValueType = number | string;
-type NameType = string;
 
 interface MemberContribution {
     name: string;
@@ -37,7 +33,17 @@ function currencyFormatter(value: number) {
     return `৳${value.toLocaleString("en-IN")}`;
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+interface ChartTooltipEntry {
+    value?: number | string;
+}
+
+interface ChartTooltipProps {
+    active?: boolean;
+    payload?: ChartTooltipEntry[];
+    label?: string;
+}
+
+function CustomTooltip({ active, payload, label }: ChartTooltipProps) {
     if (!active || !payload || payload.length === 0) return null;
 
     const entry = payload[0];
@@ -138,7 +144,7 @@ export function VisualAnalytics({ bazarEntries, memberContributions, className =
                                                 <Cell key={`cell-${index}`} fill={themeColors[index % themeColors.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip formatter={(value: any) => [currencyFormatter(Number(value ?? 0)), "Bazar Share"]} contentStyle={{ borderRadius: 16, border: "1px solid #e2e8f0", backgroundColor: "rgba(255,255,255,0.95)", color: "#0f172a" }} />
+                                        <Tooltip formatter={(value: unknown) => [currencyFormatter(Number(value ?? 0)), "Bazar Share"]} contentStyle={{ borderRadius: 16, border: "1px solid #e2e8f0", backgroundColor: "rgba(255,255,255,0.95)", color: "#0f172a" }} />
                                         <Legend formatter={(value) => <span className="text-sm text-slate-600 dark:text-slate-300">{value}</span>} />
                                     </PieChart>
                                 </ResponsiveContainer>

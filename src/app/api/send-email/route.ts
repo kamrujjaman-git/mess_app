@@ -9,6 +9,27 @@ const transporter = nodemailer.createTransport({
     },
 });
 
+function escapeHtml(value: unknown): string {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function isAuthorizedRequest(request: Request): boolean {
+    const configuredApiKey = process.env.EMAIL_API_KEY?.trim();
+    const authorization = request.headers.get("authorization") ?? "";
+
+    if (configuredApiKey && authorization === `Bearer ${configuredApiKey}`) {
+        return true;
+    }
+
+    return request.headers.get("x-mess-app-request") === "1" &&
+        request.headers.get("origin") === new URL(request.url).origin;
+}
+
 function normalizeRecipientEmails(value: unknown): string[] {
     const emailList = Array.isArray(value)
         ? value
@@ -35,10 +56,10 @@ function buildModernHtmlTemplate({
     description?: string;
 }) {
     const details = [
-        { label: "Member", value: summary },
-        ...(amount ? [{ label: "Amount", value: amount }] : []),
-        ...(date ? [{ label: "Date", value: date }] : []),
-        ...(description ? [{ label: "Note", value: description }] : []),
+        { label: "Member", value: escapeHtml(summary) },
+        ...(amount ? [{ label: "Amount", value: escapeHtml(amount) }] : []),
+        ...(date ? [{ label: "Date", value: escapeHtml(date) }] : []),
+        ...(description ? [{ label: "Note", value: escapeHtml(description) }] : []),
     ];
 
     const rows = details
@@ -86,14 +107,18 @@ function buildModernHtmlTemplate({
 
 export async function POST(request: Request) {
     try {
+        if (!isAuthorizedRequest(request)) {
+            return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+        }
+
         const body = (await request.json().catch(() => ({}))) ?? {};
         const recipientEmails = normalizeRecipientEmails(body.emails ?? body.email ?? body.recipientEmail);
         const targetEmail = recipientEmails[0] ?? "";
         const subject = typeof body.subject === "string" && body.subject.trim().length > 0
-            ? body.subject.trim()
+            ? body.subject.trim().slice(0, 200)
             : "Mess App Notification";
         const html = typeof body.html === "string" && body.html.trim().length > 0
-            ? body.html
+            ? escapeHtml(body.html)
             : buildModernHtmlTemplate({
                 title: "Mess App Update",
                 summary: "Your latest mess update is ready.",

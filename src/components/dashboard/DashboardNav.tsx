@@ -45,19 +45,16 @@ export function DashboardNav({
 }: DashboardNavProps) {
   const { isAdmin: authIsAdmin, isSuperAdmin, canDeleteNotifications } = useAuth();
   const [imageFailed, setImageFailed] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const storedTheme = window.localStorage.getItem("theme");
+    return storedTheme ? storedTheme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string | null>(null);
-
-  useEffect(() => {
-    const storedTheme = window.localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const nextTheme = storedTheme ? storedTheme === "dark" : prefersDark;
-
-    setIsDark(nextTheme);
-    document.documentElement.classList.toggle("dark", nextTheme);
-  }, []);
+  const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : window.localStorage.getItem("mess_activity_last_seen")
+  );
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -82,10 +79,6 @@ export function DashboardNav({
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const storedLastSeen = window.localStorage.getItem("mess_activity_last_seen");
-    setLastSeenTimestamp(storedLastSeen ?? null);
-  }, []);
 
   const visibleActivityLogs = useMemo(
     () => activityLogs.filter((log) => isActivityLogForMonth(log, monthKey)),
@@ -198,9 +191,12 @@ export function DashboardNav({
 
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             {user?.photoURL && !imageFailed ? (
-              <img
+              <Image
                 src={user.photoURL}
                 alt={displayName}
+                width={36}
+                height={36}
+                unoptimized
                 onError={() => setImageFailed(true)}
                 className="h-7 w-7 rounded-full object-cover ring-2 ring-emerald-500/30 sm:h-9 sm:w-9"
               />
