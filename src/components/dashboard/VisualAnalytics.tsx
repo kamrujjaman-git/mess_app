@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { BazarEntry } from "@/lib/mess";
+import { formatCurrency, type BazarEntry } from "@/lib/mess";
 import {
     Bar,
     BarChart,
@@ -30,7 +30,7 @@ interface VisualAnalyticsProps {
 const themeColors = ["#059669", "#10b981", "#34d399", "#047857", "#065f46", "#15803d"];
 
 function currencyFormatter(value: number) {
-    return `৳${value.toLocaleString("en-IN")}`;
+    return `৳${formatCurrency(value)}`;
 }
 
 interface ChartTooltipEntry {
@@ -107,7 +107,7 @@ export function VisualAnalytics({ bazarEntries, memberContributions, className =
                                 <BarChart data={dailyBazarData} margin={{ top: 10, right: 8, left: -10, bottom: 4 }}>
                                     <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
                                     <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: "#475569", fontSize: 12 }} />
-                                    <YAxis tickLine={false} axisLine={false} tick={{ fill: "#475569", fontSize: 12 }} tickFormatter={(value) => `৳${value}`} />
+                                    <YAxis tickLine={false} axisLine={false} tick={{ fill: "#475569", fontSize: 12 }} tickFormatter={(value) => `৳${formatCurrency(Number(value))}`} />
                                     <Tooltip content={<CustomTooltip />} />
                                     <Bar dataKey="amount" radius={[12, 12, 0, 0]} fill="#10b981" />
                                 </BarChart>

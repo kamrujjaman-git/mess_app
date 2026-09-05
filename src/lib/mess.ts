@@ -251,6 +251,10 @@ function safeRound(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+export function formatCurrency(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(2) : "0.00";
+}
+
 export function calculateMessStats(
   dailyRecords: DailyMealRecord[],
   bazarEntries: BazarEntry[],

@@ -3,15 +3,20 @@
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { Loader2, Save, X } from "lucide-react";
-import type {
-  BazarEntry,
-  DepositEntry,
-  MonthBills,
-  Member,
-  BillField,
+import {
+  BILL_LABELS,
+  formatCurrency,
+  getActiveMembers,
+  getBazarBuyerLabel,
+  getTodayDateString,
+  isDateOnOrBeforeToday,
+  normalizeBazarBuyerIds,
+  type BazarEntry,
+  type BillField,
+  type DepositEntry,
+  type Member,
+  type MonthBills,
 } from "@/lib/mess";
-import { BILL_LABELS, getBazarBuyerLabel, getTodayDateString, isDateOnOrBeforeToday, normalizeBazarBuyerIds } from "@/lib/mess";
-import { getActiveMembers } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
@@ -312,7 +317,7 @@ export function BazarDepositLog({
                         <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:hover:border-slate-700 dark:hover:bg-slate-900">
                           <div className="min-w-0 flex-1">
                             <p className="break-words text-base font-bold text-slate-900 dark:text-white">
-                              ৳{entry.amount}
+                              ৳{formatCurrency(entry.amount)}
                             </p>
                             <p className="mt-1 break-words text-sm font-medium text-slate-700 dark:text-slate-200">
                               {entry.description || "Bazar expense"}
@@ -449,7 +454,7 @@ export function BazarDepositLog({
                         <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:hover:border-slate-700 dark:hover:bg-slate-900">
                           <div className="min-w-0 flex-1">
                             <p className="text-base font-bold text-slate-900 dark:text-white">
-                              {entry.memberName} — ৳{entry.amount}
+                              {entry.memberName} — ৳{formatCurrency(entry.amount)}
                             </p>
                             <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                               <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200">{entry.date}</span>
@@ -551,7 +556,7 @@ export function BazarDepositLog({
                           : BILL_LABELS[field]}
                       </p>
                       <p className="text-lg font-bold">
-                        ৳{Math.round(bills[field])}
+                        ৳{formatCurrency(bills[field])}
                       </p>
                     </div>
                     {isAdmin && bills[field] > 0 && (

@@ -7,7 +7,7 @@ import {
   Home,
   Wallet,
 } from "lucide-react";
-import type { MessStats, MonthBills } from "@/lib/mess";
+import { formatCurrency, type MessStats, type MonthBills } from "@/lib/mess";
 
 interface OverviewCardsProps {
   stats: MessStats;
@@ -19,7 +19,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
   const remainingBalance = stats.remainingBalance;
   const balanceCard = {
     label: "Meal Balance",
-    value: `৳${Math.abs(remainingBalance).toLocaleString()}`,
+    value: `৳${formatCurrency(Math.abs(remainingBalance))}`,
     sub: remainingBalance >= 0 ? "in mess cash" : "negative balance / due",
     icon: Wallet,
     color:
@@ -31,14 +31,14 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
   const cards = [
     {
       label: "Meal Rate",
-      value: `৳${stats.mealRate}`,
+      value: `৳${formatCurrency(stats.mealRate)}`,
       sub: "per meal",
       icon: TrendingUp,
       color: "from-emerald-500 to-teal-600",
     },
     {
       label: "Total Bazar",
-      value: `৳${stats.totalBazar}`,
+      value: `৳${formatCurrency(stats.totalBazar)}`,
       sub: "this month",
       icon: ShoppingCart,
       color: "from-blue-500 to-cyan-600",
@@ -52,7 +52,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
     },
     {
       label: "Total Deposits",
-      value: `৳${stats.totalDeposits.toLocaleString()}`,
+      value: `৳${formatCurrency(stats.totalDeposits)}`,
       sub: "given this month",
       icon: Wallet,
       color: "from-teal-500 to-emerald-600",
@@ -60,14 +60,14 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
     balanceCard,
     {
       label: "Rent + Bua",
-      value: `৳${Math.round(bills.houseRent + bills.buaBill)}`,
+      value: `৳${formatCurrency(bills.houseRent + bills.buaBill)}`,
       sub: "informational fixed costs",
       icon: Home,
       color: "from-orange-500 to-amber-600",
     },
     {
       label: bills.otherBillsDescription || "Other Bills",
-      value: `৳${Math.round(bills.otherBills)}`,
+      value: `৳${formatCurrency(bills.otherBills)}`,
       sub: "informational fixed cost",
       icon: Home,
       color: "from-sky-500 to-blue-600",
@@ -85,7 +85,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
             }`}
         >
           <div className="mb-3 flex items-center justify-between gap-2">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">
+            <span className="min-w-0 truncate text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">
               {card.label}
             </span>
             <div
@@ -94,7 +94,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
               <card.icon className="h-4.5 w-4.5 text-white" />
             </div>
           </div>
-          <p className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
+          <p className="min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
             {card.value}
           </p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">

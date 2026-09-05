@@ -4,7 +4,7 @@ import { Download } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 import type { MemberSummary } from "@/lib/mess";
-import { buildWhatsAppLink, formatMonthLabel } from "@/lib/mess";
+import { buildWhatsAppLink, formatCurrency, formatMonthLabel } from "@/lib/mess";
 
 interface SummaryTableProps {
   members: MemberSummary[];
@@ -16,20 +16,20 @@ function BalanceBadge({ amount }: { amount: number }) {
   if (amount === 0) {
     return (
       <span className="inline-flex rounded-full bg-slate-100 px-2.75 py-1 text-[11px] font-semibold tracking-wide text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-        ৳0 SETTLED
+        ৳0.00 SETTLED
       </span>
     );
   }
   if (amount > 0) {
     return (
       <span className="inline-flex rounded-full bg-emerald-100 px-2.75 py-1 text-[11px] font-semibold tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-        +৳{amount.toLocaleString()} REFUND
+        +৳{formatCurrency(amount)} REFUND
       </span>
     );
   }
   return (
     <span className="inline-flex rounded-full bg-rose-100 px-2.75 py-1 text-[11px] font-semibold tracking-wide text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
-      -৳{Math.abs(amount).toLocaleString()} DUE
+      -৳{formatCurrency(Math.abs(amount))} DUE
     </span>
   );
 }
@@ -167,8 +167,8 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
                   </div>
                 </td>
                 <td className="px-4 py-3">{m.totalMeals}</td>
-                <td className="px-4 py-3">৳{m.totalDeposited}</td>
-                <td className="px-4 py-3">৳{m.mealCost}</td>
+                <td className="px-4 py-3">৳{formatCurrency(m.totalDeposited)}</td>
+                <td className="px-4 py-3">৳{formatCurrency(m.mealCost)}</td>
                 <td className="px-4 py-3">
                   <BalanceBadge amount={m.finalBalance} />
                 </td>
@@ -187,7 +187,7 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
               }`}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="break-words font-semibold">
+              <span className="min-w-0 break-words font-semibold">
                 {m.name}
                 {m.status === "inactive" && (
                   <span className="ml-2 text-xs font-normal text-slate-500">
@@ -218,11 +218,11 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
               </div>
               <div>
                 <span className="text-slate-500">Deposited</span>
-                <p className="font-medium">৳{m.totalDeposited}</p>
+                <p className="truncate font-medium">৳{formatCurrency(m.totalDeposited)}</p>
               </div>
               <div>
                 <span className="text-slate-500">Meal Cost</span>
-                <p className="font-medium">৳{m.mealCost}</p>
+                <p className="truncate font-medium">৳{formatCurrency(m.mealCost)}</p>
               </div>
             </div>
           </div>
