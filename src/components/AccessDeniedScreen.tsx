@@ -50,7 +50,7 @@ export function AccessDeniedScreen({
         <button
           type="button"
           onClick={onLogout}
-          className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-800 text-sm font-semibold text-white transition hover:bg-slate-900 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-white"
+          className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border-t border-white/40 bg-gradient-to-b from-slate-700 to-slate-950 text-sm font-semibold text-white transition hover:brightness-105 dark:from-slate-200 dark:to-slate-400 dark:text-slate-950"
         >
           <LogOut className="h-4 w-4" />
           Sign Out

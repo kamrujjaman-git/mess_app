@@ -86,10 +86,10 @@ export function VisualAnalytics({ bazarEntries, memberContributions, className =
     );
 
     return (
-        <div className={`space-y-6 rounded-3xl border border-slate-200/70 bg-slate-50/90 p-5 shadow-sm shadow-slate-200/50 dark:border-slate-700/80 dark:bg-slate-950/40 dark:shadow-slate-950/20 ${className}`}>
+        <div className={`glass-card space-y-6 rounded-3xl p-5 ${className}`}>
             <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
                 {/* Daily Bazar Chart */}
-                <section className="rounded-3xl border border-slate-200/70 bg-white/90 p-4 shadow-sm shadow-slate-200/30 dark:border-slate-700/70 dark:bg-slate-900/80 dark:shadow-slate-950/10">
+                <section className="glass-card rounded-3xl p-4">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
                             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Daily Bazar Trend</p>
@@ -117,7 +117,7 @@ export function VisualAnalytics({ bazarEntries, memberContributions, className =
                 </section>
 
                 {/* Member Contribution Chart */}
-                <section className="rounded-3xl border border-slate-200/70 bg-white/90 p-4 shadow-sm shadow-slate-200/30 dark:border-slate-700/70 dark:bg-slate-900/80 dark:shadow-slate-950/10">
+                <section className="glass-card rounded-3xl p-4">
                     <div className="mb-4">
                         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Member contribution</p>
                         <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Bazar share</h3>

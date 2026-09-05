@@ -51,7 +51,7 @@ export function SearchFilterBar({
         !!selectedMonth || !!selectedMember || !!selectedCategory || !!dateRange.start || !!dateRange.end;
 
     return (
-        <div className={`space-y-4 rounded-3xl border border-slate-200/70 bg-white/90 p-4 shadow-sm shadow-slate-200/50 backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/40 dark:shadow-slate-950/20 ${className}`}>
+        <div className={`glass-card space-y-4 rounded-3xl p-4 ${className}`}>
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                 <label className="relative block">
                     <span className="sr-only">Search</span>

@@ -604,7 +604,7 @@ function DashboardContent() {
               />
             </div>
 
-            <div className="mb-6 overflow-x-auto whitespace-nowrap scrollbar-none px-2 py-1">
+            <div className="glass mb-6 overflow-x-auto whitespace-nowrap rounded-2xl px-2 py-1 scrollbar-none">
               <div className="flex gap-2">
                 {visibleTabs.map((tab) => (
                   <button

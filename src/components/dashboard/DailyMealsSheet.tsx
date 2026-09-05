@@ -246,7 +246,7 @@ export function DailyMealsSheet({
                                 type="button"
                                 onClick={(event) => handleMealToggleClick(event, record, member, field)}
                                 disabled={saving}
-                                className={`mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border px-2 text-[11px] font-semibold transition ${isActive
+                                className={`mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border-t border-white/40 px-2 text-[11px] font-semibold transition ${isActive
                                   ? "border-emerald-500 bg-emerald-500 text-white shadow-sm"
                                   : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                   }`}
@@ -299,7 +299,7 @@ export function DailyMealsSheet({
                             type="button"
                             onClick={(event) => handleMealToggleClick(event, record, member, field)}
                             disabled={saving}
-                            className={`h-10 min-w-10 cursor-pointer rounded-full border px-2 text-[11px] font-semibold ${isActive
+                            className={`h-10 min-w-10 cursor-pointer rounded-full border-t border-white/40 px-2 text-[11px] font-semibold ${isActive
                               ? "border-emerald-500 bg-emerald-500 text-white"
                               : "border-slate-200 bg-white text-slate-600"
                               }`}

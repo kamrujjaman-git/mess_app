@@ -21,7 +21,7 @@ export function InlineActions({
         <button
           type="button"
           onClick={onEdit}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/60 text-slate-600 transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:bg-slate-800/60 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
           aria-label={editLabel}
           title={editLabel}
         >
@@ -32,7 +32,7 @@ export function InlineActions({
         <button
           type="button"
           onClick={onDelete}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950/40"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/60 text-red-600 transition-colors hover:bg-red-50 dark:bg-slate-800/60 dark:hover:bg-red-950/40"
           aria-label={deleteLabel}
           title={deleteLabel}
         >
@@ -44,4 +44,4 @@ export function InlineActions({
 }
 
 export const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white/80 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800/80";
+  "w-full rounded-xl border border-slate-300/60 bg-transparent px-3 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-600/80 dark:bg-transparent";

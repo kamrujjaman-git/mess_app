@@ -231,7 +231,7 @@ export function ManageMembers({
             No members yet. Add one above.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-slate-300/50 dark:divide-slate-700/60">
             {members.map((member) => (
               <li
                 key={member.id}

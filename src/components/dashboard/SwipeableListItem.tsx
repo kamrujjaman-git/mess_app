@@ -58,7 +58,7 @@ export function SwipeableListItem({
                         <button
                             type="button"
                             onClick={() => handleAction("edit")}
-                            className="flex h-12 items-center justify-center rounded-full bg-emerald-600/10 px-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-600/15"
+                            className="flex h-12 items-center justify-center rounded-full border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 px-3 text-sm font-semibold text-white transition hover:brightness-105"
                         >
                             {editLabel}
                         </button>
@@ -69,7 +69,7 @@ export function SwipeableListItem({
                         <button
                             type="button"
                             onClick={() => handleAction("delete")}
-                            className="flex h-12 items-center justify-center rounded-full bg-red-600/10 px-3 text-sm font-semibold text-red-700 transition hover:bg-red-600/15"
+                            className="flex h-12 items-center justify-center rounded-full border-t border-white/40 bg-gradient-to-b from-red-500 to-red-700 px-3 text-sm font-semibold text-white transition hover:brightness-105"
                         >
                             {deleteLabel}
                         </button>

@@ -101,14 +101,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
         return (
             <div
-                className={`flex items-center justify-between gap-4 min-w-[320px] max-w-md px-5 py-3 rounded-full bg-slate-950/65 backdrop-blur-xl -webkit-backdrop-blur-xl border border-white/20 shadow-[0_12px_40px_rgba(0,0,0,0.4)] text-white transition-all duration-300 ease-out ${toastItem.visible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95 pointer-events-none"}`}
+                className={`flex min-w-[320px] max-w-md items-center justify-between gap-4 rounded-full border border-white/40 bg-white/70 px-5 py-3 text-slate-900 shadow-lg backdrop-blur-md transition-all duration-300 ease-out dark:border-slate-700/50 dark:bg-slate-900/70 dark:text-white dark:shadow-2xl ${toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"}`}
             >
                 <div className="flex items-center gap-3">
                     {isSuccess && <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 stroke-[2.2] drop-shadow" />}
                     {isError && <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 stroke-[2.2] drop-shadow" />}
                     {!isSuccess && !isError && <Info className="w-5 h-5 text-sky-400 flex-shrink-0 stroke-[2.2] drop-shadow" />}
 
-                    <span className="text-sm font-semibold text-white tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{resolveValue(toastItem.message, toastItem)}</span>
+                    <span className="text-sm font-semibold tracking-wide">{resolveValue(toastItem.message, toastItem)}</span>
                 </div>
 
                 <button

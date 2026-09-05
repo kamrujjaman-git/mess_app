@@ -23,7 +23,7 @@ const tabs = [
 
 export function StickyBottomNav({ activeTab, setActiveTab, isAdmin = false }: StickyBottomNavProps) {
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-white/70 backdrop-blur-lg shadow-[0_-10px_30px_rgba(15,23,42,0.08)] dark:border-slate-800/70 dark:bg-slate-950/70 md:hidden">
+        <nav className="glass fixed bottom-0 left-0 right-0 z-40 md:hidden">
             <div className="mx-auto flex max-w-xl items-center justify-between px-3 py-2.5">
                 {tabs.map(({ key, label, Icon }) => {
                     const isActive = activeTab === key;
@@ -34,14 +34,14 @@ export function StickyBottomNav({ activeTab, setActiveTab, isAdmin = false }: St
                             onClick={() => setActiveTab(key)}
                             aria-current={isActive ? "page" : undefined}
                             className={`group flex flex-col items-center gap-1 rounded-3xl px-3 py-2 text-xs transition-transform duration-200 ${isActive
-                                    ? "scale-105 text-emerald-600 font-semibold"
-                                    : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                                ? "scale-105 text-emerald-600 font-semibold"
+                                : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                                 }`}
                         >
                             <span
                                 className={`flex h-9 w-9 items-center justify-center rounded-2xl border border-transparent transition-colors duration-200 ${isActive
-                                        ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"
-                                        : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"
+                                    : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                     }`}
                             >
                                 <Icon className="h-5 w-5" />
@@ -57,14 +57,14 @@ export function StickyBottomNav({ activeTab, setActiveTab, isAdmin = false }: St
                         onClick={() => setActiveTab("admin")}
                         aria-current={activeTab === "admin" ? "page" : undefined}
                         className={`group flex flex-col items-center gap-1 rounded-3xl px-3 py-2 text-xs transition-transform duration-200 ${activeTab === "admin"
-                                ? "scale-105 text-emerald-600 font-semibold"
-                                : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                            ? "scale-105 text-emerald-600 font-semibold"
+                            : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                             }`}
                     >
                         <span
                             className={`flex h-9 w-9 items-center justify-center rounded-2xl border border-transparent transition-colors duration-200 ${activeTab === "admin"
-                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"
-                                    : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"
+                                : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                 }`}
                         >
                             <ShieldCheck className="h-5 w-5" />

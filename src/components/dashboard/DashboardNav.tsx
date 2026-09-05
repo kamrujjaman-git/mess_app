@@ -121,7 +121,7 @@ export function DashboardNav({
   }
 
   return (
-    <header className="glass sticky top-0 z-50 w-full max-w-full overflow-hidden border-b border-white/20 bg-white/95 backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/95">
+    <header className="glass sticky top-0 z-50 w-full max-w-full overflow-hidden">
       <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-10 sm:w-10">
@@ -136,7 +136,7 @@ export function DashboardNav({
           <span className="hidden text-lg font-bold sm:inline">Mess App</span>
         </div>
 
-        <div className="flex items-center gap-1 rounded-xl bg-white/60 px-1 py-1 dark:bg-slate-800/60 sm:gap-2 sm:px-2">
+        <div className="glass flex items-center gap-1 rounded-xl px-1 py-1 sm:gap-2 sm:px-2">
           <button
             type="button"
             onClick={onPrevMonth}
@@ -162,7 +162,7 @@ export function DashboardNav({
           <button
             type="button"
             onClick={handleBellClick}
-            className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-800 sm:h-9 sm:w-9"
+            className="glass relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-all duration-200 hover:scale-[1.02] dark:text-slate-100 sm:h-9 sm:w-9"
             aria-label="Open notifications"
             title="Notifications"
           >
@@ -177,7 +177,7 @@ export function DashboardNav({
           <button
             type="button"
             onClick={() => setIsDark((prev) => !prev)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-slate-700 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-100 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-800 sm:h-9 sm:w-9"
+            className="glass flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-all duration-200 hover:scale-[1.02] dark:text-slate-100 sm:h-9 sm:w-9"
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
@@ -241,7 +241,7 @@ export function DashboardNav({
             className="absolute inset-0 h-full w-full"
             onClick={() => setShowNotifications(false)}
           />
-          <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 dark:border-slate-700 dark:bg-slate-900 sm:rounded-l-2xl">
+          <aside className="glass absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l transition-transform duration-300 sm:rounded-l-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
               <div>
                 <h2 className="text-base font-semibold">Activity Log</h2>
@@ -261,13 +261,13 @@ export function DashboardNav({
 
             <div className="flex-1 space-y-3 overflow-y-auto p-3">
               {visibleActivityLogs.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                <div className="glass-card rounded-2xl p-4 text-sm text-slate-700 dark:text-slate-200">
                   No notifications for this month yet.
                 </div>
               ) : (
                 visibleActivityLogs.map((log) => {
                   const content = (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                    <div className="glass-card rounded-2xl p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">

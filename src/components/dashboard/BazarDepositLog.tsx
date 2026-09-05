@@ -222,7 +222,7 @@ export function BazarDepositLog({
             </div>
           ) : (
             <div className="overflow-x-auto overflow-y-hidden px-2 py-2 sm:px-4">
-              <ul className="min-w-[280px] divide-y divide-slate-100 dark:divide-slate-800">
+              <ul className="min-w-[280px] divide-y divide-slate-300/50 dark:divide-slate-700/60">
                 {bazar.map((entry) => (
                   <li key={entry.id} className="px-4 py-3 sm:px-6">
                     {editingBazarId === entry.id ? (
@@ -260,8 +260,8 @@ export function BazarDepositLog({
                                   type="button"
                                   onClick={() => toggleBazarBuyerSelection(member.id)}
                                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${isSelected
-                                      ? "border-emerald-600 bg-emerald-600 text-white"
-                                      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-600/60 dark:hover:bg-slate-700"
+                                    ? "border-emerald-600 bg-emerald-600 text-white"
+                                    : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-600/60 dark:hover:bg-slate-700"
                                     }`}
                                 >
                                   {member.name}
@@ -375,7 +375,7 @@ export function BazarDepositLog({
             </div>
           ) : (
             <div className="overflow-x-auto overflow-y-hidden px-2 py-2 sm:px-4">
-              <ul className="min-w-[280px] divide-y divide-slate-100 dark:divide-slate-800">
+              <ul className="min-w-[280px] divide-y divide-slate-300/50 dark:divide-slate-700/60">
                 {deposits.map((entry) => (
                   <li key={entry.id} className="px-4 py-3 sm:px-6">
                     {editingDepositId === entry.id ? (
@@ -508,7 +508,7 @@ export function BazarDepositLog({
               </div>
             </div>
           </div>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-slate-300/50 dark:divide-slate-700/60">
             {billFields.map((field) => (
               <li key={field} className="px-4 py-3 sm:px-6">
                 {editingBillField === field ? (

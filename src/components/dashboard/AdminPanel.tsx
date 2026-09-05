@@ -277,7 +277,7 @@ export function AdminPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-1 shadow-sm backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/70">
+      <div className="glass rounded-2xl p-1">
         <div className="grid grid-cols-2 gap-1">
           {subTabs.map((tab) => {
             const Icon = tab.icon;
