@@ -43,6 +43,26 @@ import {
 type Tab = "summary" | "meals" | "logs" | "admin";
 type AdminSubTab = "entries" | "members";
 
+function notifyByEmail(emails: string[], subject: string, html: string): void {
+  const recipients = [...new Set(emails.map((email) => email.trim()).filter((email) => email.includes("@")))];
+  if (recipients.length === 0) return;
+
+  void fetch("/api/send-email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Mess-App-Request": "1",
+    },
+    body: JSON.stringify({ emails: recipients, subject, html }),
+  }).then((response) => {
+    if (!response.ok) {
+      console.error("Background email notification failed with status:", response.status);
+    }
+  }).catch((error) => {
+    console.error("Background email notification failed:", error);
+  });
+}
+
 const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "summary", label: "Summary" },
   { id: "meals", label: "Meals" },
@@ -241,8 +261,18 @@ function DashboardContent() {
         { date, amount, description, buyerIds },
         currentMember?.name || user?.displayName || "Admin"
       );
+      const buyerNames = buyerIds
+        .map((id) => members.find((member) => member.id === id)?.name ?? id)
+        .join(", ");
+      notifyByEmail(
+        buyerIds
+          .map((id) => members.find((member) => member.id === id)?.email ?? "")
+          .filter(Boolean),
+        `Bazar update for ${date}`,
+        `<p>Bazar entry added for ${date}: ৳${amount}. Buyers: ${buyerNames}.${description ? ` Description: ${description}` : ""}</p>`
+      );
     },
-    [currentMember?.name, monthKey, user?.displayName]
+    [currentMember?.name, members, monthKey, user?.displayName]
   );
 
   const handleEditBazar = useCallback(
@@ -253,8 +283,19 @@ function DashboardContent() {
         entry,
         currentMember?.name || user?.displayName || "Admin"
       );
+      const buyerIds = entry.buyerIds ?? (entry.buyerId ? [entry.buyerId] : []);
+      const buyerNames = buyerIds
+        .map((buyerId) => members.find((member) => member.id === buyerId)?.name ?? buyerId)
+        .join(", ");
+      notifyByEmail(
+        buyerIds
+          .map((buyerId) => members.find((member) => member.id === buyerId)?.email ?? "")
+          .filter(Boolean),
+        `Bazar update for ${entry.date}`,
+        `<p>Bazar entry updated for ${entry.date}: ৳${entry.amount}. Buyers: ${buyerNames}.${entry.description ? ` Description: ${entry.description}` : ""}</p>`
+      );
     },
-    [currentMember?.name, monthKey, user?.displayName]
+    [currentMember?.name, members, monthKey, user?.displayName]
   );
 
   const handleAddDeposit = useCallback(
@@ -276,8 +317,13 @@ function DashboardContent() {
         },
         currentMember?.name || user?.displayName || "Admin"
       );
+      notifyByEmail(
+        [members.find((member) => member.id === memberId)?.email ?? ""],
+        `Deposit received on ${date}`,
+        `<p>Deposit received by ${memberName}: ৳${amount} on ${date}.${note ? ` Note: ${note}` : ""}</p>`
+      );
     },
-    [currentMember?.name, monthKey, user?.displayName]
+    [currentMember?.name, members, monthKey, user?.displayName]
   );
 
   const handleEditDeposit = useCallback(
@@ -297,8 +343,16 @@ function DashboardContent() {
         entry,
         currentMember?.name || user?.displayName || "Admin"
       );
+      notifyByEmail(
+        [members.find((member) =>
+          member.id === entry.memberId ||
+          (!entry.memberId && member.name === entry.memberName)
+        )?.email ?? ""],
+        `Deposit updated on ${entry.date}`,
+        `<p>Deposit updated for ${entry.memberName}: ৳${entry.amount} on ${entry.date}.${entry.note ? ` Note: ${entry.note}` : ""}</p>`
+      );
     },
-    [currentMember?.name, monthKey, user?.displayName]
+    [currentMember?.name, members, monthKey, user?.displayName]
   );
 
   const handleUpdateBills = useCallback(
@@ -522,7 +576,6 @@ function DashboardContent() {
                 onUpdateMember={handleUpdateMember}
                 onSetMemberStatus={handleSetMemberStatus}
                 onDeleteMember={handleDeleteMember}
-                performedBy={memberDisplayName}
               />
             )}
 

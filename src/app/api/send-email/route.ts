@@ -113,7 +113,6 @@ export async function POST(request: Request) {
 
         const body = (await request.json().catch(() => ({}))) ?? {};
         const recipientEmails = normalizeRecipientEmails(body.emails ?? body.email ?? body.recipientEmail);
-        const targetEmail = recipientEmails[0] ?? "";
         const subject = typeof body.subject === "string" && body.subject.trim().length > 0
             ? body.subject.trim().slice(0, 200)
             : "Mess App Notification";
@@ -130,7 +129,7 @@ export async function POST(request: Request) {
             `Date: ${new Date().toLocaleDateString()}`,
         ].join("\n");
 
-        if (!targetEmail) {
+        if (recipientEmails.length === 0) {
             return NextResponse.json({ ok: true, sent: 0, message: "No recipient emails provided." });
         }
 
@@ -147,7 +146,7 @@ export async function POST(request: Request) {
         try {
             const info = await transporter.sendMail({
                 from: `Mess App <${process.env.SMTP_EMAIL}>`,
-                to: targetEmail,
+                to: recipientEmails,
                 subject,
                 text,
                 html,
@@ -161,7 +160,7 @@ export async function POST(request: Request) {
 
             return NextResponse.json({
                 ok: true,
-                sent: 1,
+                sent: recipientEmails.length,
                 messageId: info.messageId ?? null,
             });
         } catch (sendError) {
