@@ -91,9 +91,10 @@ export interface MonthBills {
   houseRent: number;
   buaBill: number;
   otherBills: number;
+  otherBillsDescription: string;
 }
 
-export type BillField = keyof MonthBills;
+export type BillField = "houseRent" | "buaBill" | "otherBills";
 
 export const BILL_LABELS: Record<BillField, string> = {
   houseRent: "House Rent",
@@ -124,17 +125,6 @@ export interface MessStats {
   totalFixedCosts: number;
   activeMemberCount: number;
   members: MemberSummary[];
-}
-
-export interface MonthlyArchiveData {
-  monthKey: string;
-  archivedAt: string;
-  bills: MonthBills;
-  dailyMeals: DailyMealRecord[];
-  bazar: BazarEntry[];
-  deposits: DepositEntry[];
-  members: Member[];
-  stats: MessStats;
 }
 
 export function createDefaultMembers(): Member[] {
@@ -293,7 +283,7 @@ export function calculateMessStats(
   const totalMeals = dailyRecords.reduce((sum, record) => {
     return (
       sum +
-      activeMembers.reduce((memberSum, member) => {
+      members.reduce((memberSum, member) => {
         const meals = record.meals[member.id];
         if (!meals) return memberSum;
         return memberSum + getMemberTotalMeals(meals);
@@ -308,10 +298,7 @@ export function calculateMessStats(
     safeRound(bills.buaBill) +
     safeRound(bills.otherBills)
   );
-  const fixedCostPerPerson =
-    activeMemberCount > 0
-      ? safeRound(totalFixedCosts / activeMemberCount)
-      : 0;
+  const fixedCostPerPerson = 0;
 
   const memberSummaries: MemberSummary[] = members.map((member) => {
     const personalTotalMeals = sumDailyMealsForMember(
@@ -329,8 +316,8 @@ export function calculateMessStats(
     );
     const mealCost = safeRound(personalTotalMeals * mealRate);
     const mealBalance = safeRound(totalDeposited - mealCost);
-    const fixedShare = isMemberActive(member) ? fixedCostPerPerson : 0;
-    const finalBalance = safeRound(totalDeposited - (mealCost + fixedShare));
+    const fixedShare = 0;
+    const finalBalance = safeRound(totalDeposited - mealCost);
 
     return {
       id: member.id,

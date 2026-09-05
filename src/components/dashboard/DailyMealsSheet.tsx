@@ -3,13 +3,13 @@
 import { Fragment, useRef, useState, type MouseEvent } from "react";
 import { toast } from "react-hot-toast";
 import { ShieldAlert } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
 import type { DailyMealRecord, Member, MemberMeals } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
 
 interface DailyMealsSheetProps {
   records: DailyMealRecord[];
   members: Member[];
+  selectedMonthKey: string;
   isAdmin?: boolean;
   onEdit?: (date: string, meals: Record<string, MemberMeals>) => Promise<void>;
   onOptimisticToggle?: (date: string, memberId: string, mealType: keyof MemberMeals, nextStatus: boolean) => void;
@@ -18,30 +18,16 @@ interface DailyMealsSheetProps {
 export function DailyMealsSheet({
   records,
   members,
+  selectedMonthKey,
   isAdmin = false,
   onEdit,
   onOptimisticToggle,
 }: DailyMealsSheetProps) {
-  const { user } = useAuth();
   const activeMembers = getActiveMembers(members);
   const [draftMeals, setDraftMeals] = useState<Record<string, Record<string, MemberMeals>>>({});
   const [saving, setSaving] = useState(false);
   const togglingMealCells = useRef<Record<string, boolean>>({});
   const now = new Date();
-  const isAfterElevenFiftyNinePm = now.getHours() > 23 || (now.getHours() === 23 && now.getMinutes() >= 59);
-  const currentMember = activeMembers.find(
-    (member) => member.email?.trim().toLowerCase() === user?.email?.trim().toLowerCase()
-  );
-  const currentMemberId = currentMember?.id ?? null;
-  const currentUserEmail = user?.email?.trim().toLowerCase() ?? "";
-  const currentUserName = currentMember?.name?.trim().toLowerCase() ?? "";
-
-  function isCurrentMemberColumn(member: Member) {
-    const memberEmail = member.email?.trim().toLowerCase() ?? "";
-    const memberName = member.name?.trim().toLowerCase() ?? "";
-    return member.id === currentMemberId || memberEmail === currentUserEmail || memberName === currentUserName;
-  }
-
   function getDateKey(date: Date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -50,41 +36,28 @@ export function DailyMealsSheet({
   }
 
   const todayKey = getDateKey(now);
-  const tomorrowKey = getDateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
-
   function canEditRecord(recordDate: string) {
-    if (isAdmin) return true;
-    return recordDate === tomorrowKey && !isAfterElevenFiftyNinePm;
+    return isAdmin && recordDate.startsWith(selectedMonthKey) && recordDate <= todayKey;
   }
 
-  function canEditMember(member: Member) {
-    return isAdmin || isCurrentMemberColumn(member);
-  }
-
-  function canEditCell(recordDate: string, member: Member) {
-    if (!canEditMember(member)) return false;
+  function canEditCell(recordDate: string) {
     return canEditRecord(recordDate);
   }
 
-  const mealLockBanner = !isAdmin && isAfterElevenFiftyNinePm
-    ? "Tomorrow's meal selection closed at 11:59 PM."
-    : null;
+  const mealLockBanner = !isAdmin
+    ? "Meal entries are read-only for members."
+    : "Future dates are locked. Only today and past dates can be edited.";
 
   function buildDisplayRows() {
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const rowsLimit = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const [year, month] = selectedMonthKey.split("-").map(Number);
+    const daysInSelectedMonth = new Date(year, month, 0).getDate();
     const rows: Array<{ date: string; label: string }> = [];
 
-    for (let cursor = new Date(monthStart); cursor <= rowsLimit; cursor.setDate(cursor.getDate() + 1)) {
+    for (let day = 1; day <= daysInSelectedMonth; day += 1) {
+      const cursor = new Date(year, month - 1, day);
       const dateKey = getDateKey(cursor);
-      if (dateKey === todayKey || dateKey === tomorrowKey) {
-        continue;
-      }
-      rows.push({ date: dateKey, label: dateKey.slice(5) });
+      rows.push({ date: dateKey, label: dateKey === todayKey ? "Today" : dateKey.slice(5) });
     }
-
-    rows.push({ date: todayKey, label: "Today" });
-    rows.push({ date: tomorrowKey, label: "Tomorrow" });
 
     return rows;
   }
@@ -111,7 +84,7 @@ export function DailyMealsSheet({
   }
 
   async function toggleMealCell(record: DailyMealRecord, member: Member, field: keyof MemberMeals) {
-    if (!canEditCell(record.date, member)) return;
+    if (!canEditCell(record.date)) return;
 
     const toggleKey = `${record.date}:${member.id}:${field}`;
     if (togglingMealCells.current[toggleKey]) return;
@@ -155,16 +128,6 @@ export function DailyMealsSheet({
       setSaving(false);
       togglingMealCells.current[toggleKey] = false;
     }
-  }
-
-  if (records.length === 0) {
-    return (
-      <div className="glass-card rounded-2xl p-8 text-center">
-        <p className="text-slate-500 dark:text-slate-400">
-          No daily meal entries yet for this month.
-        </p>
-      </div>
-    );
   }
 
   return (
@@ -216,28 +179,25 @@ export function DailyMealsSheet({
             {displayRows.map((row) => {
               const record = records.find((item) => item.date === row.date) ?? { date: row.date, meals: {} } as DailyMealRecord;
               const isPast = row.date < todayKey;
+              const isFuture = row.date > todayKey;
               const isTodayRow = row.label === "Today";
-              const isTomorrowRow = row.label === "Tomorrow";
               return (
-                <tr key={row.date} className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${isTodayRow || isTomorrowRow ? "bg-emerald-50/70 dark:bg-emerald-950/20" : ""}`}>
+                <tr key={row.date} className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${isTodayRow ? "bg-emerald-50/70 dark:bg-emerald-950/20" : isFuture ? "bg-slate-50/60 text-slate-400 dark:bg-slate-950/30 dark:text-slate-500" : ""}`}>
                   <td className="sticky left-0 whitespace-nowrap bg-white/80 px-4 py-2.5 font-medium backdrop-blur dark:bg-slate-900/80 sm:px-6">
                     <div className="flex flex-col">
                       <span>{row.label}</span>
-                      {!isPast && row.label !== "Today" && row.label !== "Tomorrow" && (
+                      {!isPast && row.label !== "Today" && (
                         <span className="text-[11px] font-normal text-slate-400">{record.date.slice(5)}</span>
                       )}
                       {row.label === "Today" && (
                         <span className="text-[11px] font-normal text-slate-400">{todayKey.slice(5)}</span>
-                      )}
-                      {row.label === "Tomorrow" && (
-                        <span className="text-[11px] font-normal text-slate-400">{tomorrowKey.slice(5)}</span>
                       )}
                     </div>
                   </td>
                   {activeMembers.map((member) => (
                     <Fragment key={member.id}>
                       {(["breakfast", "lunch", "dinner"] as const).map((field) => {
-                        const isEditable = canEditCell(record.date, member);
+                        const isEditable = canEditCell(record.date);
                         const isActive = (getDraftMealValue(record, member.id, field) ?? 0) > 0;
                         return (
                           <td key={field} className="px-1 py-2.5 text-center">
@@ -279,11 +239,11 @@ export function DailyMealsSheet({
         {displayRows.map((row) => {
           const record = records.find((item) => item.date === row.date) ?? { date: row.date, meals: {} } as DailyMealRecord;
           const isTodayRow = row.label === "Today";
-          const isTomorrowRow = row.label === "Tomorrow";
+          const isFuture = row.date > todayKey;
           return (
-            <div key={row.date} className={`rounded-xl border p-4 ${isTodayRow || isTomorrowRow ? "border-emerald-300 bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/20" : "border-transparent bg-white/50 dark:bg-slate-800/40"}`}>
+            <div key={row.date} className={`rounded-xl border p-4 ${isTodayRow ? "border-emerald-300 bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/20" : isFuture ? "border-slate-200/60 bg-slate-50/60 text-slate-400 dark:border-slate-800/60 dark:bg-slate-950/30 dark:text-slate-500" : "border-transparent bg-white/50 dark:bg-slate-800/40"}`}>
               <div className="mb-3 flex items-center justify-between">
-                <p className="font-semibold">{row.label} · {row.label === "Today" ? todayKey.slice(5) : row.label === "Tomorrow" ? tomorrowKey.slice(5) : row.label}</p>
+                <p className="font-semibold">{row.label} · {row.label === "Today" ? todayKey.slice(5) : row.label}</p>
               </div>
               <div className="space-y-3">
                 {activeMembers.map((member) => (
@@ -291,7 +251,7 @@ export function DailyMealsSheet({
                     <span className="text-sm font-medium">{member.name}</span>
                     <div className="flex gap-2">
                       {(["breakfast", "lunch", "dinner"] as const).map((field) => {
-                        const isEditable = canEditCell(record.date, member);
+                        const isEditable = canEditCell(record.date);
                         const isActive = (getDraftMealValue(record, member.id, field) ?? 0) > 0;
                         return isEditable ? (
                           <button

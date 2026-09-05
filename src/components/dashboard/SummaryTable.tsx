@@ -3,12 +3,11 @@
 import { Download } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
-import type { MemberSummary, MessStats } from "@/lib/mess";
+import type { MemberSummary } from "@/lib/mess";
 import { buildWhatsAppLink, formatMonthLabel } from "@/lib/mess";
 
 interface SummaryTableProps {
   members: MemberSummary[];
-  stats?: MessStats;
   monthKey?: string;
   isAdmin?: boolean;
 }
@@ -52,7 +51,7 @@ function WhatsAppActionIcon() {
   );
 }
 
-export function SummaryTable({ members, stats, monthKey, isAdmin = false }: SummaryTableProps) {
+export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTableProps) {
   function handleDownloadPdf() {
     if (typeof window === "undefined") {
       return;
@@ -127,29 +126,6 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
         </button>
       </div>
 
-      <div className="summary-metrics print:mb-4 print:grid print:grid-cols-2 print:gap-3 print:border-b print:border-slate-200 print:px-4 print:py-4 hidden md:grid md:border-b md:border-slate-200/60 md:px-4 md:py-4 dark:md:border-slate-700/60">
-        {stats && (
-          <>
-            <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/40">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Total Meals</p>
-              <p className="text-sm font-semibold">{stats.totalMeals}</p>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/40">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Total Bazar</p>
-              <p className="text-sm font-semibold">৳{stats.totalBazar}</p>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/40">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Meal Rate</p>
-              <p className="text-sm font-semibold">৳{stats.mealRate}</p>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/40">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Meal Balance</p>
-              <p className="text-sm font-semibold">৳{Math.abs(stats.remainingBalance).toLocaleString()}</p>
-            </div>
-          </>
-        )}
-      </div>
-
       <div className="summary-print-table hidden overflow-x-auto overflow-y-hidden md:block">
         <table className="w-full text-sm">
           <thead>
@@ -158,7 +134,6 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
               <th className="px-4 py-3 font-medium">Meals</th>
               <th className="px-4 py-3 font-medium">Deposited</th>
               <th className="px-4 py-3 font-medium">Meal Cost</th>
-              {isAdmin && <th className="px-4 py-3 font-medium">Rent Share</th>}
               <th className="px-4 py-3 font-medium">Final Balance</th>
             </tr>
           </thead>
@@ -194,7 +169,6 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                 <td className="px-4 py-3">{m.totalMeals}</td>
                 <td className="px-4 py-3">৳{m.totalDeposited}</td>
                 <td className="px-4 py-3">৳{m.mealCost}</td>
-                {isAdmin && <td className="px-4 py-3">৳{m.fixedCostShare}</td>}
                 <td className="px-4 py-3">
                   <BalanceBadge amount={m.finalBalance} />
                 </td>
@@ -250,12 +224,6 @@ export function SummaryTable({ members, stats, monthKey, isAdmin = false }: Summ
                 <span className="text-slate-500">Meal Cost</span>
                 <p className="font-medium">৳{m.mealCost}</p>
               </div>
-              {isAdmin ? (
-                <div>
-                  <span className="text-slate-500">Rent Share</span>
-                  <p className="font-medium">৳{m.fixedCostShare}</p>
-                </div>
-              ) : null}
             </div>
           </div>
         ))}

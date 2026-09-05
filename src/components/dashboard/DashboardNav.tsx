@@ -138,11 +138,11 @@ export function DashboardNav({
           <span className="hidden text-lg font-bold sm:inline">Mess App</span>
         </div>
 
-        <div className="glass order-3 flex w-full items-center justify-center gap-1 rounded-full border-white/25 px-0.5 py-0.5 shadow-none md:order-2 md:w-auto md:flex-none md:gap-2 md:px-1">
+        <div className="order-3 flex w-full items-center justify-center gap-0.5 rounded-full border border-slate-200/80 bg-slate-50/80 px-2 py-1 text-xs shadow-sm transition-colors hover:bg-slate-100/80 dark:border-slate-800 dark:bg-slate-900/80 dark:hover:bg-slate-800/80 sm:gap-1 sm:text-sm md:order-2 md:mx-auto md:w-auto md:flex-none">
           <button
             type="button"
             onClick={onPrevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 sm:h-9 sm:w-9"
+            className="flex shrink-0 items-center justify-center rounded-full p-1 text-slate-600 transition-colors hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-800"
             aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -153,7 +153,7 @@ export function DashboardNav({
           <button
             type="button"
             onClick={onNextMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 sm:h-9 sm:w-9"
+            className="flex shrink-0 items-center justify-center rounded-full p-1 text-slate-600 transition-colors hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-800"
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />

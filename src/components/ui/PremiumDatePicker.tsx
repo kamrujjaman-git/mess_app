@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PremiumDatePickerProps {
     value: string;
@@ -141,13 +141,17 @@ export function PremiumDatePicker({
                 onClick={openPicker}
                 aria-haspopup="dialog"
                 aria-expanded={open}
-                className="glass flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-slate-800 transition-all hover:scale-[1.01] dark:text-slate-100"
+                className={`${mode === "month"
+                    ? "flex min-h-9 w-full items-center gap-2 rounded-full bg-transparent px-2 py-1 text-left text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-200/60 sm:min-h-10 sm:text-sm dark:text-slate-100 dark:hover:bg-slate-800"
+                    : "glass flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-slate-800 transition-all hover:scale-[1.01] dark:text-slate-100"}`}
             >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                <span className={`${mode === "month"
+                    ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-emerald-700 dark:text-emerald-300"
+                    : "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"}`}
+                >
                     <CalendarDays className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
             </button>
 
             {open ? (

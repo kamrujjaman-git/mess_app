@@ -50,20 +50,34 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       icon: Utensils,
       color: "from-violet-500 to-purple-600",
     },
+    {
+      label: "Total Deposits",
+      value: `৳${stats.totalDeposits.toLocaleString()}`,
+      sub: "given this month",
+      icon: Wallet,
+      color: "from-teal-500 to-emerald-600",
+    },
     balanceCard,
     {
       label: "Rent + Bua",
       value: `৳${Math.round(bills.houseRent + bills.buaBill)}`,
-      sub: "fixed costs",
+      sub: "informational fixed costs",
       icon: Home,
       color: "from-orange-500 to-amber-600",
+    },
+    {
+      label: bills.otherBillsDescription || "Other Bills",
+      value: `৳${Math.round(bills.otherBills)}`,
+      sub: "informational fixed cost",
+      icon: Home,
+      color: "from-sky-500 to-blue-600",
     },
   ];
 
   const visibleCards = isAdmin ? cards : cards.filter((card) => card.label !== "Rent + Bua");
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
       {visibleCards.map((card) => (
         <div
           key={card.label}

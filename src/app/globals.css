@@ -252,13 +252,6 @@ summary {
     print-color-adjust: exact !important;
   }
 
-  .summary-metrics {
-    display: grid !important;
-    gap: 0.75rem !important;
-    padding: 1rem 0 !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-  }
-
   table,
   th,
   td {

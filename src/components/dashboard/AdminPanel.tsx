@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { Loader2, Save, Plus, Users, NotebookPen } from "lucide-react";
 import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
-import { getActiveMembers, getTodayDateString } from "@/lib/mess";
+import { getActiveMembers } from "@/lib/mess";
 import { ManageMembers } from "./ManageMembers";
 import { inputClass } from "./InlineActions";
 import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
@@ -14,6 +14,7 @@ type AdminSubTab = "entries" | "members";
 interface AdminPanelProps {
   members: Member[];
   bills: MonthBills;
+  selectedMonthKey: string;
   subTab: AdminSubTab;
   onSubTabChange: (subTab: AdminSubTab) => void;
   onSaveMeals?: (
@@ -29,8 +30,6 @@ interface AdminPanelProps {
     note: string
   ) => Promise<void>;
   onUpdateBills?: (bills: MonthBills) => Promise<void>;
-  onArchiveMonth?: () => Promise<void>;
-  isArchiveMode?: boolean;
   onAddMember: (name: string, email: string, whatsAppNumber?: string) => Promise<void>;
   onUpdateMember: (member: Member) => Promise<void>;
   onSetMemberStatus: (memberId: string, status: Member["status"]) => Promise<void>;
@@ -41,14 +40,13 @@ interface AdminPanelProps {
 export function AdminPanel({
   members,
   bills,
+  selectedMonthKey,
   subTab,
   onSubTabChange,
   onSaveMeals,
   onAddBazar,
   onAddDeposit,
   onUpdateBills,
-  onArchiveMonth,
-  isArchiveMode = false,
   onAddMember,
   onUpdateMember,
   onSetMemberStatus,
@@ -57,7 +55,7 @@ export function AdminPanel({
 }: AdminPanelProps) {
   const activeMembers = getActiveMembers(members);
 
-  const [mealDate, setMealDate] = useState(getTodayDateString());
+  const [mealDate, setMealDate] = useState(`${selectedMonthKey}-01`);
   const [mealInputs, setMealInputs] = useState<Record<string, MemberMeals>>(
     () => {
       const initial: Record<string, MemberMeals> = {};
@@ -68,7 +66,7 @@ export function AdminPanel({
     }
   );
 
-  const [bazarDate, setBazarDate] = useState(getTodayDateString());
+  const [bazarDate, setBazarDate] = useState(`${selectedMonthKey}-01`);
   const [bazarAmount, setBazarAmount] = useState("");
   const [bazarDesc, setBazarDesc] = useState("");
   const [selectedBuyerIds, setSelectedBuyerIds] = useState<string[]>([]);
@@ -77,7 +75,7 @@ export function AdminPanel({
     activeMembers[0]?.id ?? ""
   );
   const [depositAmount, setDepositAmount] = useState("");
-  const [depositDate, setDepositDate] = useState(getTodayDateString());
+  const [depositDate, setDepositDate] = useState(`${selectedMonthKey}-01`);
   const [depositNote, setDepositNote] = useState("");
 
   const [billDraft, setBillDraft] = useState<MonthBills | null>(null);
@@ -320,15 +318,6 @@ export function AdminPanel({
                   Select a date and update meal entries for all members.
                 </p>
               </div>
-              {onArchiveMonth && !isArchiveMode ? (
-                <button
-                  type="button"
-                  onClick={onArchiveMonth}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                >
-                  Archive &amp; Start New Month
-                </button>
-              ) : null}
             </div>
             <div className="mb-4">
               <label className="mb-1 block text-xs font-medium text-slate-500">
@@ -504,7 +493,7 @@ export function AdminPanel({
             <h3 className="mb-4 text-base font-semibold">
               Monthly Fixed Bills (Quick Set)
             </h3>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500">
                   House Rent (৳)
@@ -532,6 +521,23 @@ export function AdminPanel({
                     setBillDraft((prev) => ({
                       ...(prev ?? bills),
                       buaBill: Math.round(parseFloat(e.target.value) || 0),
+                    }))
+                  }
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Other Bills Description/Title
+                </label>
+                <input
+                  type="text"
+                  placeholder="Electricity & Water"
+                  value={billInputs.otherBillsDescription}
+                  onChange={(e) =>
+                    setBillDraft((prev) => ({
+                      ...(prev ?? bills),
+                      otherBillsDescription: e.target.value,
                     }))
                   }
                   className={inputClass}

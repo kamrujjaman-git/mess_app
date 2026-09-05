@@ -60,11 +60,6 @@ service cloud.firestore {
     allow create, update, delete: if isAdmin();
   }
 
-  match /monthly_archives/{monthKey} {
-    allow read: if signedIn();
-    allow create, update, delete: if isAdmin();
-  }
-
   match /activity_logs/{logId} {
     allow read: if signedIn();
     allow create: if signedIn();

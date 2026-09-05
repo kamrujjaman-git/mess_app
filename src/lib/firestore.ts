@@ -7,7 +7,6 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  writeBatch,
   onSnapshot,
   query,
   orderBy,
@@ -25,7 +24,6 @@ import {
   createDefaultMembers,
   createEmptyDailyMeals,
   getActiveMembers,
-  MonthlyArchiveData,
 } from "./mess";
 
 function monthDoc(monthKey: string) {
@@ -262,9 +260,10 @@ export async function getMonthBills(monthKey: string): Promise<MonthBills> {
       houseRent: data.houseRent ?? 0,
       buaBill: data.buaBill ?? 0,
       otherBills: data.otherBills ?? 0,
+      otherBillsDescription: String(data.otherBillsDescription ?? ""),
     };
   }
-  return { houseRent: 0, buaBill: 0, otherBills: 0 };
+  return { houseRent: 0, buaBill: 0, otherBills: 0, otherBillsDescription: "" };
 }
 
 export async function updateMonthBills(
@@ -277,6 +276,7 @@ export async function updateMonthBills(
       houseRent: Math.round(bills.houseRent),
       buaBill: Math.round(bills.buaBill),
       otherBills: Math.round(bills.otherBills),
+      otherBillsDescription: bills.otherBillsDescription.trim(),
     },
     { merge: true }
   );
@@ -469,43 +469,6 @@ export interface MonthData {
   members: Member[];
 }
 
-export async function archiveCurrentMonthData(
-  monthKey: string,
-  archive: Omit<MonthlyArchiveData, "monthKey" | "archivedAt">
-): Promise<void> {
-  const archiveDoc = doc(db, "monthly_archives", monthKey);
-  await setDoc(archiveDoc, {
-    ...archive,
-    monthKey,
-    archivedAt: new Date().toISOString(),
-  });
-}
-
-export async function getMonthlyArchive(monthKey: string): Promise<MonthlyArchiveData | null> {
-  const snap = await getDoc(doc(db, "monthly_archives", monthKey));
-  return snap.exists() ? (snap.data() as MonthlyArchiveData) : null;
-}
-
-export async function listMonthlyArchives(): Promise<string[]> {
-  const snaps = await getDocs(collection(db, "monthly_archives"));
-  return snaps.docs.map((doc) => doc.id).sort((a, b) => b.localeCompare(a));
-}
-
-export async function deleteMonthData(monthKey: string): Promise<void> {
-  const dailyMealsDocs = await getDocs(query(dailyMealsCollection(monthKey)));
-  const bazarDocs = await getDocs(query(bazarCollection(monthKey)));
-  const depositDocs = await getDocs(query(depositsCollection(monthKey)));
-
-  const batch = writeBatch(db);
-
-  dailyMealsDocs.docs.forEach((entry) => batch.delete(entry.ref));
-  bazarDocs.docs.forEach((entry) => batch.delete(entry.ref));
-  depositDocs.docs.forEach((entry) => batch.delete(entry.ref));
-
-  await batch.commit();
-  await deleteDoc(monthDoc(monthKey));
-}
-
 export interface ActivityLog {
   id: string;
   action: string;
@@ -568,7 +531,7 @@ export function subscribeToMonthData(
   monthKey: string,
   callback: (data: MonthData) => void
 ): Unsubscribe {
-  let bills: MonthBills = { houseRent: 0, buaBill: 0, otherBills: 0 };
+  let bills: MonthBills = { houseRent: 0, buaBill: 0, otherBills: 0, otherBillsDescription: "" };
   let members: Member[] = [];
   let dailyMeals: DailyMealRecord[] = [];
   let bazar: BazarEntry[] = [];
@@ -590,9 +553,10 @@ export function subscribeToMonthData(
         houseRent: data.houseRent ?? 0,
         buaBill: data.buaBill ?? 0,
         otherBills: data.otherBills ?? 0,
+        otherBillsDescription: String(data.otherBillsDescription ?? ""),
       };
     } else {
-      bills = { houseRent: 0, buaBill: 0, otherBills: 0 };
+      bills = { houseRent: 0, buaBill: 0, otherBills: 0, otherBillsDescription: "" };
     }
     emit();
   });

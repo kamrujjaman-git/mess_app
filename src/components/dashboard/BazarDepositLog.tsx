@@ -225,7 +225,7 @@ export function BazarDepositLog({
             <div className="overflow-x-auto overflow-y-hidden px-2 py-2 sm:px-4">
               <ul className="min-w-[280px] divide-y divide-slate-300/50 dark:divide-slate-700/60">
                 {bazar.map((entry) => (
-                  <li key={entry.id} className="px-4 py-3 sm:px-6">
+                  <li key={entry.id} className="px-2 py-2 sm:px-3">
                     {editingBazarId === entry.id ? (
                       <div className="space-y-2">
                         <PremiumDatePicker value={bazarDate} onChange={setBazarDate} label="Date" />
@@ -307,19 +307,19 @@ export function BazarDepositLog({
                         }}
                         editLabel="Edit"
                         deleteLabel="Delete"
-                        className="rounded-3xl"
+                        className="rounded-2xl"
                       >
-                        <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-2 py-2 transition-colors hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-800/60">
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:hover:border-slate-700 dark:hover:bg-slate-900">
                           <div className="min-w-0 flex-1">
-                            <p className="break-words font-semibold text-slate-800 dark:text-slate-100">
+                            <p className="break-words text-base font-bold text-slate-900 dark:text-white">
                               ৳{entry.amount}
                             </p>
-                            <p className="break-words text-xs text-slate-500 dark:text-slate-400">
-                              {entry.date}
-                              {entry.description ? ` · ${entry.description}` : ""}
+                            <p className="mt-1 break-words text-sm font-medium text-slate-700 dark:text-slate-200">
+                              {entry.description || "Bazar expense"}
                             </p>
-                            <p className="mt-1 break-words text-[11px] text-slate-500 dark:text-slate-400">
-                              Buyers: {buyerNames(entry)}
+                            <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold dark:bg-slate-800">{entry.date}</span>
+                              <span className="break-words">Buyers: {buyerNames(entry)}</span>
                             </p>
                           </div>
                           {isAdmin && (
@@ -373,7 +373,7 @@ export function BazarDepositLog({
             <div className="overflow-x-auto overflow-y-hidden px-2 py-2 sm:px-4">
               <ul className="min-w-[280px] divide-y divide-slate-300/50 dark:divide-slate-700/60">
                 {deposits.map((entry) => (
-                  <li key={entry.id} className="px-4 py-3 sm:px-6">
+                  <li key={entry.id} className="px-2 py-2 sm:px-3">
                     {editingDepositId === entry.id ? (
                       <div className="space-y-2">
                         <select
@@ -444,16 +444,16 @@ export function BazarDepositLog({
                         }}
                         editLabel="Edit"
                         deleteLabel="Delete"
-                        className="rounded-3xl"
+                        className="rounded-2xl"
                       >
-                        <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-2 py-2 transition-colors hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-800/60">
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:hover:border-slate-700 dark:hover:bg-slate-900">
                           <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-slate-800 dark:text-slate-100">
+                            <p className="text-base font-bold text-slate-900 dark:text-white">
                               {entry.memberName} — ৳{entry.amount}
                             </p>
-                            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                              {entry.date}
-                              {entry.note ? ` · ${entry.note}` : ""}
+                            <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200">{entry.date}</span>
+                              {entry.note ? <span className="break-words">{entry.note}</span> : null}
                             </p>
                           </div>
                           {isAdmin && (
@@ -505,7 +505,9 @@ export function BazarDepositLog({
                 {editingBillField === field ? (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <span className="min-w-[120px] text-sm font-medium">
-                      {BILL_LABELS[field]}
+                      {field === "otherBills" && bills.otherBillsDescription
+                        ? bills.otherBillsDescription
+                        : BILL_LABELS[field]}
                     </span>
                     <input
                       type="number"
@@ -543,7 +545,11 @@ export function BazarDepositLog({
                 ) : (
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium">{BILL_LABELS[field]}</p>
+                      <p className="font-medium">
+                        {field === "otherBills" && bills.otherBillsDescription
+                          ? bills.otherBillsDescription
+                          : BILL_LABELS[field]}
+                      </p>
                       <p className="text-lg font-bold">
                         ৳{Math.round(bills[field])}
                       </p>

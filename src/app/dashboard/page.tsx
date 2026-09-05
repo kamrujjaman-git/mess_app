@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -11,18 +11,15 @@ import { SummaryTable } from "@/components/dashboard/SummaryTable";
 import { DailyMealsSheet } from "@/components/dashboard/DailyMealsSheet";
 import { BazarDepositLog } from "@/components/dashboard/BazarDepositLog";
 import { AdminPanel } from "@/components/dashboard/AdminPanel";
-import { toast } from "react-hot-toast";
 import {
   calculateMessStats,
   formatMonthKey,
   formatMonthLabel,
-  normalizeMealCount,
   type DailyMealRecord,
   type MemberMeals,
   type Member,
   type MonthBills,
   type BillField,
-  type MonthlyArchiveData,
 } from "@/lib/mess";
 import {
   subscribeToMonthData,
@@ -40,10 +37,6 @@ import {
   deleteBazarEntry,
   deleteDepositEntry,
   deleteMember,
-  archiveCurrentMonthData,
-  getMonthlyArchive,
-  listMonthlyArchives,
-  deleteMonthData,
   type MonthData,
 } from "@/lib/firestore";
 
@@ -65,33 +58,6 @@ function getTabFromUrl(tab: string | null): Tab {
 
 function getSubTabFromUrl(subTab: string | null): AdminSubTab {
   return subTab === "members" ? "members" : "entries";
-}
-
-function calculateTotalFromDailyMeals(dailyMeals: DailyMealRecord[] | undefined): number {
-  if (!dailyMeals || dailyMeals.length === 0) return 0;
-
-  return dailyMeals.reduce((sum, record) => {
-    const memberMeals = Object.values(record.meals ?? {}) as unknown[];
-    const dailyTotal = memberMeals.reduce<number>((memberSum, meals) => {
-      if (!meals || typeof meals !== "object") {
-        return memberSum + normalizeMealCount(meals);
-      }
-
-      const mealRecord = meals as Record<string, unknown>;
-      const values: unknown[] = [
-        mealRecord.breakfast,
-        mealRecord.lunch,
-        mealRecord.dinner,
-        mealRecord.b,
-        mealRecord.l,
-        mealRecord.d,
-      ];
-
-      return memberSum + values.reduce<number>((fieldSum, value) => fieldSum + normalizeMealCount(value), 0);
-    }, 0);
-
-    return sum + dailyTotal;
-  }, 0);
 }
 
 function DashboardLoading() {
@@ -119,11 +85,7 @@ function DashboardContent() {
 
   const [monthKey, setMonthKey] = useState(formatMonthKey(new Date()));
   const [monthData, setMonthData] = useState<MonthData | null>(null);
-  const [archiveMonthKey, setArchiveMonthKey] = useState("");
-  const [archiveData, setArchiveData] = useState<MonthlyArchiveData | null>(null);
-  const [archiveLoadedKey, setArchiveLoadedKey] = useState("");
   const [monthLoadedKey, setMonthLoadedKey] = useState("");
-  const [archiveKeys, setArchiveKeys] = useState<string[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const activeTab = getTabFromUrl(searchParams.get("tab"));
   const activeSubTab = getSubTabFromUrl(searchParams.get("subtab"));
@@ -141,8 +103,6 @@ function DashboardContent() {
   }, [user, loading, router]);
 
   const currentTab = isAdmin && activeTab === "admin" ? "admin" : activeTab === "admin" ? "summary" : activeTab;
-  const isArchiveView = archiveMonthKey !== "";
-
   useEffect(() => {
     if (!user || !hasAccess) return;
     const unsub = subscribeToMonthData(monthKey, (data) => {
@@ -152,39 +112,6 @@ function DashboardContent() {
     });
     return unsub;
   }, [monthKey, user, hasAccess]);
-
-  useEffect(() => {
-    const loadArchives = async () => {
-      try {
-        const keys = await listMonthlyArchives();
-        setArchiveKeys(keys);
-      } catch (error) {
-        console.error("Failed to load archive list:", error);
-      }
-    };
-
-    void loadArchives();
-  }, []);
-
-  useEffect(() => {
-    if (!archiveMonthKey) {
-      return;
-    }
-
-    const loadArchive = async () => {
-      try {
-        const archive = await getMonthlyArchive(archiveMonthKey);
-        setArchiveData(archive);
-        setArchiveLoadedKey(archiveMonthKey);
-      } catch (error) {
-        console.error("Failed to load archive snapshot:", error);
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    void loadArchive();
-  }, [archiveMonthKey]);
 
   const handleOptimisticMealToggle = useCallback(
     (date: string, memberId: string, mealType: keyof MemberMeals, nextStatus: boolean) => {
@@ -470,54 +397,7 @@ function DashboardContent() {
     )
     : null;
 
-  const handleArchiveMonth = useCallback(async () => {
-    if (!monthData || !stats) return;
-    if (!confirm("Archive current month and reset data for the next month?")) return;
-
-    setDataLoading(true);
-    try {
-      await archiveCurrentMonthData(monthKey, {
-        bills: monthData.bills,
-        dailyMeals: monthData.dailyMeals,
-        bazar: monthData.bazar,
-        deposits: monthData.deposits,
-        members: monthData.members,
-        stats,
-      });
-
-      await deleteMonthData(monthKey);
-
-      const [year, month] = monthKey.split("-").map(Number);
-      const nextDate = new Date(year, month, 1);
-      const nextKey = formatMonthKey(nextDate);
-      setMonthKey(nextKey);
-      setArchiveMonthKey("");
-
-      const keys = await listMonthlyArchives();
-      setArchiveKeys(keys);
-      toast.success("Month archived and reset for the next cycle.");
-    } catch (error) {
-      console.error("Archive failed:", error);
-      toast.error("Could not archive the month. Please try again.");
-    } finally {
-      setDataLoading(false);
-    }
-  }, [monthData, monthKey, stats]);
-
-  const archiveStats = archiveData?.stats ?? null;
-
-  const displayedMonthData = archiveData ?? monthData;
-  const displayedStats = isArchiveView ? archiveStats : stats;
-  const currentDataReady = monthLoadedKey === monthKey &&
-    (!isArchiveView || archiveLoadedKey === archiveMonthKey);
-
-  const computedTotalMeals = useMemo(() => {
-    return calculateTotalFromDailyMeals(displayedMonthData?.dailyMeals);
-  }, [displayedMonthData?.dailyMeals]);
-
-  const dashboardStats = displayedStats
-    ? { ...displayedStats, totalMeals: computedTotalMeals }
-    : null;
+  const currentDataReady = monthLoadedKey === monthKey;
   const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
 
   if (loading || accessLoading || !user) {
@@ -565,43 +445,15 @@ function DashboardContent() {
                     Viewing
                   </p>
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {isArchiveView && archiveMonthKey
-                      ? `Archived snapshot — ${formatMonthLabel(archiveMonthKey)}`
-                      : `Current month — ${formatMonthLabel(monthKey)}`}
+                    {`Selected month — ${formatMonthLabel(monthKey)}`}
                   </h2>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300">
-                    <span>Archive</span>
-                    <select
-                      value={archiveMonthKey}
-                      onChange={(event) => setArchiveMonthKey(event.target.value)}
-                      className="bg-transparent text-sm outline-none"
-                    >
-                      <option value="">Current month</option>
-                      {archiveKeys.map((key) => (
-                        <option key={key} value={key}>
-                          {formatMonthLabel(key)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {isArchiveView ? (
-                    <button
-                      type="button"
-                      onClick={() => setArchiveMonthKey("")}
-                      className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900"
-                    >
-                      Live view
-                    </button>
-                  ) : null}
                 </div>
               </div>
 
               <OverviewCards
-                stats={dashboardStats ?? stats}
-                bills={displayedMonthData?.bills ?? monthData?.bills}
-                isAdmin={isAdmin && !isArchiveView}
+                stats={stats}
+                bills={monthData.bills}
+                isAdmin={isAdmin}
               />
             </div>
 
@@ -624,13 +476,14 @@ function DashboardContent() {
             </div>
 
             {currentTab === "summary" && (
-              <SummaryTable members={stats.members} isAdmin={isAdmin} />
+              <SummaryTable members={stats.members} monthKey={monthKey} isAdmin={isAdmin} />
             )}
 
             {currentTab === "meals" && (
               <DailyMealsSheet
                 records={monthData.dailyMeals}
                 members={monthData.members}
+                selectedMonthKey={monthKey}
                 isAdmin={isAdmin}
                 onEdit={handleEditMeals}
                 onOptimisticToggle={handleOptimisticMealToggle}
@@ -655,20 +508,20 @@ function DashboardContent() {
 
             {currentTab === "admin" && isAdmin && (
               <AdminPanel
-                members={displayedMonthData?.members ?? monthData?.members ?? []}
-                bills={displayedMonthData?.bills ?? monthData?.bills}
+                key={monthKey}
+                members={monthData.members}
+                bills={monthData.bills}
+                selectedMonthKey={monthKey}
                 subTab={activeSubTab}
                 onSubTabChange={updateAdminSubTab}
-                onSaveMeals={isArchiveView ? undefined : handleSaveMeals}
-                onAddBazar={isArchiveView ? undefined : handleAddBazar}
-                onAddDeposit={isArchiveView ? undefined : handleAddDeposit}
-                onUpdateBills={isArchiveView ? undefined : handleUpdateBills}
+                onSaveMeals={handleSaveMeals}
+                onAddBazar={handleAddBazar}
+                onAddDeposit={handleAddDeposit}
+                onUpdateBills={handleUpdateBills}
                 onAddMember={handleAddMember}
                 onUpdateMember={handleUpdateMember}
                 onSetMemberStatus={handleSetMemberStatus}
                 onDeleteMember={handleDeleteMember}
-                onArchiveMonth={handleArchiveMonth}
-                isArchiveMode={isArchiveView}
                 performedBy={memberDisplayName}
               />
             )}
