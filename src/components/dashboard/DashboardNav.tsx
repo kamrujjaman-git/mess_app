@@ -124,7 +124,7 @@ export function DashboardNav({
 
   return (
     <header className="glass sticky top-0 z-50 w-full max-w-full overflow-hidden">
-      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 md:flex-nowrap md:gap-3 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 p-3 sm:p-4 md:flex-nowrap md:gap-3 lg:px-8">
         <div className="order-1 flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-10 sm:w-10">
             <Image
@@ -135,32 +135,34 @@ export function DashboardNav({
               className="object-cover"
             />
           </div>
-          <span className="hidden text-lg font-bold sm:inline">Mess App</span>
+          <span className="truncate text-base font-bold sm:text-lg">Mess App</span>
         </div>
 
-        <div className="order-3 flex w-auto max-w-fit items-center justify-center gap-0.5 rounded-full border border-slate-200/90 bg-slate-50/70 px-3 py-1.5 text-xs shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:hover:bg-slate-800 sm:gap-1 sm:text-sm md:order-2 md:mx-auto md:flex-none">
-          <button
-            type="button"
-            onClick={onPrevMonth}
-            className="flex shrink-0 items-center justify-center rounded-full p-1 text-slate-600 transition-colors hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-800"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
-          <div className="min-w-0 w-auto max-w-fit">
-            <PremiumDatePicker value={monthKey} onChange={onMonthChange} mode="month" />
+        <div className="order-3 mt-3 flex w-full justify-center md:absolute md:left-1/2 md:top-1/2 md:order-none md:mt-0 md:w-auto md:-translate-x-1/2 md:-translate-y-1/2">
+          <div className="flex w-auto max-w-fit items-center justify-center gap-0.5 rounded-full border border-slate-200/90 bg-slate-50/70 px-3 py-1.5 text-xs shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:hover:bg-slate-800 sm:gap-1 sm:text-sm">
+            <button
+              type="button"
+              onClick={onPrevMonth}
+              className="flex shrink-0 items-center justify-center rounded-full p-1 text-slate-600 transition-colors hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-800"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+            <div className="min-w-0 w-auto max-w-fit">
+              <PremiumDatePicker value={monthKey} onChange={onMonthChange} mode="month" />
+            </div>
+            <button
+              type="button"
+              onClick={onNextMonth}
+              className="flex shrink-0 items-center justify-center rounded-full p-1 text-slate-600 transition-colors hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-800"
+              aria-label="Next month"
+            >
+              <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onNextMonth}
-            className="flex shrink-0 items-center justify-center rounded-full p-1 text-slate-600 transition-colors hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-800"
-            aria-label="Next month"
-          >
-            <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
         </div>
 
-        <div className="order-2 ml-auto flex min-w-0 items-center justify-end gap-1.5 md:order-3 md:flex-1 sm:gap-2">
+        <div className="order-2 ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:gap-2 md:order-3 md:flex-1">
           <button
             type="button"
             onClick={handleBellClick}
@@ -231,13 +233,6 @@ export function DashboardNav({
           </button>
         </div>
       </div>
-      <div className="flex justify-center pb-2 sm:hidden">
-        <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-          <Shield className="h-3 w-3" />
-          {roleLabel}
-        </span>
-      </div>
-
       {showNotifications ? (
         <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-[1px]">
           <button
