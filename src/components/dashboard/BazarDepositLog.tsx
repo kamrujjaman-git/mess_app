@@ -14,6 +14,7 @@ import { BILL_LABELS, getBazarBuyerLabel, normalizeBazarBuyerIds } from "@/lib/m
 import { getActiveMembers } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
 import { SwipeableListItem } from "./SwipeableListItem";
 import { Wallet2, ReceiptText } from "lucide-react";
 
@@ -227,12 +228,7 @@ export function BazarDepositLog({
                   <li key={entry.id} className="px-4 py-3 sm:px-6">
                     {editingBazarId === entry.id ? (
                       <div className="space-y-2">
-                        <input
-                          type="date"
-                          value={bazarDate}
-                          onChange={(e) => setBazarDate(e.target.value)}
-                          className={inputClass}
-                        />
+                        <PremiumDatePicker value={bazarDate} onChange={setBazarDate} label="Date" />
                         <input
                           type="number"
                           placeholder="Amount (৳)"
@@ -399,12 +395,7 @@ export function BazarDepositLog({
                           onChange={(e) => setDepositAmount(e.target.value)}
                           className={inputClass}
                         />
-                        <input
-                          type="date"
-                          value={depositDate}
-                          onChange={(e) => setDepositDate(e.target.value)}
-                          className={inputClass}
-                        />
+                        <PremiumDatePicker value={depositDate} onChange={setDepositDate} label="Date" />
                         <input
                           type="text"
                           placeholder="Note"

@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, Funnel } from "lucide-react";
+import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
 
 export interface FilterOption {
     value: string;
@@ -135,17 +136,15 @@ export function SearchFilterBar({
                         Date range
                     </span>
                     <div className="grid gap-2 sm:grid-cols-2">
-                        <input
-                            type="date"
+                        <PremiumDatePicker
                             value={dateRange.start ?? ""}
-                            onChange={(event) => onDateRangeChange({ ...dateRange, start: event.target.value || undefined })}
-                            className="w-full rounded-2xl border border-slate-200 bg-slate-50/90 py-3 px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100"
+                            onChange={(value) => onDateRangeChange({ ...dateRange, start: value })}
+                            placeholder="Start date"
                         />
-                        <input
-                            type="date"
+                        <PremiumDatePicker
                             value={dateRange.end ?? ""}
-                            onChange={(event) => onDateRangeChange({ ...dateRange, end: event.target.value || undefined })}
-                            className="w-full rounded-2xl border border-slate-200 bg-slate-50/90 py-3 px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100"
+                            onChange={(value) => onDateRangeChange({ ...dateRange, end: value })}
+                            placeholder="End date"
                         />
                     </div>
                 </div>

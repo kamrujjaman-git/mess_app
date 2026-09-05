@@ -544,6 +544,7 @@ function DashboardContent() {
         monthKey={monthKey}
         onPrevMonth={() => shiftMonth(-1)}
         onNextMonth={() => shiftMonth(1)}
+        onMonthChange={setMonthKey}
         user={user}
         isAdmin={isAdmin}
         memberName={memberDisplayName}

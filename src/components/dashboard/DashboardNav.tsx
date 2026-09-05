@@ -12,7 +12,6 @@ import {
   Moon,
   X,
 } from "lucide-react";
-import { formatMonthLabel } from "@/lib/mess";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "firebase/auth";
 import { db } from "@/lib/firebase";
@@ -23,11 +22,13 @@ import {
   type ActivityLog,
 } from "@/lib/firestore";
 import { SwipeableListItem } from "./SwipeableListItem";
+import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
 
 interface DashboardNavProps {
   monthKey: string;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  onMonthChange: (monthKey: string) => void;
   user: User;
   isAdmin: boolean;
   memberName?: string | null;
@@ -38,6 +39,7 @@ export function DashboardNav({
   monthKey,
   onPrevMonth,
   onNextMonth,
+  onMonthChange,
   user,
   isAdmin,
   memberName,
@@ -122,8 +124,8 @@ export function DashboardNav({
 
   return (
     <header className="glass sticky top-0 z-50 w-full max-w-full overflow-hidden">
-      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 md:flex-nowrap md:gap-3 sm:px-6 lg:px-8">
+        <div className="order-1 flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-10 sm:w-10">
             <Image
               src="/logo-512.png"
@@ -136,33 +138,33 @@ export function DashboardNav({
           <span className="hidden text-lg font-bold sm:inline">Mess App</span>
         </div>
 
-        <div className="glass flex items-center gap-1 rounded-xl px-1 py-1 sm:gap-2 sm:px-2">
+        <div className="glass order-3 flex w-full items-center justify-center gap-1 rounded-full border-white/25 px-0.5 py-0.5 shadow-none md:order-2 md:w-auto md:flex-none md:gap-2 md:px-1">
           <button
             type="button"
             onClick={onPrevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 sm:h-9 sm:w-9"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 sm:h-9 sm:w-9"
             aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
-          <span className="min-w-[100px] text-center text-xs font-semibold sm:min-w-[160px] sm:text-base">
-            {formatMonthLabel(monthKey)}
-          </span>
+          <div className="min-w-0 w-full max-w-[15rem] md:min-w-[180px] md:max-w-none">
+            <PremiumDatePicker value={monthKey} onChange={onMonthChange} mode="month" />
+          </div>
           <button
             type="button"
             onClick={onNextMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 sm:h-9 sm:w-9"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 sm:h-9 sm:w-9"
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
 
-        <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-3">
+        <div className="order-2 ml-auto flex min-w-0 items-center justify-end gap-1.5 md:order-3 md:flex-1 sm:gap-2">
           <button
             type="button"
             onClick={handleBellClick}
-            className="glass relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-all duration-200 hover:scale-[1.02] dark:text-slate-100 sm:h-9 sm:w-9"
+            className="glass relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-700 transition-all duration-200 hover:scale-105 dark:text-slate-100"
             aria-label="Open notifications"
             title="Notifications"
           >
@@ -177,7 +179,7 @@ export function DashboardNav({
           <button
             type="button"
             onClick={() => setIsDark((prev) => !prev)}
-            className="glass flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-all duration-200 hover:scale-[1.02] dark:text-slate-100 sm:h-9 sm:w-9"
+            className="glass flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-700 transition-all duration-200 hover:scale-105 dark:text-slate-100"
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
@@ -190,21 +192,24 @@ export function DashboardNav({
           </span>
 
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            {user?.photoURL && !imageFailed ? (
-              <Image
-                src={user.photoURL}
-                alt={displayName}
-                width={36}
-                height={36}
-                unoptimized
-                onError={() => setImageFailed(true)}
-                className="h-7 w-7 rounded-full object-cover ring-2 ring-emerald-500/30 sm:h-9 sm:w-9"
-              />
-            ) : (
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white ring-2 ring-emerald-500/30 sm:h-9 sm:w-9 sm:text-sm">
-                {avatarInitial}
-              </div>
-            )}
+            <div className="relative shrink-0">
+              {user?.photoURL && !imageFailed ? (
+                <Image
+                  src={user.photoURL}
+                  alt={displayName}
+                  width={36}
+                  height={36}
+                  unoptimized
+                  onError={() => setImageFailed(true)}
+                  className="h-8 w-8 rounded-full object-cover ring-2 ring-emerald-500/30 sm:h-9 sm:w-9"
+                />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white ring-2 ring-emerald-500/30 sm:h-9 sm:w-9 sm:text-sm">
+                  {avatarInitial}
+                </div>
+              )}
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900" aria-label="Online" />
+            </div>
 
             <div className="hidden min-w-0 flex-col sm:flex">
               <span className="max-w-[110px] truncate text-xs font-semibold text-slate-800 dark:text-slate-100">

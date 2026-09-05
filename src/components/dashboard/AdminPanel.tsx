@@ -7,6 +7,7 @@ import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
 import { getActiveMembers, getTodayDateString } from "@/lib/mess";
 import { ManageMembers } from "./ManageMembers";
 import { inputClass } from "./InlineActions";
+import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
 
 type AdminSubTab = "entries" | "members";
 
@@ -333,12 +334,7 @@ export function AdminPanel({
               <label className="mb-1 block text-xs font-medium text-slate-500">
                 Date
               </label>
-              <input
-                type="date"
-                value={mealDate}
-                onChange={(e) => setMealDate(e.target.value)}
-                className={inputClass}
-              />
+              <PremiumDatePicker value={mealDate} onChange={setMealDate} label="Date" />
             </div>
             {activeMembers.length === 0 ? (
               <p className="text-sm text-slate-500">
@@ -395,12 +391,7 @@ export function AdminPanel({
             <div className="glass-card rounded-2xl p-4 sm:p-6">
               <h3 className="mb-4 text-base font-semibold">Add Bazar</h3>
               <div className="space-y-3">
-                <input
-                  type="date"
-                  value={bazarDate}
-                  onChange={(e) => setBazarDate(e.target.value)}
-                  className={inputClass}
-                />
+                <PremiumDatePicker value={bazarDate} onChange={setBazarDate} label="Date" />
                 <input
                   type="number"
                   placeholder="Amount (৳)"
@@ -482,12 +473,7 @@ export function AdminPanel({
                   onChange={(e) => setDepositAmount(e.target.value)}
                   className={inputClass}
                 />
-                <input
-                  type="date"
-                  value={depositDate}
-                  onChange={(e) => setDepositDate(e.target.value)}
-                  className={inputClass}
-                />
+                <PremiumDatePicker value={depositDate} onChange={setDepositDate} label="Date" />
                 <input
                   type="text"
                   placeholder="Note (optional)"
