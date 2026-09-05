@@ -115,10 +115,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    const unsubscribe = subscribeToMembers((fetchedMembers) => {
-      setMembers(fetchedMembers);
-      setMembersReady(true);
-    });
+    const unsubscribe = subscribeToMembers(
+      (fetchedMembers) => {
+        setMembers(fetchedMembers);
+        setMembersReady(true);
+      },
+      (error) => {
+        console.error("Failed to subscribe to members:", error);
+        setMembers([]);
+        setMembersReady(true);
+      }
+    );
 
     getUserByUid(user.uid)
       .then(async (memberDoc) => {

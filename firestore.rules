@@ -4,20 +4,32 @@ service cloud.firestore {
     return request.auth != null;
   }
 
+  function verifiedSignedIn() {
+    return signedIn() && request.auth.token.email_verified == true;
+  }
+
   function isSuperAdmin() {
-    return signedIn() &&
+    return verifiedSignedIn() &&
       request.auth.token.email != null &&
       request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower();
   }
 
+  function isActiveUser(userId) {
+    return exists(/databases/$(database)/documents/users/$(userId)) &&
+      get(/databases/$(database)/documents/users/$(userId)).data.status == "active" &&
+      get(/databases/$(database)/documents/users/$(userId)).data.active == true &&
+      get(/databases/$(database)/documents/users/$(userId)).data.isBlocked != true &&
+      get(/databases/$(database)/documents/users/$(userId)).data.isRemoved != true;
+  }
+
   function isAdmin() {
     return isSuperAdmin() || (
-      signedIn() &&
+      verifiedSignedIn() &&
       (
         (request.auth.token.email != null &&
           get(/databases/$(database)/documents/settings/members).data.adminEmails != null &&
           get(/databases/$(database)/documents/settings/members).data.adminEmails.hasAny([request.auth.token.email.lower()])) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (isActiveUser(request.auth.uid) &&
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
       )
     );
@@ -27,42 +39,91 @@ service cloud.firestore {
     return signedIn() && request.auth.uid == userId;
   }
 
+  function validEntryDate(monthKey, date) {
+    return date is string &&
+      date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+      date.substring(0, 7) == monthKey &&
+      !isFutureDate(date);
+  }
+
+  function isFutureDate(date) {
+    let year = int(date.substring(0, 4));
+    let month = int(date.substring(5, 7));
+    let day = int(date.substring(8, 10));
+    return year > request.time.year() ||
+      (year == request.time.year() && month > request.time.month()) ||
+      (year == request.time.year() && month == request.time.month() && day > request.time.day());
+  }
+
+  function validMoney(value) {
+    return value is number && value >= 0;
+  }
+
   match /settings/members {
-    allow read: if signedIn();
-    allow write: if isAdmin();
+    allow read: if verifiedSignedIn();
+    allow create: if isSuperAdmin();
+    allow update: if isSuperAdmin() ||
+      (isAdmin() &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['adminEmails']));
+    allow delete: if isSuperAdmin();
   }
 
   match /users/{userId} {
-    allow read: if isSelf(userId) || isAdmin();
-    allow create: if isSelf(userId);
-    allow update: if isAdmin() || (isSelf(userId) &&
-      !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']));
-    allow delete: if isAdmin();
+    allow read: if (verifiedSignedIn() && isSelf(userId)) || isAdmin();
+    allow create: if isSuperAdmin();
+    allow update: if isSuperAdmin() ||
+      (isAdmin() &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin'])) ||
+      (verifiedSignedIn() && isSelf(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'email', 'isAdmin', 'status', 'active', 'isBlocked', 'isRemoved'
+        ]));
+    allow delete: if isSuperAdmin();
   }
 
   match /months/{monthKey} {
-    allow read: if signedIn();
-    allow create, update, delete: if isAdmin();
+    allow read: if verifiedSignedIn();
+    allow create, update: if isAdmin() &&
+      validMoney(request.resource.data.houseRent) &&
+      validMoney(request.resource.data.buaBill) &&
+      validMoney(request.resource.data.otherBills);
+    allow delete: if isAdmin();
   }
 
   match /months/{monthKey}/dailyMeals/{date} {
-    allow read: if signedIn();
-    allow create, update, delete: if signedIn();
+    allow read: if verifiedSignedIn();
+    allow create, update: if isAdmin() &&
+      validEntryDate(monthKey, request.resource.data.date) &&
+      request.resource.data.meals is map;
+    allow delete: if isAdmin();
   }
 
   match /months/{monthKey}/bazar/{entryId} {
-    allow read: if signedIn();
-    allow create, update, delete: if isAdmin();
+    allow read: if verifiedSignedIn();
+    allow create, update: if isAdmin() &&
+      validEntryDate(monthKey, request.resource.data.date) &&
+      validMoney(request.resource.data.amount) &&
+      request.resource.data.amount > 0;
+    allow delete: if isAdmin();
   }
 
   match /months/{monthKey}/deposits/{entryId} {
-    allow read: if signedIn();
-    allow create, update, delete: if isAdmin();
+    allow read: if verifiedSignedIn();
+    allow create, update: if isAdmin() &&
+      validEntryDate(monthKey, request.resource.data.date) &&
+      validMoney(request.resource.data.amount) &&
+      request.resource.data.amount > 0;
+    allow delete: if isAdmin();
   }
 
   match /activity_logs/{logId} {
-    allow read: if signedIn();
-    allow create: if signedIn();
+    allow read: if verifiedSignedIn();
+    allow create: if isAdmin() &&
+      request.resource.data.action is string &&
+      request.resource.data.details is string &&
+      request.resource.data.performedBy is string &&
+      request.resource.data.performedBy == request.auth.token.email &&
+      request.resource.data.timestamp is string;
     allow update, delete: if isSuperAdmin();
   }
 }

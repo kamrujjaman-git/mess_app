@@ -10,7 +10,7 @@ import type {
   Member,
   BillField,
 } from "@/lib/mess";
-import { BILL_LABELS, getBazarBuyerLabel, normalizeBazarBuyerIds } from "@/lib/mess";
+import { BILL_LABELS, getBazarBuyerLabel, getTodayDateString, isDateOnOrBeforeToday, normalizeBazarBuyerIds } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -92,7 +92,7 @@ export function BazarDepositLog({
   async function saveBazar(id: string) {
     if (!onEditBazar) return;
     const amount = Math.round(parseFloat(bazarAmount));
-    if (!amount || amount <= 0) {
+    if (!amount || amount <= 0 || !isDateOnOrBeforeToday(bazarDate)) {
       toast.error("Please enter a valid bazar amount.");
       return;
     }
@@ -136,7 +136,7 @@ export function BazarDepositLog({
     if (!onEditDeposit) return;
     const amount = Math.round(parseFloat(depositAmount));
     const member = members.find((m) => m.id === depositMemberId);
-    if (!amount || amount <= 0 || !member) {
+    if (!amount || amount <= 0 || !member || !isDateOnOrBeforeToday(depositDate)) {
       toast.error("Please enter a valid deposit amount and member.");
       return;
     }
@@ -228,7 +228,7 @@ export function BazarDepositLog({
                   <li key={entry.id} className="px-2 py-2 sm:px-3">
                     {editingBazarId === entry.id ? (
                       <div className="space-y-2">
-                        <PremiumDatePicker value={bazarDate} onChange={setBazarDate} label="Date" />
+                        <PremiumDatePicker value={bazarDate} onChange={setBazarDate} label="Date" maxDate={getTodayDateString()} />
                         <input
                           type="number"
                           placeholder="Amount (৳)"
@@ -395,7 +395,7 @@ export function BazarDepositLog({
                           onChange={(e) => setDepositAmount(e.target.value)}
                           className={inputClass}
                         />
-                        <PremiumDatePicker value={depositDate} onChange={setDepositDate} label="Date" />
+                        <PremiumDatePicker value={depositDate} onChange={setDepositDate} label="Date" maxDate={getTodayDateString()} />
                         <input
                           type="text"
                           placeholder="Note"

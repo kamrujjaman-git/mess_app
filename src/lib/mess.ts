@@ -196,7 +196,7 @@ export function userHasMessAccess(
 
 export function normalizeMealCount(value: unknown): number {
   if (typeof value === "boolean") return value ? 1 : 0;
-  if (typeof value === "number") return Number.isFinite(value) && value > 0 ? 1 : 0;
+  if (typeof value === "number") return Number.isFinite(value) && value > 0 ? value : 0;
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
     if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") {
@@ -204,24 +204,18 @@ export function normalizeMealCount(value: unknown): number {
     }
     const numeric = Number(normalized);
     if (Number.isFinite(numeric)) {
-      return numeric > 0 ? 1 : 0;
+      return numeric > 0 ? numeric : 0;
     }
     return 0;
   }
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
-    const values: unknown[] = [
-      record.breakfast,
-      record.lunch,
-      record.dinner,
-      record.b,
-      record.l,
-      record.d,
-      record.B,
-      record.L,
-      record.D,
-    ];
-    return values.reduce<number>((sum, item) => sum + normalizeMealCount(item), 0);
+    const values = [record.breakfast, record.lunch, record.dinner];
+    const legacyValues = [record.b, record.l, record.d];
+    const mealValues = values.some((item) => typeof item !== "undefined")
+      ? values
+      : legacyValues;
+    return mealValues.reduce<number>((sum, item) => sum + normalizeMealCount(item), 0);
   }
   return 0;
 }
@@ -232,16 +226,13 @@ export function getMemberTotalMeals(meals: unknown): number {
   }
 
   const record = meals as Record<string, unknown>;
-  const values: unknown[] = [
-    record.breakfast,
-    record.lunch,
-    record.dinner,
-    record.b,
-    record.l,
-    record.d,
-  ];
+  const values: unknown[] = [record.breakfast, record.lunch, record.dinner];
+  const legacyValues: unknown[] = [record.b, record.l, record.d];
+  const mealValues = values.some((item) => typeof item !== "undefined")
+    ? values
+    : legacyValues;
 
-  return values.reduce<number>((sum, value) => sum + normalizeMealCount(value), 0);
+  return mealValues.reduce<number>((sum, value) => sum + normalizeMealCount(value), 0);
 }
 
 export function sumDailyMealsForMember(
@@ -257,7 +248,7 @@ export function sumDailyMealsForMember(
 
 function safeRound(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.round(value);
+  return Math.round(value * 100) / 100;
 }
 
 export function calculateMessStats(
@@ -291,7 +282,7 @@ export function calculateMessStats(
     );
   }, 0);
 
-  const mealRate = totalMeals > 0 ? safeRound(totalBazar / totalMeals) : 0;
+  const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
 
   const totalFixedCosts = safeRound(
     safeRound(bills.houseRent) +
@@ -314,10 +305,10 @@ export function calculateMessStats(
         )
         .reduce((sum, d) => sum + safeRound(d.amount), 0)
     );
-    const mealCost = safeRound(personalTotalMeals * mealRate);
-    const mealBalance = safeRound(totalDeposited - mealCost);
+    const mealCost = personalTotalMeals * mealRate;
+    const mealBalance = totalDeposited - mealCost;
     const fixedShare = 0;
-    const finalBalance = safeRound(totalDeposited - mealCost);
+    const finalBalance = safeRound(mealBalance);
 
     return {
       id: member.id,
@@ -390,6 +381,10 @@ export function getTodayDateString(): string {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+export function isDateOnOrBeforeToday(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && value <= getTodayDateString();
 }
 
 export function emptyMemberMeals(): MemberMeals {

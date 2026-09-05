@@ -4,13 +4,14 @@ import {
   getDoc,
   getDocs,
   setDoc,
-  addDoc,
   updateDoc,
   deleteDoc,
   onSnapshot,
   query,
   orderBy,
   where,
+  writeBatch,
+  type WriteBatch,
   Unsubscribe,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -24,6 +25,7 @@ import {
   createDefaultMembers,
   createEmptyDailyMeals,
   getActiveMembers,
+  isDateOnOrBeforeToday,
 } from "./mess";
 
 function monthDoc(monthKey: string) {
@@ -40,6 +42,24 @@ function bazarCollection(monthKey: string) {
 
 function depositsCollection(monthKey: string) {
   return collection(db, "months", monthKey, "deposits");
+}
+
+function assertEntryDate(monthKey: string, date: string): void {
+  if (!date.startsWith(`${monthKey}-`) || !isDateOnOrBeforeToday(date)) {
+    throw new Error("Entries can only be saved for valid dates in the selected month up to today.");
+  }
+}
+
+function assertPositiveAmount(amount: number): void {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Amounts must be greater than zero.");
+  }
+}
+
+function assertNonNegativeAmount(amount: number): void {
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error("Bill amounts cannot be negative.");
+  }
 }
 
 function parseMembers(data: Record<string, unknown> | undefined): Member[] {
@@ -162,11 +182,12 @@ export async function setMembers(members: Member[]): Promise<void> {
 }
 
 export function subscribeToMembers(
-  callback: (members: Member[]) => void
+  callback: (members: Member[]) => void,
+  onError?: (error: Error) => void
 ): Unsubscribe {
   return onSnapshot(doc(db, "settings", "members"), (snap) => {
     callback(parseMembers(snap.exists() ? snap.data() : undefined));
-  });
+  }, onError);
 }
 
 export async function addMember(
@@ -270,6 +291,9 @@ export async function updateMonthBills(
   monthKey: string,
   bills: MonthBills
 ): Promise<void> {
+  assertNonNegativeAmount(bills.houseRent);
+  assertNonNegativeAmount(bills.buaBill);
+  assertNonNegativeAmount(bills.otherBills);
   await setDoc(
     monthDoc(monthKey),
     {
@@ -312,8 +336,9 @@ export async function saveDailyMeals(
   record: DailyMealRecord,
   performedBy: string = "System"
 ): Promise<void> {
-  await setDoc(doc(dailyMealsCollection(monthKey), record.date), record, { merge: true });
-  await createActivityLog(
+  assertEntryDate(monthKey, record.date);
+  await commitWithActivity(
+    (batch) => batch.set(doc(dailyMealsCollection(monthKey), record.date), record, { merge: true }),
     "Meal Entry Saved",
     `Saved meal entries for ${record.date}.`,
     performedBy
@@ -325,8 +350,9 @@ export async function deleteDailyMeals(
   date: string,
   performedBy: string = "System"
 ): Promise<void> {
-  await deleteDoc(doc(dailyMealsCollection(monthKey), date));
-  await createActivityLog(
+  assertEntryDate(monthKey, date);
+  await commitWithActivity(
+    (batch) => batch.delete(doc(dailyMealsCollection(monthKey), date)),
     "Meal Entry Deleted",
     `Deleted meal entries for ${date}.`,
     performedBy
@@ -360,14 +386,16 @@ export async function addBazarEntry(
   entry: Omit<BazarEntry, "id">,
   performedBy: string = "System"
 ): Promise<void> {
+  assertEntryDate(monthKey, entry.date);
+  assertPositiveAmount(entry.amount);
   const buyerIds = normalizeBazarBuyerIds(entry);
-  await addDoc(bazarCollection(monthKey), {
-    ...entry,
-    amount: Math.round(entry.amount),
-    buyerIds,
-    buyerId: buyerIds[0] ?? null,
-  });
-  await createActivityLog(
+  await commitWithActivity(
+    (batch) => batch.set(doc(bazarCollection(monthKey)), {
+      ...entry,
+      amount: Math.round(entry.amount),
+      buyerIds,
+      buyerId: buyerIds[0] ?? null,
+    }),
     "Bazar Entry Added",
     `Added a bazar entry of ৳${Math.round(entry.amount)} for ${entry.date}${entry.description ? ` — ${entry.description}` : ""}${buyerIds.length ? ` by ${buyerIds.length} buyer(s)` : ""}.`,
     performedBy
@@ -380,14 +408,16 @@ export async function updateBazarEntry(
   entry: Omit<BazarEntry, "id">,
   performedBy: string = "System"
 ): Promise<void> {
+  assertEntryDate(monthKey, entry.date);
+  assertPositiveAmount(entry.amount);
   const buyerIds = normalizeBazarBuyerIds(entry);
-  await updateDoc(doc(bazarCollection(monthKey), id), {
-    ...entry,
-    amount: Math.round(entry.amount),
-    buyerIds,
-    buyerId: buyerIds[0] ?? null,
-  });
-  await createActivityLog(
+  await commitWithActivity(
+    (batch) => batch.update(doc(bazarCollection(monthKey), id), {
+      ...entry,
+      amount: Math.round(entry.amount),
+      buyerIds,
+      buyerId: buyerIds[0] ?? null,
+    }),
     "Bazar Entry Updated",
     `Updated bazar entry for ${entry.date} to ৳${Math.round(entry.amount)}${entry.description ? ` — ${entry.description}` : ""}${buyerIds.length ? ` by ${buyerIds.length} buyer(s)` : ""}.`,
     performedBy
@@ -399,8 +429,8 @@ export async function deleteBazarEntry(
   id: string,
   performedBy: string = "System"
 ): Promise<void> {
-  await deleteDoc(doc(bazarCollection(monthKey), id));
-  await createActivityLog(
+  await commitWithActivity(
+    (batch) => batch.delete(doc(bazarCollection(monthKey), id)),
     "Bazar Entry Deleted",
     `Deleted a bazar entry from ${monthKey}.`,
     performedBy
@@ -420,11 +450,13 @@ export async function addDepositEntry(
   entry: Omit<DepositEntry, "id">,
   performedBy: string = "System"
 ): Promise<void> {
-  await addDoc(depositsCollection(monthKey), {
-    ...entry,
-    amount: Math.round(entry.amount),
-  });
-  await createActivityLog(
+  assertEntryDate(monthKey, entry.date);
+  assertPositiveAmount(entry.amount);
+  await commitWithActivity(
+    (batch) => batch.set(doc(depositsCollection(monthKey)), {
+      ...entry,
+      amount: Math.round(entry.amount),
+    }),
     "Deposit Added",
     `Added a deposit of ৳${Math.round(entry.amount)} for ${entry.memberName} on ${entry.date}${entry.note ? ` — ${entry.note}` : ""}.`,
     performedBy
@@ -437,11 +469,13 @@ export async function updateDepositEntry(
   entry: Omit<DepositEntry, "id">,
   performedBy: string = "System"
 ): Promise<void> {
-  await updateDoc(doc(depositsCollection(monthKey), id), {
-    ...entry,
-    amount: Math.round(entry.amount),
-  });
-  await createActivityLog(
+  assertEntryDate(monthKey, entry.date);
+  assertPositiveAmount(entry.amount);
+  await commitWithActivity(
+    (batch) => batch.update(doc(depositsCollection(monthKey), id), {
+      ...entry,
+      amount: Math.round(entry.amount),
+    }),
     "Deposit Updated",
     `Updated deposit for ${entry.memberName} on ${entry.date} to ৳${Math.round(entry.amount)}${entry.note ? ` — ${entry.note}` : ""}.`,
     performedBy
@@ -453,8 +487,8 @@ export async function deleteDepositEntry(
   id: string,
   performedBy: string = "System"
 ): Promise<void> {
-  await deleteDoc(doc(depositsCollection(monthKey), id));
-  await createActivityLog(
+  await commitWithActivity(
+    (batch) => batch.delete(doc(depositsCollection(monthKey), id)),
     "Deposit Deleted",
     `Deleted a deposit entry from ${monthKey}.`,
     performedBy
@@ -477,11 +511,11 @@ export interface ActivityLog {
   timestamp: string;
 }
 
-export async function createActivityLog(
+function buildActivityLog(
   action: string,
   details: string,
   performedBy: string
-): Promise<ActivityLog> {
+): { activityRef: ReturnType<typeof doc>; log: ActivityLog } {
   const activityRef = doc(collection(db, "activity_logs"));
   const log: ActivityLog = {
     id: activityRef.id,
@@ -490,6 +524,29 @@ export async function createActivityLog(
     performedBy: performedBy.trim() || "System",
     timestamp: new Date().toISOString(),
   };
+
+  return { activityRef, log };
+}
+
+async function commitWithActivity(
+  writeOperation: (batch: WriteBatch) => void,
+  action: string,
+  details: string,
+  performedBy: string
+): Promise<void> {
+  const batch = writeBatch(db);
+  writeOperation(batch);
+  const { activityRef, log } = buildActivityLog(action, details, performedBy);
+  batch.set(activityRef, log);
+  await batch.commit();
+}
+
+export async function createActivityLog(
+  action: string,
+  details: string,
+  performedBy: string
+): Promise<ActivityLog> {
+  const { activityRef, log } = buildActivityLog(action, details, performedBy);
 
   await setDoc(activityRef, log);
   return log;
@@ -529,13 +586,21 @@ export function isActivityLogForMonth(
 
 export function subscribeToMonthData(
   monthKey: string,
-  callback: (data: MonthData) => void
+  callback: (data: MonthData) => void,
+  onError?: (error: Error) => void
 ): Unsubscribe {
   let bills: MonthBills = { houseRent: 0, buaBill: 0, otherBills: 0, otherBillsDescription: "" };
   let members: Member[] = [];
   let dailyMeals: DailyMealRecord[] = [];
   let bazar: BazarEntry[] = [];
   let deposits: DepositEntry[] = [];
+  let errorReported = false;
+
+  function handleError(error: Error) {
+    if (errorReported) return;
+    errorReported = true;
+    onError?.(error);
+  }
 
   function emit() {
     callback({ bills, dailyMeals, bazar, deposits, members });
@@ -544,7 +609,7 @@ export function subscribeToMonthData(
   const unsubMembers = onSnapshot(doc(db, "settings", "members"), (snap) => {
     members = parseMembers(snap.exists() ? snap.data() : undefined);
     emit();
-  });
+  }, handleError);
 
   const unsubBills = onSnapshot(monthDoc(monthKey), (snap) => {
     if (snap.exists()) {
@@ -559,14 +624,15 @@ export function subscribeToMonthData(
       bills = { houseRent: 0, buaBill: 0, otherBills: 0, otherBillsDescription: "" };
     }
     emit();
-  });
+  }, handleError);
 
   const unsubMeals = onSnapshot(
     query(dailyMealsCollection(monthKey), orderBy("date", "asc")),
     (snap) => {
       dailyMeals = snap.docs.map((d) => d.data() as DailyMealRecord);
       emit();
-    }
+    },
+    handleError
   );
 
   const unsubBazar = onSnapshot(
@@ -576,7 +642,8 @@ export function subscribeToMonthData(
         (d) => ({ id: d.id, ...d.data() }) as BazarEntry
       );
       emit();
-    }
+    },
+    handleError
   );
 
   const unsubDeposits = onSnapshot(
@@ -586,7 +653,8 @@ export function subscribeToMonthData(
         (d) => ({ id: d.id, ...d.data() }) as DepositEntry
       );
       emit();
-    }
+    },
+    handleError
   );
 
   return () => {

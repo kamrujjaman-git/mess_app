@@ -10,6 +10,7 @@ interface PremiumDatePickerProps {
     label?: string;
     placeholder?: string;
     className?: string;
+    maxDate?: string;
 }
 
 type PickerView = "days" | "months" | "years";
@@ -47,6 +48,7 @@ export function PremiumDatePicker({
     label,
     placeholder,
     className = "",
+    maxDate,
 }: PremiumDatePickerProps) {
     const rootRef = useRef<HTMLDivElement>(null);
     const parsed = parseValue(value, mode);
@@ -199,13 +201,14 @@ export function PremiumDatePicker({
                                     <button
                                         key={day}
                                         type="button"
+                                        disabled={Boolean(maxDate && formatValue(visibleYear, visibleMonth, day, mode) > maxDate)}
                                         onClick={() => {
                                             onChange(formatValue(visibleYear, visibleMonth, day, mode));
                                             setOpen(false);
                                         }}
                                         className={`h-9 rounded-xl text-sm font-semibold transition ${parsed.year === visibleYear && parsed.month === visibleMonth && parsed.day === day
                                             ? "border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg"
-                                            : "text-slate-700 hover:bg-emerald-50 dark:text-slate-200 dark:hover:bg-slate-800"}`}
+                                            : "text-slate-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-35 dark:text-slate-200 dark:hover:bg-slate-800"}`}
                                     >
                                         {day}
                                     </button>

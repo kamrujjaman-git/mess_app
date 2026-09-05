@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { Loader2, Save, Plus, Users, NotebookPen } from "lucide-react";
 import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
-import { getActiveMembers } from "@/lib/mess";
+import { getActiveMembers, getTodayDateString, isDateOnOrBeforeToday } from "@/lib/mess";
 import { ManageMembers } from "./ManageMembers";
 import { inputClass } from "./InlineActions";
 import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
@@ -100,6 +100,10 @@ export function AdminPanel({
 
   async function handleSaveMeals() {
     if (!onSaveMeals) return;
+    if (!isDateOnOrBeforeToday(mealDate)) {
+      toast.error("Meal entries can only be saved through today.");
+      return;
+    }
     setSaving("meals");
     try {
       await onSaveMeals(mealDate, mealInputs);
@@ -123,7 +127,7 @@ export function AdminPanel({
   async function handleAddBazar() {
     if (!onAddBazar) return;
     const amount = Math.round(parseFloat(bazarAmount));
-    if (!amount || amount <= 0) {
+    if (!amount || amount <= 0 || !isDateOnOrBeforeToday(bazarDate)) {
       toast.error("Please enter a valid bazar amount.");
       return;
     }
@@ -150,7 +154,7 @@ export function AdminPanel({
     if (!onAddDeposit) return;
     const amount = Math.round(parseFloat(depositAmount));
     const member = members.find((m) => m.id === depositMemberId);
-    if (!amount || amount <= 0 || !member) {
+    if (!amount || amount <= 0 || !member || !isDateOnOrBeforeToday(depositDate)) {
       toast.error("Please enter a valid deposit amount and member.");
       return;
     }
@@ -243,7 +247,7 @@ export function AdminPanel({
               <label className="mb-1 block text-xs font-medium text-slate-500">
                 Date
               </label>
-              <PremiumDatePicker value={mealDate} onChange={setMealDate} label="Date" />
+              <PremiumDatePicker value={mealDate} onChange={setMealDate} label="Date" maxDate={getTodayDateString()} />
             </div>
             {activeMembers.length === 0 ? (
               <p className="text-sm text-slate-500">
@@ -300,7 +304,7 @@ export function AdminPanel({
             <div className="glass-card rounded-2xl p-4 sm:p-6">
               <h3 className="mb-4 text-base font-semibold">Add Bazar</h3>
               <div className="space-y-3">
-                <PremiumDatePicker value={bazarDate} onChange={setBazarDate} label="Date" />
+                <PremiumDatePicker value={bazarDate} onChange={setBazarDate} label="Date" maxDate={getTodayDateString()} />
                 <input
                   type="number"
                   placeholder="Amount (৳)"
@@ -382,7 +386,7 @@ export function AdminPanel({
                   onChange={(e) => setDepositAmount(e.target.value)}
                   className={inputClass}
                 />
-                <PremiumDatePicker value={depositDate} onChange={setDepositDate} label="Date" />
+                <PremiumDatePicker value={depositDate} onChange={setDepositDate} label="Date" maxDate={getTodayDateString()} />
                 <input
                   type="text"
                   placeholder="Note (optional)"

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { AccessDeniedScreen } from "@/components/AccessDeniedScreen";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
@@ -43,24 +44,31 @@ import {
 type Tab = "summary" | "meals" | "logs" | "admin";
 type AdminSubTab = "entries" | "members";
 
-function notifyByEmail(emails: string[], subject: string, html: string): void {
+async function notifyByEmail(
+  user: { getIdToken: () => Promise<string> } | null,
+  emails: string[],
+  subject: string,
+  html: string
+): Promise<void> {
   const recipients = [...new Set(emails.map((email) => email.trim()).filter((email) => email.includes("@")))];
-  if (recipients.length === 0) return;
+  if (!user || recipients.length === 0) return;
 
-  void fetch("/api/send-email", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Mess-App-Request": "1",
-    },
-    body: JSON.stringify({ emails: recipients, subject, html }),
-  }).then((response) => {
+  try {
+    const idToken = await user.getIdToken();
+    const response = await fetch("/api/send-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ emails: recipients, subject, html }),
+    });
     if (!response.ok) {
       console.error("Background email notification failed with status:", response.status);
     }
-  }).catch((error) => {
+  } catch (error) {
     console.error("Background email notification failed:", error);
-  });
+  }
 }
 
 const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
@@ -107,6 +115,7 @@ function DashboardContent() {
   const [monthData, setMonthData] = useState<MonthData | null>(null);
   const [monthLoadedKey, setMonthLoadedKey] = useState("");
   const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<{ monthKey: string; message: string } | null>(null);
   const activeTab = getTabFromUrl(searchParams.get("tab"));
   const activeSubTab = getSubTabFromUrl(searchParams.get("subtab"));
   const currentMember = user?.email
@@ -125,13 +134,27 @@ function DashboardContent() {
   const currentTab = isAdmin && activeTab === "admin" ? "admin" : activeTab === "admin" ? "summary" : activeTab;
   useEffect(() => {
     if (!user || !hasAccess) return;
-    const unsub = subscribeToMonthData(monthKey, (data) => {
-      setMonthData(data);
-      setMonthLoadedKey(monthKey);
-      setDataLoading(false);
-    });
+    const unsub = subscribeToMonthData(
+      monthKey,
+      (data) => {
+        setMonthData(data);
+        setMonthLoadedKey(monthKey);
+        setDataLoading(false);
+      },
+      (error) => {
+        console.error("Failed to load month data:", error);
+        setDataLoading(false);
+        setDataError({
+          monthKey,
+          message: "Could not load this month right now. Please try again.",
+        });
+        toast.error("Could not load dashboard data.");
+      }
+    );
     return unsub;
   }, [monthKey, user, hasAccess]);
+
+  const currentDataError = dataError?.monthKey === monthKey ? dataError.message : null;
 
   const handleOptimisticMealToggle = useCallback(
     (date: string, memberId: string, mealType: keyof MemberMeals, nextStatus: boolean) => {
@@ -235,11 +258,11 @@ function DashboardContent() {
       await saveDailyMeals(
         monthKey,
         { date, meals },
-        currentMember?.name || user?.displayName || "Admin"
+        user?.email || "System"
       );
       upsertMealsInLocalState(date, meals);
     },
-    [currentMember?.name, monthKey, upsertMealsInLocalState, user?.displayName]
+    [monthKey, upsertMealsInLocalState, user?.email]
   );
 
   const handleEditMeals = useCallback(
@@ -247,11 +270,11 @@ function DashboardContent() {
       await saveDailyMeals(
         monthKey,
         { date, meals },
-        currentMember?.name || user?.displayName || "Admin"
+        user?.email || "System"
       );
       upsertMealsInLocalState(date, meals);
     },
-    [currentMember?.name, monthKey, upsertMealsInLocalState, user?.displayName]
+    [monthKey, upsertMealsInLocalState, user?.email]
   );
 
   const handleAddBazar = useCallback(
@@ -259,12 +282,13 @@ function DashboardContent() {
       await addBazarEntry(
         monthKey,
         { date, amount, description, buyerIds },
-        currentMember?.name || user?.displayName || "Admin"
+        user?.email || "System"
       );
       const buyerNames = buyerIds
         .map((id) => members.find((member) => member.id === id)?.name ?? id)
         .join(", ");
       notifyByEmail(
+        user,
         buyerIds
           .map((id) => members.find((member) => member.id === id)?.email ?? "")
           .filter(Boolean),
@@ -272,7 +296,7 @@ function DashboardContent() {
         `<p>Bazar entry added for ${date}: ৳${amount}. Buyers: ${buyerNames}.${description ? ` Description: ${description}` : ""}</p>`
       );
     },
-    [currentMember?.name, members, monthKey, user?.displayName]
+    [members, monthKey, user]
   );
 
   const handleEditBazar = useCallback(
@@ -281,13 +305,14 @@ function DashboardContent() {
         monthKey,
         id,
         entry,
-        currentMember?.name || user?.displayName || "Admin"
+        user?.email || "System"
       );
       const buyerIds = entry.buyerIds ?? (entry.buyerId ? [entry.buyerId] : []);
       const buyerNames = buyerIds
         .map((buyerId) => members.find((member) => member.id === buyerId)?.name ?? buyerId)
         .join(", ");
       notifyByEmail(
+        user,
         buyerIds
           .map((buyerId) => members.find((member) => member.id === buyerId)?.email ?? "")
           .filter(Boolean),
@@ -295,7 +320,7 @@ function DashboardContent() {
         `<p>Bazar entry updated for ${entry.date}: ৳${entry.amount}. Buyers: ${buyerNames}.${entry.description ? ` Description: ${entry.description}` : ""}</p>`
       );
     },
-    [currentMember?.name, members, monthKey, user?.displayName]
+    [members, monthKey, user]
   );
 
   const handleAddDeposit = useCallback(
@@ -315,15 +340,16 @@ function DashboardContent() {
           date,
           note,
         },
-        currentMember?.name || user?.displayName || "Admin"
+        user?.email || "System"
       );
       notifyByEmail(
+        user,
         [members.find((member) => member.id === memberId)?.email ?? ""],
         `Deposit received on ${date}`,
         `<p>Deposit received by ${memberName}: ৳${amount} on ${date}.${note ? ` Note: ${note}` : ""}</p>`
       );
     },
-    [currentMember?.name, members, monthKey, user?.displayName]
+    [members, monthKey, user]
   );
 
   const handleEditDeposit = useCallback(
@@ -341,9 +367,10 @@ function DashboardContent() {
         monthKey,
         id,
         entry,
-        currentMember?.name || user?.displayName || "Admin"
+        user?.email || "System"
       );
       notifyByEmail(
+        user,
         [members.find((member) =>
           member.id === entry.memberId ||
           (!entry.memberId && member.name === entry.memberName)
@@ -352,7 +379,7 @@ function DashboardContent() {
         `<p>Deposit updated for ${entry.memberName}: ৳${entry.amount} on ${entry.date}.${entry.note ? ` Note: ${entry.note}` : ""}</p>`
       );
     },
-    [currentMember?.name, members, monthKey, user?.displayName]
+    [members, monthKey, user]
   );
 
   const handleUpdateBills = useCallback(
@@ -417,10 +444,10 @@ function DashboardContent() {
       await deleteBazarEntry(
         monthKey,
         id,
-        currentMember?.name || user?.displayName || "Admin"
+        user?.email || "System"
       );
     },
-    [currentMember?.name, monthKey, user?.displayName]
+    [monthKey, user]
   );
 
   const handleDeleteDeposit = useCallback(
@@ -428,10 +455,10 @@ function DashboardContent() {
       await deleteDepositEntry(
         monthKey,
         id,
-        currentMember?.name || user?.displayName || "Admin"
+        user?.email || "System"
       );
     },
-    [currentMember?.name, monthKey, user?.displayName]
+    [monthKey, user]
   );
 
   const handleLogout = useCallback(async () => {
@@ -486,7 +513,11 @@ function DashboardContent() {
       />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        {dataLoading || !currentDataReady || !monthData || !stats ? (
+        {currentDataError ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-center text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+            {currentDataError}
+          </div>
+        ) : dataLoading || !currentDataReady || !monthData || !stats ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
           </div>

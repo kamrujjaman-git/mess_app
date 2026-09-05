@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { getAdminAuth, getAdminFirestore } from "@/lib/firebase-admin";
 
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -18,18 +19,6 @@ function escapeHtml(value: unknown): string {
         .replaceAll("'", "&#39;");
 }
 
-function isAuthorizedRequest(request: Request): boolean {
-    const configuredApiKey = process.env.EMAIL_API_KEY?.trim();
-    const authorization = request.headers.get("authorization") ?? "";
-
-    if (configuredApiKey && authorization === `Bearer ${configuredApiKey}`) {
-        return true;
-    }
-
-    return request.headers.get("x-mess-app-request") === "1" &&
-        request.headers.get("origin") === new URL(request.url).origin;
-}
-
 function normalizeRecipientEmails(value: unknown): string[] {
     const emailList = Array.isArray(value)
         ? value
@@ -39,7 +28,49 @@ function normalizeRecipientEmails(value: unknown): string[] {
 
     return emailList
         .map((email) => String(email).trim())
-        .filter((email) => email.length > 0 && email.includes("@"));
+        .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+}
+
+async function authorizeRequest(request: Request): Promise<Set<string>> {
+    const authorization = request.headers.get("authorization") ?? "";
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+    if (!token) {
+        throw new Error("Missing Firebase ID token.");
+    }
+
+    const decodedToken = await getAdminAuth().verifyIdToken(token);
+    if (decodedToken.email_verified !== true || !decodedToken.email) {
+        throw new Error("A verified system account is required.");
+    }
+
+    const membersSnapshot = await getAdminFirestore().doc("settings/members").get();
+    const members = membersSnapshot.data()?.members;
+    if (!Array.isArray(members)) {
+        throw new Error("System member directory is unavailable.");
+    }
+
+    const allowedRecipients = new Set(
+        members
+            .filter((member) =>
+                member &&
+                typeof member === "object" &&
+                member.status === "active" &&
+                member.active !== false &&
+                member.isBlocked !== true &&
+                member.isRemoved !== true &&
+                typeof member.email === "string"
+            )
+            .map((member) => String(member.email).trim().toLowerCase())
+            .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    );
+
+    const superAdminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").trim().toLowerCase();
+    const callerEmail = decodedToken.email.trim().toLowerCase();
+    if (!allowedRecipients.has(callerEmail) && callerEmail !== superAdminEmail) {
+        throw new Error("The account is not an active system member.");
+    }
+
+    return allowedRecipients;
 }
 
 function buildModernHtmlTemplate({
@@ -107,12 +138,47 @@ function buildModernHtmlTemplate({
 
 export async function POST(request: Request) {
     try {
-        if (!isAuthorizedRequest(request)) {
-            return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+        let allowedRecipients: Set<string>;
+        try {
+            allowedRecipients = await authorizeRequest(request);
+        } catch (authorizationError) {
+            return NextResponse.json(
+                { ok: false, error: authorizationError instanceof Error ? authorizationError.message : "Unauthorized" },
+                { status: 401 }
+            );
         }
 
         const body = (await request.json().catch(() => ({}))) ?? {};
-        const recipientEmails = normalizeRecipientEmails(body.emails ?? body.email ?? body.recipientEmail);
+        const recipientEmails = normalizeRecipientEmails(body.emails ?? body.email ?? body.recipientEmail)
+            .map((email) => email.toLowerCase());
+        if (recipientEmails.some((email) => !allowedRecipients.has(email))) {
+            return NextResponse.json(
+                { ok: false, error: "Recipients must be active members of the mess." },
+                { status: 403 }
+            );
+        }
+
+        if (recipientEmails.length > 20) {
+            return NextResponse.json(
+                { ok: false, error: "Too many recipients." },
+                { status: 400 }
+            );
+        }
+
+        if (recipientEmails.length === 0) {
+            return NextResponse.json({ ok: true, sent: 0, message: "No recipient emails provided." });
+        }
+
+        if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+            console.warn("SMTP credentials are not set; skipping email send.");
+            return NextResponse.json({
+                ok: true,
+                sent: 0,
+                skipped: true,
+                message: "Email service is not configured.",
+            });
+        }
+
         const subject = typeof body.subject === "string" && body.subject.trim().length > 0
             ? body.subject.trim().slice(0, 200)
             : "Mess App Notification";
@@ -128,20 +194,6 @@ export async function POST(request: Request) {
             `Your latest mess update is ready.`,
             `Date: ${new Date().toLocaleDateString()}`,
         ].join("\n");
-
-        if (recipientEmails.length === 0) {
-            return NextResponse.json({ ok: true, sent: 0, message: "No recipient emails provided." });
-        }
-
-        if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-            console.warn("SMTP credentials are not set; skipping email send.");
-            return NextResponse.json({
-                ok: true,
-                sent: 0,
-                skipped: true,
-                message: "Email service is not configured.",
-            });
-        }
 
         try {
             const info = await transporter.sendMail({
