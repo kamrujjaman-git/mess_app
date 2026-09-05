@@ -151,7 +151,7 @@ export function PremiumDatePicker({
             </button>
 
             {open ? (
-                <div className="glass absolute left-0 top-[calc(100%+0.6rem)] z-[70] w-[min(20rem,calc(100vw-2rem))] rounded-3xl p-4 shadow-2xl" role="dialog" aria-label={label ?? "Choose date"}>
+                <div className="absolute left-0 top-[calc(100%+0.6rem)] z-[999] w-[min(20rem,calc(100vw-2rem))] rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-900/20 backdrop-blur-2xl dark:border-slate-800 dark:bg-slate-900/95" role="dialog" aria-label={label ?? "Choose date"}>
                     <div className="mb-3 flex items-center justify-between gap-2">
                         <button
                             type="button"
