@@ -49,29 +49,38 @@ body {
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(248, 250, 252, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 .dark .glass {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(51, 65, 85, 0.5);
-  box-shadow: 0 20px 45px rgba(2, 6, 23, 0.5);
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  box-shadow: 0 4px 16px rgba(2, 6, 23, 0.35);
 }
 
 .glass-card {
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow: -4px -4px 10px var(--surface-highlight), 4px 4px 10px var(--surface-shadow);
+  background: rgba(248, 250, 252, 0.7);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  transition: box-shadow 160ms ease;
 }
 
 .dark .glass-card {
-  background: var(--surface);
-  border: 1px solid rgba(51, 65, 85, 0.65);
-  box-shadow: -4px -4px 10px var(--surface-highlight), 4px 4px 10px var(--surface-shadow);
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  box-shadow: 0 4px 16px rgba(2, 6, 23, 0.35);
+}
+
+.glass-card:hover {
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+}
+
+.dark .glass-card:hover {
+  box-shadow: 0 6px 20px rgba(2, 6, 23, 0.45);
 }
 
 button {

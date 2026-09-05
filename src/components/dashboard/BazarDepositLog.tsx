@@ -199,7 +199,7 @@ export function BazarDepositLog({
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="glass-card overflow-hidden rounded-2xl border border-slate-200/70 shadow-sm dark:border-slate-700/70">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md">
           <div className="border-b border-slate-200/60 bg-slate-50/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/40 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -347,7 +347,7 @@ export function BazarDepositLog({
           )}
         </div>
 
-        <div className="glass-card overflow-hidden rounded-2xl border border-slate-200/70 shadow-sm dark:border-slate-700/70">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md">
           <div className="border-b border-slate-200/60 bg-slate-50/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/40 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -483,7 +483,7 @@ export function BazarDepositLog({
       </div>
 
       {isAdmin && (
-        <div className="glass-card overflow-hidden rounded-2xl border border-slate-200/70 shadow-sm dark:border-slate-700/70">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md">
           <div className="border-b border-slate-200/60 bg-slate-50/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/40 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>

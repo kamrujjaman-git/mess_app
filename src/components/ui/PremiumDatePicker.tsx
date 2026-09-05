@@ -136,25 +136,29 @@ export function PremiumDatePicker({
     return (
         <div ref={rootRef} className={`relative min-w-0 ${className}`}>
             {label ? <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">{label}</span> : null}
-            <button
-                type="button"
-                onClick={openPicker}
-                aria-haspopup="dialog"
-                aria-expanded={open}
-                className={`${mode === "month"
-                    ? "flex min-h-9 w-full items-center gap-2 rounded-full bg-transparent px-2 py-1 text-left text-xs font-semibold text-slate-800 transition-colors hover:bg-slate-200/60 sm:min-h-10 sm:text-sm dark:text-slate-100 dark:hover:bg-slate-800"
-                    : "glass flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-slate-800 transition-all hover:scale-[1.01] dark:text-slate-100"}`}
-            >
-                <span className={`${mode === "month"
-                    ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-emerald-700 dark:text-emerald-300"
-                    : "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"}`}
+            {mode === "month" ? (
+                <div className="flex min-h-9 w-auto max-w-fit items-center gap-2 px-2 py-1 text-xs font-semibold text-slate-800 sm:min-h-10 sm:text-sm dark:text-slate-100">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-emerald-700 dark:text-emerald-300">
+                        <CalendarDays className="h-4 w-4" />
+                    </span>
+                    <span className="whitespace-nowrap">{displayLabel}</span>
+                </div>
+            ) : (
+                <button
+                    type="button"
+                    onClick={openPicker}
+                    aria-haspopup="dialog"
+                    aria-expanded={open}
+                    className="glass flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-slate-800 transition-all hover:scale-[1.01] dark:text-slate-100"
                 >
-                    <CalendarDays className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
-            </button>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                        <CalendarDays className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
+                </button>
+            )}
 
-            {open ? (
+            {open && mode !== "month" ? (
                 <div className="absolute left-0 top-[calc(100%+0.6rem)] z-[999] w-[min(20rem,calc(100vw-2rem))] rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-900/20 backdrop-blur-2xl dark:border-slate-800 dark:bg-slate-900/95" role="dialog" aria-label={label ?? "Choose date"}>
                     <div className="mb-3 flex items-center justify-between gap-2">
                         <button

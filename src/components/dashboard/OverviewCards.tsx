@@ -81,7 +81,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       {visibleCards.map((card) => (
         <div
           key={card.label}
-          className={`glass-card rounded-2xl p-3.5 sm:p-5 ${isAdmin && card.label === "Rent + Bua" ? "col-span-2 sm:col-span-1" : ""
+          className={`rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3.5 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md sm:p-5 ${isAdmin && card.label === "Rent + Bua" ? "col-span-2 sm:col-span-1" : ""
             }`}
         >
           <div className="mb-3 flex items-center justify-between gap-2">

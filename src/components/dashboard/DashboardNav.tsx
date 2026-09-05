@@ -138,7 +138,7 @@ export function DashboardNav({
           <span className="hidden text-lg font-bold sm:inline">Mess App</span>
         </div>
 
-        <div className="order-3 flex w-full items-center justify-center gap-0.5 rounded-full border border-slate-200/80 bg-slate-50/80 px-2 py-1 text-xs shadow-sm transition-colors hover:bg-slate-100/80 dark:border-slate-800 dark:bg-slate-900/80 dark:hover:bg-slate-800/80 sm:gap-1 sm:text-sm md:order-2 md:mx-auto md:w-auto md:flex-none">
+        <div className="order-3 flex w-auto max-w-fit items-center justify-center gap-0.5 rounded-full border border-slate-200/90 bg-slate-50/70 px-3 py-1.5 text-xs shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:hover:bg-slate-800 sm:gap-1 sm:text-sm md:order-2 md:mx-auto md:flex-none">
           <button
             type="button"
             onClick={onPrevMonth}
@@ -147,7 +147,7 @@ export function DashboardNav({
           >
             <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
-          <div className="min-w-0 w-full max-w-[15rem] md:min-w-[180px] md:max-w-none">
+          <div className="min-w-0 w-auto max-w-fit">
             <PremiumDatePicker value={monthKey} onChange={onMonthChange} mode="month" />
           </div>
           <button
