@@ -309,8 +309,8 @@ export function calculateMessStats(
         )
         .reduce((sum, d) => sum + safeRound(d.amount), 0)
     );
-    const mealCost = personalTotalMeals * mealRate;
-    const mealBalance = totalDeposited - mealCost;
+    const mealCost = safeRound(personalTotalMeals * mealRate);
+    const mealBalance = safeRound(totalDeposited - mealCost);
     const fixedShare = 0;
     const finalBalance = safeRound(mealBalance);
 

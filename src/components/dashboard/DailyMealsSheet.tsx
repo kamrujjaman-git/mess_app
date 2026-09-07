@@ -118,11 +118,9 @@ export function DailyMealsSheet({
     setSaving(true);
     try {
       await onEdit(record.date, mergedMeals);
-      toast.dismiss();
       toast.success("Meal sheet updated.");
     } catch (error) {
       console.error("Firestore Save Error:", error);
-      toast.dismiss();
       toast.error("Failed to save meal selection. Please try again.");
     } finally {
       setSaving(false);

@@ -12,6 +12,7 @@ import { SummaryTable } from "@/components/dashboard/SummaryTable";
 import { DailyMealsSheet } from "@/components/dashboard/DailyMealsSheet";
 import { BazarDepositLog } from "@/components/dashboard/BazarDepositLog";
 import { AdminPanel } from "@/components/dashboard/AdminPanel";
+import { LogCardSkeleton, MealSheetSkeleton, SummaryCardSkeleton } from "@/components/dashboard/Skeletons";
 import {
   calculateMessStats,
   formatMonthKey,
@@ -90,8 +91,12 @@ function getSubTabFromUrl(subTab: string | null): AdminSubTab {
 
 function DashboardLoading() {
   return (
-    <div className="flex min-h-screen flex-1 items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+    <div className="min-h-screen flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
+        <div className="h-16 animate-pulse rounded-2xl bg-slate-200/70 dark:bg-slate-800/70" />
+        <SummaryCardSkeleton count={6} />
+        <LogCardSkeleton />
+      </div>
     </div>
   );
 }
@@ -509,6 +514,7 @@ function DashboardContent() {
         user={user}
         isAdmin={isAdmin}
         memberName={memberDisplayName}
+        totalBalance={stats?.remainingBalance ?? null}
         onLogout={handleLogout}
       />
 
@@ -518,8 +524,9 @@ function DashboardContent() {
             {currentDataError}
           </div>
         ) : dataLoading || !currentDataReady || !monthData || !stats ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+          <div className="space-y-6">
+            <SummaryCardSkeleton count={isAdmin ? 6 : 5} />
+            {currentTab === "meals" ? <MealSheetSkeleton /> : <LogCardSkeleton />}
           </div>
         ) : (
           <>
@@ -588,6 +595,8 @@ function DashboardContent() {
                 onDeleteDeposit={isAdmin ? handleDeleteDeposit : undefined}
                 onEditBill={isAdmin ? handleEditBill : undefined}
                 onDeleteBill={isAdmin ? handleDeleteBill : undefined}
+                onAddBazar={isAdmin ? () => updateAdminSubTab("entries") : undefined}
+                onAddDeposit={isAdmin ? () => updateAdminSubTab("entries") : undefined}
               />
             )}
 

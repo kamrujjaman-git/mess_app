@@ -45,7 +45,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
     },
     {
       label: "Total Meals",
-      value: stats.totalMeals.toString(),
+      value: formatCurrency(stats.totalMeals),
       sub: "all members",
       icon: Utensils,
       color: "from-violet-500 to-purple-600",
@@ -77,7 +77,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
   const visibleCards = isAdmin ? cards : cards.filter((card) => card.label !== "Rent + Bua");
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
       {visibleCards.map((card) => (
         <div
           key={card.label}

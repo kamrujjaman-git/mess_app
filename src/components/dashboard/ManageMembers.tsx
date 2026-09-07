@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { Member } from "@/lib/mess";
 import { buildWhatsAppLink, normalizeWhatsAppNumber } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
+import { DeleteConfirmationModal } from "@/components/ui/DeleteConfirmationModal";
 
 interface ManageMembersProps {
   members: Member[];
@@ -62,6 +63,7 @@ export function ManageMembers({
   const [editEmail, setEditEmail] = useState("");
   const [editWhatsAppNumber, setEditWhatsAppNumber] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
+  const [memberPendingDelete, setMemberPendingDelete] = useState<Member | null>(null);
 
   async function handleAdd() {
     if (!newName.trim()) {
@@ -127,15 +129,13 @@ export function ManageMembers({
     }
   }
 
-  async function handleDeleteMember(member: Member) {
-    const confirmed = window.confirm(
-      `Permanently delete ${member.name} from the mess database? This will remove the member record and revoke login access.`
-    );
-    if (!confirmed) return;
-
+  async function handleDeleteMember() {
+    if (!memberPendingDelete) return;
+    const member = memberPendingDelete;
     setSaving(`delete-${member.id}`);
     try {
       await onDeleteMember(member.id);
+      setMemberPendingDelete(null);
       toast.success(`${member.name} has been deleted from the mess.`);
     } catch (error) {
       console.error("Delete member failed:", error);
@@ -395,7 +395,7 @@ export function ManageMembers({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteMember(member)}
+                          onClick={() => setMemberPendingDelete(member)}
                           disabled={saving === `delete-${member.id}`}
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 sm:h-9 sm:w-9"
                           title={`Delete ${member.name}`}
@@ -416,6 +416,15 @@ export function ManageMembers({
           </ul>
         )}
       </div>
+      <DeleteConfirmationModal
+        open={Boolean(memberPendingDelete)}
+        title="Delete this entry?"
+        description={memberPendingDelete ? `Permanently delete ${memberPendingDelete.name} from the mess database? This removes the member record and revokes login access.` : ""}
+        confirmLabel="Delete member"
+        busy={Boolean(memberPendingDelete && saving === `delete-${memberPendingDelete.id}`)}
+        onConfirm={handleDeleteMember}
+        onCancel={() => setMemberPendingDelete(null)}
+      />
     </div>
   );
 }

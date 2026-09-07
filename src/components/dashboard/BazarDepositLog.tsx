@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Loader2, Save, X } from "lucide-react";
 import {
@@ -20,6 +20,8 @@ import {
 import { InlineActions, inputClass } from "./InlineActions";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
+import { DeleteConfirmationModal } from "@/components/ui/DeleteConfirmationModal";
+import { useToast } from "@/components/ui/ToastProvider";
 import { SwipeableListItem } from "./SwipeableListItem";
 import { Wallet2, ReceiptText } from "lucide-react";
 
@@ -33,14 +35,16 @@ interface BazarDepositLogProps {
     id: string,
     entry: Omit<BazarEntry, "id">
   ) => Promise<void>;
-  onDeleteBazar?: (id: string) => void;
+  onDeleteBazar?: (id: string) => Promise<void>;
   onEditDeposit?: (
     id: string,
     entry: Omit<DepositEntry, "id">
   ) => Promise<void>;
-  onDeleteDeposit?: (id: string) => void;
+  onDeleteDeposit?: (id: string) => Promise<void>;
   onEditBill?: (field: BillField, value: number) => Promise<void>;
   onDeleteBill?: (field: BillField) => Promise<void>;
+  onAddBazar?: () => void;
+  onAddDeposit?: () => void;
 }
 
 export function BazarDepositLog({
@@ -55,7 +59,10 @@ export function BazarDepositLog({
   onDeleteDeposit,
   onEditBill,
   onDeleteBill,
+  onAddBazar,
+  onAddDeposit,
 }: BazarDepositLogProps) {
+  const { undo, error } = useToast();
   const activeMembers = getActiveMembers(members);
 
   const [editingBazarId, setEditingBazarId] = useState<string | null>(null);
@@ -75,6 +82,18 @@ export function BazarDepositLog({
   );
   const [billValue, setBillValue] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
+  const [hiddenBazarIds, setHiddenBazarIds] = useState<string[]>([]);
+  const [hiddenDepositIds, setHiddenDepositIds] = useState<string[]>([]);
+  const [billPendingDelete, setBillPendingDelete] = useState<BillField | null>(null);
+  const [pendingEntryDelete, setPendingEntryDelete] = useState<{ type: "bazar" | "deposit"; id: string } | null>(null);
+  const pendingDeletes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const visibleBazar = bazar.filter((entry) => !hiddenBazarIds.includes(entry.id));
+  const visibleDeposits = deposits.filter((entry) => !hiddenDepositIds.includes(entry.id));
+
+  useEffect(() => () => {
+    pendingDeletes.current.forEach((timer) => clearTimeout(timer));
+  }, []);
 
   function startEditBazar(entry: BazarEntry) {
     setEditingBazarId(entry.id);
@@ -185,18 +204,77 @@ export function BazarDepositLog({
     }
   }
 
-  async function handleDeleteBill(field: BillField) {
-    if (!onDeleteBill || !confirm(`Clear ${BILL_LABELS[field]} for this month?`)) {
-      return;
-    }
-
+  async function handleDeleteBill() {
+    if (!onDeleteBill || !billPendingDelete) return;
+    const field = billPendingDelete;
     try {
       await onDeleteBill(field);
+      setBillPendingDelete(null);
       toast.success(`${BILL_LABELS[field]} cleared successfully.`);
     } catch (error) {
       console.error("Delete bill failed:", error);
       toast.error(`Failed to clear ${BILL_LABELS[field]}. Please try again.`);
     }
+  }
+
+  function queueDeleteBazar(id: string) {
+    if (!onDeleteBazar) return;
+    setHiddenBazarIds((previous) => [...previous, id]);
+    const timer = setTimeout(async () => {
+      try {
+        await onDeleteBazar(id);
+        setHiddenBazarIds((previous) => previous.filter((itemId) => itemId !== id));
+      } catch (deleteError) {
+        console.error("Delete bazar entry failed:", deleteError);
+        setHiddenBazarIds((previous) => previous.filter((itemId) => itemId !== id));
+        error("Failed to delete bazar entry.");
+      }
+      pendingDeletes.current.delete(`bazar-${id}`);
+    }, 5000);
+    pendingDeletes.current.set(`bazar-${id}`, timer);
+    undo("Bazar entry deleted", () => {
+      const pendingTimer = pendingDeletes.current.get(`bazar-${id}`);
+      if (pendingTimer) clearTimeout(pendingTimer);
+      pendingDeletes.current.delete(`bazar-${id}`);
+      setHiddenBazarIds((previous) => previous.filter((itemId) => itemId !== id));
+    });
+  }
+
+  function queueDeleteDeposit(id: string) {
+    if (!onDeleteDeposit) return;
+    setHiddenDepositIds((previous) => [...previous, id]);
+    const timer = setTimeout(async () => {
+      try {
+        await onDeleteDeposit(id);
+        setHiddenDepositIds((previous) => previous.filter((itemId) => itemId !== id));
+      } catch (deleteError) {
+        console.error("Delete deposit entry failed:", deleteError);
+        setHiddenDepositIds((previous) => previous.filter((itemId) => itemId !== id));
+        error("Failed to delete deposit entry.");
+      }
+      pendingDeletes.current.delete(`deposit-${id}`);
+    }, 5000);
+    pendingDeletes.current.set(`deposit-${id}`, timer);
+    undo("Deposit entry deleted", () => {
+      const pendingTimer = pendingDeletes.current.get(`deposit-${id}`);
+      if (pendingTimer) clearTimeout(pendingTimer);
+      pendingDeletes.current.delete(`deposit-${id}`);
+      setHiddenDepositIds((previous) => previous.filter((itemId) => itemId !== id));
+    });
+  }
+
+  function requestDeleteEntry(type: "bazar" | "deposit", id: string) {
+    setPendingEntryDelete({ type, id });
+  }
+
+  function confirmDeleteEntry() {
+    if (!pendingEntryDelete) return;
+    if (pendingEntryDelete.type === "bazar") {
+      queueDeleteBazar(pendingEntryDelete.id);
+    } else {
+      queueDeleteDeposit(pendingEntryDelete.id);
+    }
+    setPendingEntryDelete(null);
   }
 
   const billFields: BillField[] = ["houseRent", "buaBill", "otherBills"];
@@ -214,22 +292,24 @@ export function BazarDepositLog({
                 </p>
               </div>
               <div className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-                {bazar.length} items
+                {visibleBazar.length} items
               </div>
             </div>
           </div>
-          {bazar.length === 0 ? (
+          {visibleBazar.length === 0 ? (
             <div className="p-4 sm:p-6">
               <EmptyState
                 icon={ReceiptText}
                 title="No bazar records found"
                 description="Add a bazar entry to get started."
+                actionButtonLabel={onAddBazar ? "Add expense" : undefined}
+                onAction={onAddBazar}
               />
             </div>
           ) : (
             <div className="overflow-x-auto overflow-y-hidden px-2 py-2 sm:px-4">
               <ul className="min-w-[280px] divide-y divide-slate-300/50 dark:divide-slate-700/60">
-                {bazar.map((entry) => (
+                {visibleBazar.map((entry) => (
                   <li key={entry.id} className="px-2 py-2 sm:px-3">
                     {editingBazarId === entry.id ? (
                       <div className="space-y-2">
@@ -302,13 +382,7 @@ export function BazarDepositLog({
                         onEdit={() => startEditBazar(entry)}
                         onDelete={async () => {
                           if (!onDeleteBazar) return;
-                          try {
-                            await onDeleteBazar(entry.id);
-                            toast.success("Bazar entry deleted successfully.");
-                          } catch (error) {
-                            console.error("Delete bazar entry failed:", error);
-                            toast.error("Failed to delete bazar entry. Please try again.");
-                          }
+                          requestDeleteEntry("bazar", entry.id);
                         }}
                         editLabel="Edit"
                         deleteLabel="Delete"
@@ -332,13 +406,7 @@ export function BazarDepositLog({
                               onEdit={() => startEditBazar(entry)}
                               onDelete={async () => {
                                 if (!onDeleteBazar) return;
-                                try {
-                                  await onDeleteBazar(entry.id);
-                                  toast.success("Bazar entry deleted successfully.");
-                                } catch (error) {
-                                  console.error("Delete bazar entry failed:", error);
-                                  toast.error("Failed to delete bazar entry. Please try again.");
-                                }
+                                requestDeleteEntry("bazar", entry.id);
                               }}
                             />
                           )}
@@ -362,22 +430,24 @@ export function BazarDepositLog({
                 </p>
               </div>
               <div className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                {deposits.length} items
+                {visibleDeposits.length} items
               </div>
             </div>
           </div>
-          {deposits.length === 0 ? (
+          {visibleDeposits.length === 0 ? (
             <div className="p-4 sm:p-6">
               <EmptyState
                 icon={Wallet2}
                 title="No deposits found"
                 description="Deposit activity will show up here."
+                actionButtonLabel={onAddDeposit ? "Add deposit" : undefined}
+                onAction={onAddDeposit}
               />
             </div>
           ) : (
             <div className="overflow-x-auto overflow-y-hidden px-2 py-2 sm:px-4">
               <ul className="min-w-[280px] divide-y divide-slate-300/50 dark:divide-slate-700/60">
-                {deposits.map((entry) => (
+                {visibleDeposits.map((entry) => (
                   <li key={entry.id} className="px-2 py-2 sm:px-3">
                     {editingDepositId === entry.id ? (
                       <div className="space-y-2">
@@ -439,13 +509,7 @@ export function BazarDepositLog({
                         onEdit={() => startEditDeposit(entry)}
                         onDelete={async () => {
                           if (!onDeleteDeposit) return;
-                          try {
-                            await onDeleteDeposit(entry.id);
-                            toast.success("Deposit entry deleted successfully.");
-                          } catch (error) {
-                            console.error("Delete deposit entry failed:", error);
-                            toast.error("Failed to delete deposit entry. Please try again.");
-                          }
+                          requestDeleteEntry("deposit", entry.id);
                         }}
                         editLabel="Edit"
                         deleteLabel="Delete"
@@ -466,13 +530,7 @@ export function BazarDepositLog({
                               onEdit={() => startEditDeposit(entry)}
                               onDelete={async () => {
                                 if (!onDeleteDeposit) return;
-                                try {
-                                  await onDeleteDeposit(entry.id);
-                                  toast.success("Deposit entry deleted successfully.");
-                                } catch (error) {
-                                  console.error("Delete deposit entry failed:", error);
-                                  toast.error("Failed to delete deposit entry. Please try again.");
-                                }
+                                requestDeleteEntry("deposit", entry.id);
                               }}
                             />
                           )}
@@ -562,7 +620,7 @@ export function BazarDepositLog({
                     {isAdmin && bills[field] > 0 && (
                       <InlineActions
                         onEdit={() => startEditBill(field)}
-                        onDelete={() => handleDeleteBill(field)}
+                        onDelete={() => setBillPendingDelete(field)}
                         editLabel={`Edit ${BILL_LABELS[field]}`}
                         deleteLabel={`Clear ${BILL_LABELS[field]}`}
                       />
@@ -580,6 +638,19 @@ export function BazarDepositLog({
           </ul>
         </div>
       )}
+      <DeleteConfirmationModal
+        open={Boolean(billPendingDelete)}
+        title="Delete this entry?"
+        description={billPendingDelete ? `Clear ${BILL_LABELS[billPendingDelete]} for this month? This shared amount will be removed immediately.` : ""}
+        confirmLabel="Clear bill"
+        onConfirm={handleDeleteBill}
+        onCancel={() => setBillPendingDelete(null)}
+      />
+      <DeleteConfirmationModal
+        open={Boolean(pendingEntryDelete)}
+        onConfirm={confirmDeleteEntry}
+        onCancel={() => setPendingEntryDelete(null)}
+      />
     </div>
   );
 }

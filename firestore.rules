@@ -9,6 +9,8 @@ service cloud.firestore {
   }
 
   function isSuperAdmin() {
+    // Keep this deployed email synchronized with NEXT_PUBLIC_ADMIN_EMAIL.
+    // Firestore rules cannot read Next.js environment variables at runtime.
     return verifiedSignedIn() &&
       request.auth.token.email != null &&
       request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower();

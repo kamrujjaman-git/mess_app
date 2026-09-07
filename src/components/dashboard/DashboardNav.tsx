@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   ChevronLeft,
@@ -11,6 +11,7 @@ import {
   Sun,
   Moon,
   X,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "firebase/auth";
@@ -23,6 +24,9 @@ import {
 } from "@/lib/firestore";
 import { SwipeableListItem } from "./SwipeableListItem";
 import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
+import { useToast } from "@/components/ui/ToastProvider";
+import { formatCurrency } from "@/lib/mess";
+import { DeleteConfirmationModal } from "@/components/ui/DeleteConfirmationModal";
 
 interface DashboardNavProps {
   monthKey: string;
@@ -32,6 +36,7 @@ interface DashboardNavProps {
   user: User;
   isAdmin: boolean;
   memberName?: string | null;
+  totalBalance?: number | null;
   onLogout: () => void;
 }
 
@@ -43,9 +48,11 @@ export function DashboardNav({
   user,
   isAdmin,
   memberName,
+  totalBalance,
   onLogout,
 }: DashboardNavProps) {
   const { isAdmin: authIsAdmin, isSuperAdmin, canDeleteNotifications } = useAuth();
+  const { undo, error } = useToast();
   const [imageFailed, setImageFailed] = useState(false);
   const [isDark, setIsDark] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -54,9 +61,35 @@ export function DashboardNav({
   });
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
   const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string | null>(() =>
     typeof window === "undefined" ? null : window.localStorage.getItem("mess_activity_last_seen")
   );
+  const [hiddenLogIds, setHiddenLogIds] = useState<string[]>([]);
+  const [pendingDeleteLogId, setPendingDeleteLogId] = useState<string | null>(null);
+  const notificationContainerRef = useRef<HTMLDivElement | null>(null);
+  const pendingDeletes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  useEffect(() => {
+    if (!showNotifications) return;
+
+    function handleOutsidePointerDown(event: PointerEvent) {
+      if (!notificationContainerRef.current?.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
+  }, [showNotifications]);
+
+  useEffect(() => {
+    const handleScroll = () => setIsCompact(window.scrollY > 36);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -83,8 +116,8 @@ export function DashboardNav({
 
 
   const visibleActivityLogs = useMemo(
-    () => activityLogs.filter((log) => isActivityLogForMonth(log, monthKey)),
-    [activityLogs, monthKey]
+    () => activityLogs.filter((log) => isActivityLogForMonth(log, monthKey) && !hiddenLogIds.includes(log.id)),
+    [activityLogs, hiddenLogIds, monthKey]
   );
 
   const unreadCount = useMemo(() => {
@@ -111,20 +144,40 @@ export function DashboardNav({
     }
   }
 
-  async function handleDeleteActivityLog(logId: string) {
+  function queueDeleteActivityLog(logId: string) {
     if (!canDeleteNotifications) return;
-    if (!window.confirm("Delete this notification?")) return;
-
-    try {
-      await deleteActivityLog(logId);
-    } catch (error) {
-      console.error("Failed to delete activity log:", error);
-    }
+    setHiddenLogIds((previous) => [...previous, logId]);
+    const timer = setTimeout(async () => {
+      try {
+        await deleteActivityLog(logId);
+        setHiddenLogIds((previous) => previous.filter((id) => id !== logId));
+      } catch (deleteError) {
+        console.error("Failed to delete activity log:", deleteError);
+        setHiddenLogIds((previous) => previous.filter((id) => id !== logId));
+        error("Failed to delete notification.");
+      }
+      pendingDeletes.current.delete(logId);
+    }, 5000);
+    pendingDeletes.current.set(logId, timer);
+    undo("Notification deleted", () => {
+      const pendingTimer = pendingDeletes.current.get(logId);
+      if (pendingTimer) clearTimeout(pendingTimer);
+      pendingDeletes.current.delete(logId);
+      setHiddenLogIds((previous) => previous.filter((id) => id !== logId));
+    });
   }
 
+  function requestDeleteActivityLog(logId: string) {
+    if (canDeleteNotifications) setPendingDeleteLogId(logId);
+  }
+
+  useEffect(() => () => {
+    pendingDeletes.current.forEach((timer) => clearTimeout(timer));
+  }, []);
+
   return (
-    <header className="glass sticky top-0 z-50 w-full max-w-full overflow-hidden">
-      <div className="relative mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 p-3 sm:p-4 md:flex-nowrap md:gap-3 lg:px-8">
+    <header className={`relative sticky top-0 z-40 w-full max-w-full overflow-visible border-b border-slate-200/50 bg-white/80 backdrop-blur-lg transition-all duration-300 dark:border-slate-800/50 dark:bg-slate-900/80 ${isCompact ? "shadow-md shadow-slate-900/5" : ""}`}>
+      <div className={`relative mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 transition-all duration-300 sm:px-4 md:flex-nowrap md:gap-3 lg:px-8 ${isCompact ? "py-2" : "py-3 sm:py-4"}`}>
         <div className="order-1 flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-10 sm:w-10">
             <Image
@@ -135,11 +188,11 @@ export function DashboardNav({
               className="object-cover"
             />
           </div>
-          <span className="truncate text-base font-bold sm:text-lg">Mess App</span>
+          <span className={`truncate font-bold transition-all duration-300 ${isCompact ? "text-sm sm:text-base" : "text-base sm:text-lg"}`}>Mess App</span>
         </div>
 
         <div className="order-3 mt-3 flex w-full justify-center md:absolute md:left-1/2 md:top-1/2 md:order-none md:mt-0 md:w-auto md:-translate-x-1/2 md:-translate-y-1/2">
-          <div className="flex w-auto max-w-fit items-center justify-center gap-0.5 rounded-full border border-slate-200/90 bg-slate-50/70 px-3 py-1.5 text-xs shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:hover:bg-slate-800 sm:gap-1 sm:text-sm">
+          <div className={`flex w-auto max-w-fit items-center justify-center gap-0.5 rounded-full border border-slate-200/90 bg-slate-50/70 px-2.5 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:hover:bg-slate-800 sm:gap-1 sm:px-3 ${isCompact ? "py-1 text-[11px] sm:text-xs" : "py-1.5 text-xs sm:text-sm"}`}>
             <button
               type="button"
               onClick={onPrevMonth}
@@ -163,20 +216,91 @@ export function DashboardNav({
         </div>
 
         <div className="order-2 ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:gap-2 md:order-3 md:flex-1">
-          <button
-            type="button"
-            onClick={handleBellClick}
-            className="glass relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-700 transition-all duration-200 hover:scale-105 dark:text-slate-100"
-            aria-label="Open notifications"
-            title="Notifications"
-          >
-            <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            {unreadCount > 0 ? (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white sm:h-5 sm:min-w-5 sm:text-[10px]">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
+          {typeof totalBalance === "number" && (
+            <div className="flex max-w-[5rem] items-center gap-1 rounded-full border border-emerald-200/70 bg-emerald-50/80 px-1.5 py-1 text-[10px] font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-300 sm:max-w-none sm:gap-1.5 sm:px-2.5 sm:text-xs" title="Current meal balance">
+              <Wallet className="h-3.5 w-3.5" />
+              <span className="truncate">৳{formatCurrency(Math.abs(totalBalance))}</span>
+            </div>
+          )}
+          <div ref={notificationContainerRef} className="relative inline-block shrink-0">
+            <button
+              type="button"
+              onClick={handleBellClick}
+              className="glass relative flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition-all duration-200 hover:scale-105 dark:text-slate-100"
+              aria-label="Open notifications"
+              title="Notifications"
+            >
+              <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white sm:h-5 sm:min-w-5 sm:text-[10px]">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : null}
+            </button>
+            {showNotifications ? (
+              <aside
+                className="absolute right-0 top-full z-50 mt-2.5 flex w-80 max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:w-96 sm:max-w-none"
+              >
+                <div className="flex items-center justify-between border-b border-slate-200/80 px-4 py-3 dark:border-slate-800/80">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">Activity Log</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNotifications(false);
+                    }}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                    aria-label="Close notifications"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div
+                  className="custom-scrollbar flex-1 max-h-[70vh] min-h-[300px] space-y-1.5 overflow-y-auto p-3"
+                >
+                  {visibleActivityLogs.length === 0 ? (
+                    <div className="rounded-xl border border-slate-200/80 bg-white/95 p-4 text-sm text-slate-700 shadow-lg shadow-slate-200/50 dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-200 dark:shadow-black/40">
+                      No notifications for this month yet.
+                    </div>
+                  ) : (
+                    visibleActivityLogs.map((log) => {
+                      const content = (
+                        <div className="w-full text-slate-800 dark:text-slate-100">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold">{log.action}</p>
+                              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{log.performedBy}</p>
+                            </div>
+                            <span className="shrink-0 text-[10px] text-slate-400">
+                              {new Date(log.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{log.details}</p>
+                        </div>
+                      );
+                      if (!canDeleteNotifications) {
+                        return <div key={log.id}>{content}</div>;
+                      }
+                      return (
+                        <SwipeableListItem
+                          key={log.id}
+                          onDelete={() => requestDeleteActivityLog(log.id)}
+                          deleteLabel="Delete"
+                          className="my-1.5"
+                        >
+                          {content}
+                        </SwipeableListItem>
+                      );
+                    })
+                  )}
+                </div>
+              </aside>
             ) : null}
-          </button>
+          </div>
 
           <button
             type="button"
@@ -193,8 +317,14 @@ export function DashboardNav({
             {roleLabel}
           </span>
 
-          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            <div className="relative shrink-0">
+          <div className="relative flex min-w-0 items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setProfileOpen((previous) => !previous)}
+              className="relative shrink-0 rounded-full"
+              aria-label="Open profile menu"
+              aria-expanded={profileOpen}
+            >
               {user?.photoURL && !imageFailed ? (
                 <Image
                   src={user.photoURL}
@@ -211,7 +341,7 @@ export function DashboardNav({
                 </div>
               )}
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900" aria-label="Online" />
-            </div>
+            </button>
 
             <div className="hidden min-w-0 flex-col sm:flex">
               <span className="max-w-[110px] truncate text-xs font-semibold text-slate-800 dark:text-slate-100">
@@ -221,97 +351,37 @@ export function DashboardNav({
                 {roleLabel}
               </span>
             </div>
+            {profileOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-2xl border border-slate-200/70 bg-white/95 p-2 text-left shadow-xl backdrop-blur-lg dark:border-slate-700/70 dark:bg-slate-900/95 sm:right-0">
+                <div className="border-b border-slate-200/70 px-3 pb-2 dark:border-slate-700/70">
+                  <p className="truncate text-sm font-semibold">{displayName}</p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">{roleLabel}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    onLogout();
+                  }}
+                  className="mt-2 flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={onLogout}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400 sm:h-10 sm:w-10"
-            aria-label="Logout"
-          >
-            <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
         </div>
       </div>
-      {showNotifications ? (
-        <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-[1px]">
-          <button
-            type="button"
-            aria-label="Close notifications"
-            className="absolute inset-0 h-full w-full"
-            onClick={() => setShowNotifications(false)}
-          />
-          <aside className="glass absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l transition-transform duration-300 sm:rounded-l-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
-              <div>
-                <h2 className="text-base font-semibold">Activity Log</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowNotifications(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                aria-label="Close drawer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="flex-1 space-y-3 overflow-y-auto p-3">
-              {visibleActivityLogs.length === 0 ? (
-                <div className="glass-card rounded-2xl p-4 text-sm text-slate-700 dark:text-slate-200">
-                  No notifications for this month yet.
-                </div>
-              ) : (
-                visibleActivityLogs.map((log) => {
-                  const content = (
-                    <div className="glass-card rounded-2xl p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                            {log.action}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            {log.performedBy}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
-                          {new Date(log.timestamp).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                        {log.details}
-                      </p>
-                    </div>
-                  );
-
-                  if (!canDeleteNotifications) {
-                    return <div key={log.id}>{content}</div>;
-                  }
-
-                  return (
-                    <SwipeableListItem
-                      key={log.id}
-                      onDelete={() => handleDeleteActivityLog(log.id)}
-                      deleteLabel="Delete"
-                      className="rounded-2xl"
-                    >
-                      {content}
-                    </SwipeableListItem>
-                  );
-                })
-              )}
-            </div>
-          </aside>
-        </div>
-      ) : null}
+      <DeleteConfirmationModal
+        open={Boolean(pendingDeleteLogId)}
+        onConfirm={() => {
+          if (pendingDeleteLogId) queueDeleteActivityLog(pendingDeleteLogId);
+          setPendingDeleteLogId(null);
+        }}
+        onCancel={() => setPendingDeleteLogId(null)}
+      />
     </header>
   );
 }

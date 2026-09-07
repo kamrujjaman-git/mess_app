@@ -11,10 +11,11 @@ import {
   orderBy,
   where,
   writeBatch,
+  runTransaction,
   type WriteBatch,
   Unsubscribe,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { auth, db } from "./firebase";
 import {
   BazarEntry,
   DailyMealRecord,
@@ -60,6 +61,35 @@ function assertNonNegativeAmount(amount: number): void {
   if (!Number.isFinite(amount) || amount < 0) {
     throw new Error("Bill amounts cannot be negative.");
   }
+}
+
+function configuredSuperAdminEmail(): string {
+  return (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").trim().toLowerCase();
+}
+
+function assertSuperAdmin(): string {
+  const user = auth.currentUser;
+  const userEmail = user?.email?.trim() ?? "";
+  const email = userEmail.toLowerCase();
+  const configuredEmail = configuredSuperAdminEmail();
+  if (!user || !user.emailVerified || !userEmail || !configuredEmail || email !== configuredEmail) {
+    throw new Error("Only the configured Super Admin can delete members.");
+  }
+  return userEmail;
+}
+
+function getActivityAuthor(): string {
+  const email = auth.currentUser?.email?.trim();
+  if (!email) {
+    throw new Error("An authenticated user email is required for activity logs.");
+  }
+  return email;
+}
+
+function adminEmailsForMembers(members: Member[]): string[] {
+  return members
+    .filter((member) => member.isAdmin === true && member.email.trim())
+    .map((member) => member.email.trim().toLowerCase());
 }
 
 function parseMembers(data: Record<string, unknown> | undefined): Member[] {
@@ -175,10 +205,10 @@ export async function updateUserEmail(userDocId: string, email: string, name?: s
 }
 
 export async function setMembers(members: Member[]): Promise<void> {
-  const adminEmails = members
-    .filter((member) => member.isAdmin === true && member.email.trim())
-    .map((member) => member.email.trim().toLowerCase());
-  await setDoc(doc(db, "settings", "members"), { members, adminEmails });
+  await setDoc(doc(db, "settings", "members"), {
+    members,
+    adminEmails: adminEmailsForMembers(members),
+  });
 }
 
 export function subscribeToMembers(
@@ -195,7 +225,6 @@ export async function addMember(
   email: string,
   whatsAppNumber?: string
 ): Promise<Member> {
-  const members = await getMembers();
   const newMember: Member = {
     id: crypto.randomUUID(),
     name: name.trim(),
@@ -205,23 +234,43 @@ export async function addMember(
     isAdmin: false,
     whatsAppNumber: String(whatsAppNumber ?? "").trim(),
   };
-  await setMembers([...members, newMember]);
+  const membersRef = doc(db, "settings", "members");
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(membersRef);
+    const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
+    const nextMembers = [...members, newMember];
+    transaction.set(membersRef, {
+      members: nextMembers,
+      adminEmails: adminEmailsForMembers(nextMembers),
+    });
+  });
   return newMember;
 }
 
 export async function updateMember(updated: Member): Promise<void> {
-  const members = await getMembers();
-  const index = members.findIndex((m) => m.id === updated.id);
-  if (index === -1) return;
-  const previousMember = members[index];
-  members[index] = {
+  const membersRef = doc(db, "settings", "members");
+  const normalizedMember = {
     ...updated,
     name: updated.name.trim(),
     email: updated.email.trim().toLowerCase(),
   };
-  await setMembers(members);
+  let previousMember: Member | undefined;
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(membersRef);
+    const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
+    const index = members.findIndex((m) => m.id === updated.id);
+    if (index === -1) return;
+    previousMember = members[index];
+    const nextMembers = [...members];
+    nextMembers[index] = normalizedMember;
+    transaction.set(membersRef, {
+      members: nextMembers,
+      adminEmails: adminEmailsForMembers(nextMembers),
+    });
+  });
+  if (!previousMember) return;
   try {
-    const emails = [previousMember.email, updated.email]
+    const emails = [previousMember.email, normalizedMember.email]
       .map((email) => email.trim().toLowerCase())
       .filter(Boolean);
     const userSnapshots = await Promise.all(
@@ -233,13 +282,13 @@ export async function updateMember(updated: Member): Promise<void> {
     await Promise.all(
       userDocs.map((userDoc) =>
         updateDoc(userDoc.ref, {
-          email: updated.email.trim().toLowerCase(),
-          name: updated.name.trim(),
-          isAdmin: Boolean(updated.isAdmin),
-          status: updated.status,
-          active: updated.active !== false,
-          isBlocked: Boolean(updated.isBlocked),
-          isRemoved: Boolean(updated.isRemoved),
+          email: normalizedMember.email,
+          name: normalizedMember.name,
+          isAdmin: Boolean(normalizedMember.isAdmin),
+          status: normalizedMember.status,
+          active: normalizedMember.active !== false,
+          isBlocked: Boolean(normalizedMember.isBlocked),
+          isRemoved: Boolean(normalizedMember.isRemoved),
         })
       )
     );
@@ -249,28 +298,45 @@ export async function updateMember(updated: Member): Promise<void> {
 }
 
 export async function deleteMember(memberId: string): Promise<void> {
-  const members = await getMembers();
-  const remainingMembers = members.filter((member) => member.id !== memberId);
+  assertSuperAdmin();
+  const membersRef = doc(db, "settings", "members");
   const userDoc = doc(db, "users", memberId);
-  await Promise.all([deleteDoc(userDoc), setMembers(remainingMembers)]);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(membersRef);
+    const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
+    const remainingMembers = members.filter((member) => member.id !== memberId);
+    transaction.delete(userDoc);
+    transaction.set(membersRef, {
+      members: remainingMembers,
+      adminEmails: adminEmailsForMembers(remainingMembers),
+    });
+  });
 }
 
 export async function setMemberStatus(
   memberId: string,
   status: Member["status"]
 ): Promise<void> {
-  const members = await getMembers();
-  const index = members.findIndex((m) => m.id === memberId);
-  if (index === -1) return;
-  members[index] = {
-    ...members[index],
-    status,
-    active: status === "active",
-    ...(status === "active"
-      ? { isRemoved: false, isBlocked: false }
-      : {}),
-  };
-  await setMembers(members);
+  const membersRef = doc(db, "settings", "members");
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(membersRef);
+    const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
+    const index = members.findIndex((m) => m.id === memberId);
+    if (index === -1) return;
+    const nextMembers = [...members];
+    nextMembers[index] = {
+      ...nextMembers[index],
+      status,
+      active: status === "active",
+      ...(status === "active"
+        ? { isRemoved: false, isBlocked: false }
+        : {}),
+    };
+    transaction.set(membersRef, {
+      members: nextMembers,
+      adminEmails: adminEmailsForMembers(nextMembers),
+    });
+  });
 }
 
 export async function getMonthBills(monthKey: string): Promise<MonthBills> {
@@ -334,7 +400,7 @@ export async function getDailyMeals(
 export async function saveDailyMeals(
   monthKey: string,
   record: DailyMealRecord,
-  performedBy: string = "System"
+  performedBy?: string
 ): Promise<void> {
   assertEntryDate(monthKey, record.date);
   await commitWithActivity(
@@ -348,7 +414,7 @@ export async function saveDailyMeals(
 export async function deleteDailyMeals(
   monthKey: string,
   date: string,
-  performedBy: string = "System"
+  performedBy?: string
 ): Promise<void> {
   assertEntryDate(monthKey, date);
   await commitWithActivity(
@@ -384,7 +450,7 @@ function normalizeBazarBuyerIds(entry: Omit<BazarEntry, "id">): string[] {
 export async function addBazarEntry(
   monthKey: string,
   entry: Omit<BazarEntry, "id">,
-  performedBy: string = "System"
+  performedBy?: string
 ): Promise<void> {
   assertEntryDate(monthKey, entry.date);
   assertPositiveAmount(entry.amount);
@@ -406,7 +472,7 @@ export async function updateBazarEntry(
   monthKey: string,
   id: string,
   entry: Omit<BazarEntry, "id">,
-  performedBy: string = "System"
+  performedBy?: string
 ): Promise<void> {
   assertEntryDate(monthKey, entry.date);
   assertPositiveAmount(entry.amount);
@@ -427,7 +493,7 @@ export async function updateBazarEntry(
 export async function deleteBazarEntry(
   monthKey: string,
   id: string,
-  performedBy: string = "System"
+  performedBy?: string
 ): Promise<void> {
   await commitWithActivity(
     (batch) => batch.delete(doc(bazarCollection(monthKey), id)),
@@ -448,7 +514,7 @@ export async function getDepositEntries(
 export async function addDepositEntry(
   monthKey: string,
   entry: Omit<DepositEntry, "id">,
-  performedBy: string = "System"
+  performedBy?: string
 ): Promise<void> {
   assertEntryDate(monthKey, entry.date);
   assertPositiveAmount(entry.amount);
@@ -467,7 +533,7 @@ export async function updateDepositEntry(
   monthKey: string,
   id: string,
   entry: Omit<DepositEntry, "id">,
-  performedBy: string = "System"
+  performedBy?: string
 ): Promise<void> {
   assertEntryDate(monthKey, entry.date);
   assertPositiveAmount(entry.amount);
@@ -485,7 +551,7 @@ export async function updateDepositEntry(
 export async function deleteDepositEntry(
   monthKey: string,
   id: string,
-  performedBy: string = "System"
+  performedBy?: string
 ): Promise<void> {
   await commitWithActivity(
     (batch) => batch.delete(doc(depositsCollection(monthKey), id)),
@@ -514,14 +580,16 @@ export interface ActivityLog {
 function buildActivityLog(
   action: string,
   details: string,
-  performedBy: string
+  performedBy?: string
 ): { activityRef: ReturnType<typeof doc>; log: ActivityLog } {
+  void performedBy;
   const activityRef = doc(collection(db, "activity_logs"));
+  const authenticatedAuthor = getActivityAuthor();
   const log: ActivityLog = {
     id: activityRef.id,
     action: action.trim() || "Activity",
     details: details.trim() || "No details provided.",
-    performedBy: performedBy.trim() || "System",
+    performedBy: authenticatedAuthor,
     timestamp: new Date().toISOString(),
   };
 
@@ -532,7 +600,7 @@ async function commitWithActivity(
   writeOperation: (batch: WriteBatch) => void,
   action: string,
   details: string,
-  performedBy: string
+  performedBy?: string
 ): Promise<void> {
   const batch = writeBatch(db);
   writeOperation(batch);
@@ -544,7 +612,7 @@ async function commitWithActivity(
 export async function createActivityLog(
   action: string,
   details: string,
-  performedBy: string
+  performedBy?: string
 ): Promise<ActivityLog> {
   const { activityRef, log } = buildActivityLog(action, details, performedBy);
 

@@ -122,7 +122,7 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
           className="summary-print-button inline-flex items-center justify-center gap-2 rounded-xl border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-105"
         >
           <Download className="h-4 w-4" />
-          Download PDF Summary
+          Print / Save as PDF
         </button>
       </div>
 

@@ -27,6 +27,7 @@ type ToastContextValue = {
     error: (title: string, description?: string) => string | undefined;
     info: (title: string, description?: string) => string | undefined;
     dismiss: (id: string) => void;
+    undo: (title: string, onUndo: () => void) => string | undefined;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -49,11 +50,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             duration: 1500,
             description: item.description,
         };
-
-        // If there are already 2 or more active toasts, clear them before showing a new one.
-        if (activeToastsRef.current.size >= 2) {
-            toast.dismiss();
-        }
 
         switch (item.tone) {
             case "success":
@@ -88,7 +84,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         return notify({ title, description, tone: "info" });
     }, []);
 
-    const value = useMemo<ToastContextValue>(() => ({ toast: toastHandler, success, error, info, dismiss }), [dismiss, error, info, success, toastHandler]);
+    const undo = useCallback((title: string, onUndo: () => void) => {
+        return toast.custom(
+            (toastItem) => (
+                <div className={`flex w-[min(92vw,28rem)] items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-3 text-slate-800 shadow-lg shadow-slate-200/50 backdrop-blur-md transition-all duration-300 dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-100 dark:shadow-black/40 ${toastItem.visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"}`}>
+                    <span className="min-w-0 text-sm font-semibold">{title}</span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onUndo();
+                            toast.dismiss(toastItem.id);
+                        }}
+                        className="min-h-9 shrink-0 rounded-lg bg-emerald-50 px-3 text-sm font-bold text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+                    >
+                        Undo
+                    </button>
+                </div>
+            ),
+            { duration: 5000 }
+        );
+    }, []);
+
+    const value = useMemo<ToastContextValue>(() => ({ toast: toastHandler, success, error, info, dismiss, undo }), [dismiss, error, info, success, toastHandler, undo]);
 
     function ToastItemRenderer({ toastItem }: { toastItem: Toast }) {
         useEffect(() => {
@@ -96,15 +113,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             return () => unregisterToast(toastItem.id);
         }, [toastItem.id]);
 
+        if (toastItem.type === "custom") {
+            return <>{resolveValue(toastItem.message, toastItem)}</>;
+        }
+
         const isSuccess = toastItem.type === "success";
         const isError = toastItem.type === "error";
 
         return (
             <div
-                className={`flex min-w-[320px] max-w-md items-center justify-between gap-4 rounded-full border border-white/40 bg-white/70 px-5 py-3 text-slate-900 shadow-lg backdrop-blur-md transition-all duration-300 ease-out dark:border-slate-700/50 dark:bg-slate-900/70 dark:text-white dark:shadow-2xl ${toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"}`}
+                className={`flex w-[min(92vw,28rem)] min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-3 text-slate-800 shadow-lg shadow-slate-200/50 backdrop-blur-md transition-all duration-300 ease-out dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-100 dark:shadow-black/40 sm:px-5 ${toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"}`}
             >
                 <div className="flex items-center gap-3">
-                    {isSuccess && <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 stroke-[2.2] drop-shadow" />}
+                    {isSuccess && <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-500 stroke-[2.2] drop-shadow" />}
                     {isError && <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 stroke-[2.2] drop-shadow" />}
                     {!isSuccess && !isError && <Info className="w-5 h-5 text-sky-400 flex-shrink-0 stroke-[2.2] drop-shadow" />}
 
@@ -115,7 +136,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     type="button"
                     aria-label="Dismiss notification"
                     onClick={() => toast.dismiss(toastItem.id)}
-                    className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all duration-200 ease-in-out flex-shrink-0 ml-auto cursor-pointer border border-white/30 shadow-sm active:scale-90"
+                    className="z-10 ml-auto flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200/80 bg-white/70 text-slate-500 shadow-sm transition-colors duration-200 hover:bg-white hover:text-slate-800 active:scale-90 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
                 >
                     <X className="w-3.5 h-3.5 stroke-[2.5]" />
                 </button>
