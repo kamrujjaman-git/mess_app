@@ -222,7 +222,7 @@ export function DashboardNav({
               <span className="truncate">৳{formatCurrency(Math.abs(totalBalance))}</span>
             </div>
           )}
-          <div ref={notificationContainerRef} className="relative inline-block shrink-0">
+          <div ref={notificationContainerRef} className="relative inline-block">
             <button
               type="button"
               onClick={handleBellClick}
@@ -239,7 +239,7 @@ export function DashboardNav({
             </button>
             {showNotifications ? (
               <aside
-                className="absolute right-0 top-full z-50 mt-2.5 flex w-80 max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:w-96 sm:max-w-none"
+                className="fixed right-3 top-28 z-50 flex w-[calc(100vw-1.5rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:right-6 sm:top-20 sm:w-96"
               >
                 <div className="flex items-center justify-between border-b border-slate-200/80 px-4 py-3 dark:border-slate-800/80">
                   <div>
