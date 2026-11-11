@@ -4,15 +4,13 @@ import {
   getDoc,
   getDocs,
   setDoc,
-  updateDoc,
   deleteDoc,
   onSnapshot,
   query,
   orderBy,
   where,
-  writeBatch,
   runTransaction,
-  type WriteBatch,
+  type Transaction,
   Unsubscribe,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -254,63 +252,93 @@ export async function updateMember(updated: Member): Promise<void> {
     name: updated.name.trim(),
     email: updated.email.trim().toLowerCase(),
   };
-  let previousMember: Member | undefined;
+
+  const initialSnapshot = await getDoc(membersRef);
+  const initialMembers = parseMembers(
+    initialSnapshot.exists() ? initialSnapshot.data() : undefined
+  );
+  const initialMember = initialMembers.find((member) => member.id === updated.id);
+  if (!initialMember) {
+    throw new Error("Member not found. Refresh the dashboard and try again.");
+  }
+  const emails = [...new Set(
+    [initialMember.email, normalizedMember.email]
+      .map((email) => email.trim())
+      .filter(Boolean)
+      .flatMap((email) => [email, email.toLowerCase()])
+  )];
+  const profileSnapshots = await Promise.all(
+    emails.map((email) =>
+      getDocs(query(collection(db, "users"), where("email", "==", email)))
+    )
+  );
+  const profileRefs = new Map(
+    profileSnapshots.flatMap((profileSnapshot) =>
+      profileSnapshot.docs.map((profile) => [profile.ref.path, profile.ref] as const)
+    )
+  );
+
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(membersRef);
     const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
     const index = members.findIndex((m) => m.id === updated.id);
-    if (index === -1) return;
-    previousMember = members[index];
+    if (index === -1) {
+      throw new Error("Member not found. Refresh the dashboard and try again.");
+    }
+
+    const previousMember = members[index];
+    if (JSON.stringify(previousMember) !== JSON.stringify(initialMember)) {
+      throw new Error("This member changed while you were editing. Refresh and try again.");
+    }
+
+    const userSnapshots = await Promise.all(
+      [...profileRefs.values()].map((profileRef) => transaction.get(profileRef))
+    );
+
     const nextMembers = [...members];
     nextMembers[index] = normalizedMember;
     transaction.set(membersRef, {
       members: nextMembers,
       adminEmails: adminEmailsForMembers(nextMembers),
     });
+    for (const userSnapshot of userSnapshots) {
+      if (!userSnapshot.exists()) continue;
+      transaction.update(userSnapshot.ref, {
+        email: normalizedMember.email,
+        name: normalizedMember.name,
+        isAdmin: Boolean(normalizedMember.isAdmin),
+        status: normalizedMember.status,
+        active: normalizedMember.active !== false,
+        isBlocked: Boolean(normalizedMember.isBlocked),
+        isRemoved: Boolean(normalizedMember.isRemoved),
+      });
+    }
   });
-  if (!previousMember) return;
-  try {
-    const emails = [previousMember.email, normalizedMember.email]
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean);
-    const userSnapshots = await Promise.all(
-      [...new Set(emails)].map((email) =>
-        getDocs(query(collection(db, "users"), where("email", "==", email)))
-      )
-    );
-    const userDocs = userSnapshots.flatMap((snapshot) => snapshot.docs);
-    await Promise.all(
-      userDocs.map((userDoc) =>
-        updateDoc(userDoc.ref, {
-          email: normalizedMember.email,
-          name: normalizedMember.name,
-          isAdmin: Boolean(normalizedMember.isAdmin),
-          status: normalizedMember.status,
-          active: normalizedMember.active !== false,
-          isBlocked: Boolean(normalizedMember.isBlocked),
-          isRemoved: Boolean(normalizedMember.isRemoved),
-        })
-      )
-    );
-  } catch (error) {
-    console.error("Failed to sync user doc email for member:", error);
-  }
 }
 
 export async function deleteMember(memberId: string): Promise<void> {
   assertSuperAdmin();
-  const membersRef = doc(db, "settings", "members");
-  const userDoc = doc(db, "users", memberId);
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(membersRef);
-    const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
-    const remainingMembers = members.filter((member) => member.id !== memberId);
-    transaction.delete(userDoc);
-    transaction.set(membersRef, {
-      members: remainingMembers,
-      adminEmails: adminEmailsForMembers(remainingMembers),
-    });
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("An authenticated Super Admin is required to delete members.");
+  }
+
+  const response = await fetch("/api/delete-member", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${await user.getIdToken()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ memberId }),
   });
+  const result = await response.json() as { error?: unknown };
+  if (!response.ok) {
+    throw new Error(
+      typeof result.error === "string"
+        ? result.error
+        : "Member deletion failed. Refresh the dashboard and try again."
+    );
+  }
 }
 
 export async function setMemberStatus(
@@ -404,10 +432,11 @@ export async function saveDailyMeals(
 ): Promise<void> {
   assertEntryDate(monthKey, record.date);
   await commitWithActivity(
-    (batch) => batch.set(doc(dailyMealsCollection(monthKey), record.date), record, { merge: true }),
+    (transaction) => transaction.set(doc(dailyMealsCollection(monthKey), record.date), record, { merge: true }),
     "Meal Entry Saved",
     `Saved meal entries for ${record.date}.`,
-    performedBy
+    performedBy,
+    (members) => validateMemberReferences(members, Object.keys(record.meals))
   );
 }
 
@@ -447,6 +476,23 @@ function normalizeBazarBuyerIds(entry: Omit<BazarEntry, "id">): string[] {
   return [];
 }
 
+function validateMemberReferences(members: Member[], memberIds: string[]): void {
+  const memberIdSet = new Set(members.map((member) => member.id));
+  const missingIds = [...new Set(memberIds)].filter((memberId) => !memberIdSet.has(memberId));
+  if (missingIds.length > 0) {
+    throw new Error("One or more selected members no longer exist. Refresh the dashboard and try again.");
+  }
+}
+
+function validateDepositMember(members: Member[], entry: Pick<DepositEntry, "memberId" | "memberName">): void {
+  const memberExists = entry.memberId
+    ? members.some((member) => member.id === entry.memberId)
+    : members.some((member) => member.name === entry.memberName);
+  if (!memberExists) {
+    throw new Error("The selected deposit member no longer exists. Refresh the dashboard and try again.");
+  }
+}
+
 export async function addBazarEntry(
   monthKey: string,
   entry: Omit<BazarEntry, "id">,
@@ -456,7 +502,7 @@ export async function addBazarEntry(
   assertPositiveAmount(entry.amount);
   const buyerIds = normalizeBazarBuyerIds(entry);
   await commitWithActivity(
-    (batch) => batch.set(doc(bazarCollection(monthKey)), {
+    (transaction) => transaction.set(doc(bazarCollection(monthKey)), {
       ...entry,
       amount: Math.round(entry.amount),
       buyerIds,
@@ -464,7 +510,8 @@ export async function addBazarEntry(
     }),
     "Bazar Entry Added",
     `Added a bazar entry of ৳${Math.round(entry.amount)} for ${entry.date}${entry.description ? ` — ${entry.description}` : ""}${buyerIds.length ? ` by ${buyerIds.length} buyer(s)` : ""}.`,
-    performedBy
+    performedBy,
+    (members) => validateMemberReferences(members, buyerIds)
   );
 }
 
@@ -478,7 +525,7 @@ export async function updateBazarEntry(
   assertPositiveAmount(entry.amount);
   const buyerIds = normalizeBazarBuyerIds(entry);
   await commitWithActivity(
-    (batch) => batch.update(doc(bazarCollection(monthKey), id), {
+    (transaction) => transaction.update(doc(bazarCollection(monthKey), id), {
       ...entry,
       amount: Math.round(entry.amount),
       buyerIds,
@@ -486,7 +533,8 @@ export async function updateBazarEntry(
     }),
     "Bazar Entry Updated",
     `Updated bazar entry for ${entry.date} to ৳${Math.round(entry.amount)}${entry.description ? ` — ${entry.description}` : ""}${buyerIds.length ? ` by ${buyerIds.length} buyer(s)` : ""}.`,
-    performedBy
+    performedBy,
+    (members) => validateMemberReferences(members, buyerIds)
   );
 }
 
@@ -519,13 +567,14 @@ export async function addDepositEntry(
   assertEntryDate(monthKey, entry.date);
   assertPositiveAmount(entry.amount);
   await commitWithActivity(
-    (batch) => batch.set(doc(depositsCollection(monthKey)), {
+    (transaction) => transaction.set(doc(depositsCollection(monthKey)), {
       ...entry,
       amount: Math.round(entry.amount),
     }),
     "Deposit Added",
     `Added a deposit of ৳${Math.round(entry.amount)} for ${entry.memberName} on ${entry.date}${entry.note ? ` — ${entry.note}` : ""}.`,
-    performedBy
+    performedBy,
+    (members) => validateDepositMember(members, entry)
   );
 }
 
@@ -538,13 +587,14 @@ export async function updateDepositEntry(
   assertEntryDate(monthKey, entry.date);
   assertPositiveAmount(entry.amount);
   await commitWithActivity(
-    (batch) => batch.update(doc(depositsCollection(monthKey), id), {
+    (transaction) => transaction.update(doc(depositsCollection(monthKey), id), {
       ...entry,
       amount: Math.round(entry.amount),
     }),
     "Deposit Updated",
     `Updated deposit for ${entry.memberName} on ${entry.date} to ৳${Math.round(entry.amount)}${entry.note ? ` — ${entry.note}` : ""}.`,
-    performedBy
+    performedBy,
+    (members) => validateDepositMember(members, entry)
   );
 }
 
@@ -597,16 +647,22 @@ function buildActivityLog(
 }
 
 async function commitWithActivity(
-  writeOperation: (batch: WriteBatch) => void,
+  writeOperation: (transaction: Transaction) => void,
   action: string,
   details: string,
-  performedBy?: string
+  performedBy?: string,
+  validateMembers?: (members: Member[]) => void
 ): Promise<void> {
-  const batch = writeBatch(db);
-  writeOperation(batch);
-  const { activityRef, log } = buildActivityLog(action, details, performedBy);
-  batch.set(activityRef, log);
-  await batch.commit();
+  await runTransaction(db, async (transaction) => {
+    if (validateMembers) {
+      const membersSnapshot = await transaction.get(doc(db, "settings", "members"));
+      validateMembers(parseMembers(membersSnapshot.exists() ? membersSnapshot.data() : undefined));
+    }
+
+    writeOperation(transaction);
+    const { activityRef, log } = buildActivityLog(action, details, performedBy);
+    transaction.set(activityRef, log);
+  });
 }
 
 export async function createActivityLog(

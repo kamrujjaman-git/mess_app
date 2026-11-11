@@ -139,7 +139,11 @@ export function ManageMembers({
       toast.success(`${member.name} has been deleted from the mess.`);
     } catch (error) {
       console.error("Delete member failed:", error);
-      toast.error("Failed to delete member. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete member. Please try again."
+      );
     } finally {
       setSaving(null);
     }

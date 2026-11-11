@@ -18,6 +18,10 @@ A sleek, real-time, full-stack **Mess Management Web Application** built to auto
 * Streamlined entry forms for daily Bazaar expenses and Member Deposits.
 * **One-Click PDF Export:** Download complete monthly financial summaries as cleanly formatted PDF reports.
 
+🔄 **Relational Data Integrity:**
+* Member deletion atomically removes the member profile and historical meal/deposit references, and unassigns their Bazaar buyer references without deleting the expenses.
+* Deletion is rejected without changes if cleanup would exceed Firestore's 500-write transaction limit. Firebase Authentication accounts are not deleted.
+
 📱 **Sleek & Responsive UX/UI:**
 * Compact WhatsApp direct-action buttons for quick member communication.
 * Snappy UI toast notifications with smart auto-dismissal and close controls.

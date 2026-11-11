@@ -25,11 +25,11 @@
 *.pem
 
 # debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-build.log
 build-output.txt
 
 # env files (can opt-in for committing if needed)
