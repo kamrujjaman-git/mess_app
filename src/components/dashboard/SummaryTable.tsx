@@ -15,20 +15,20 @@ interface SummaryTableProps {
 function BalanceBadge({ amount }: { amount: number }) {
   if (amount === 0) {
     return (
-      <span className="inline-flex rounded-full bg-slate-100 px-2.75 py-1 text-[11px] font-semibold tracking-wide text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+      <span className="summary-balance-badge summary-balance-settled inline-flex max-w-full items-center rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-400">
         ৳0.00 SETTLED
       </span>
     );
   }
   if (amount > 0) {
     return (
-      <span className="inline-flex rounded-full bg-emerald-100 px-2.75 py-1 text-[11px] font-semibold tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+      <span className="summary-balance-badge summary-balance-refund inline-flex max-w-full items-center rounded-full border border-emerald-200/60 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-400">
         +৳{formatCurrency(amount)} REFUND
       </span>
     );
   }
   return (
-    <span className="inline-flex rounded-full bg-rose-100 px-2.75 py-1 text-[11px] font-semibold tracking-wide text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+    <span className="summary-balance-badge summary-balance-due inline-flex max-w-full items-center rounded-full border border-rose-200/60 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-400">
       -৳{formatCurrency(Math.abs(amount))} DUE
     </span>
   );
@@ -81,19 +81,22 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
   const reportMonthLabel = formatMonthLabel(monthKey);
 
   return (
-    <div id="summary-report" className="summary-report-sheet glass-card overflow-hidden rounded-2xl">
+    <div
+      id="summary-report"
+      className="summary-report-sheet w-full overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-8"
+    >
       <div className="summary-print-header hidden border-b border-slate-200/60 px-4 py-4 dark:border-slate-700/60 sm:px-6">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
-              <Image
-                src="/logo-512.png"
-                alt="Mess App Logo"
-                width={40}
-                height={40}
-                className="summary-print-logo h-full w-full object-contain"
-              />
-            </div>
+            <Image
+              src="/logo-512.png"
+              alt="Mess App Logo"
+              width={48}
+              height={48}
+              loading="eager"
+              unoptimized
+              className="summary-print-logo h-12 w-12 shrink-0 rounded-xl object-cover"
+            />
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 Mess App
@@ -101,13 +104,12 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
             </div>
           </div>
           <div className="text-right text-xs text-slate-500 dark:text-slate-400">
-            <p>{reportMonthLabel}</p>
             <p>Export Date: {exportDate}</p>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6 md:flex-row md:items-center md:justify-between">
+      <div className="summary-report-heading flex flex-col gap-3 border-b border-slate-200/60 py-3 dark:border-slate-700/60 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold sm:text-lg">
             Summary &amp; Final Balance
@@ -119,7 +121,7 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
         <button
           type="button"
           onClick={handleDownloadPdf}
-          className="summary-print-button inline-flex items-center justify-center gap-2 rounded-xl border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-105"
+          className="summary-print-button print:hidden inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:bg-emerald-800"
         >
           <Download className="h-4 w-4" />
           Print / Save as PDF
@@ -127,26 +129,26 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
       </div>
 
       <div className="summary-print-table hidden overflow-x-auto overflow-y-hidden md:block">
-        <table className="w-full text-sm">
+        <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200/60 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
-              <th className="px-4 py-3 font-medium sm:px-6">Member</th>
-              <th className="px-4 py-3 font-medium">Meals</th>
-              <th className="px-4 py-3 font-medium">Deposited</th>
-              <th className="px-4 py-3 font-medium">Meal Cost</th>
-              <th className="px-4 py-3 font-medium">Final Balance</th>
+              <th className="px-6 py-4 font-medium">Member</th>
+              <th className="px-6 py-4 font-medium">Meals</th>
+              <th className="px-6 py-4 font-medium">Deposited</th>
+              <th className="px-6 py-4 font-medium">Meal Cost</th>
+              <th className="px-6 py-4 text-right font-medium">Final Balance</th>
             </tr>
           </thead>
           <tbody>
             {members.map((m) => (
               <tr
                 key={m.id}
-                className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${m.status === "inactive" ? "opacity-60" : ""
+                className={`group ${m.status === "inactive" ? "opacity-60" : ""
                   }`}
               >
-                <td className="max-w-[180px] break-words px-4 py-3 font-medium sm:px-6">
+                <td className="break-words border-b border-slate-100/80 px-6 py-4 font-medium transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
                   <div className="flex items-center gap-2">
-                    <span className="break-words">{m.name}</span>
+                    <span className="min-w-0 flex-1 break-words">{m.name}</span>
                     {m.status === "inactive" && (
                       <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500 dark:bg-slate-700">
                         Inactive
@@ -166,10 +168,16 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3">{m.totalMeals}</td>
-                <td className="px-4 py-3">৳{formatCurrency(m.totalDeposited)}</td>
-                <td className="px-4 py-3">৳{formatCurrency(m.mealCost)}</td>
-                <td className="px-4 py-3">
+                <td className="border-b border-slate-100/80 px-6 py-4 transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
+                  {m.totalMeals}
+                </td>
+                <td className="border-b border-slate-100/80 px-6 py-4 transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
+                  ৳{formatCurrency(m.totalDeposited)}
+                </td>
+                <td className="border-b border-slate-100/80 px-6 py-4 transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
+                  ৳{formatCurrency(m.mealCost)}
+                </td>
+                <td className="border-b border-slate-100/80 px-6 py-4 text-right transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
                   <BalanceBadge amount={m.finalBalance} />
                 </td>
               </tr>
@@ -178,15 +186,15 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
         </table>
       </div>
 
-      <div className="summary-mobile-cards relative space-y-3 p-4 md:hidden">
+      <div className="summary-mobile-cards relative space-y-3 pt-4 md:hidden">
         <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-slate-100/80 to-transparent dark:from-slate-900/70" />
         {members.map((m) => (
           <div
             key={m.id}
-            className={`rounded-xl bg-white/50 p-4 dark:bg-slate-800/40 ${m.status === "inactive" ? "opacity-60" : ""
+            className={`rounded-xl border border-slate-200/60 bg-white/50 p-4 transition-colors hover:bg-slate-50/80 dark:border-slate-700/60 dark:bg-slate-800/40 dark:hover:bg-slate-800/50 ${m.status === "inactive" ? "opacity-60" : ""
               }`}
           >
-            <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span className="min-w-0 break-words font-semibold">
                 {m.name}
                 {m.status === "inactive" && (
@@ -195,7 +203,7 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
                   </span>
                 )}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
                 {isAdmin && m.whatsAppNumber && (
                   <a
                     href={buildWhatsAppLink({ name: m.name, whatsAppNumber: m.whatsAppNumber }, m.finalBalance)}

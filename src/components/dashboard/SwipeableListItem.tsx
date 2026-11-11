@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, type PanInfo } from "framer-motion";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { type CSSProperties, type ReactNode, useState } from "react";
 
 interface SwipeableListItemProps {
@@ -14,7 +14,6 @@ interface SwipeableListItemProps {
     style?: CSSProperties;
 }
 
-const SWIPE_THRESHOLD = 80;
 const OPEN_OFFSET = 80;
 
 export function SwipeableListItem({
@@ -31,17 +30,33 @@ export function SwipeableListItem({
     function handleDragEnd(_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) {
         const offsetX = info.offset.x;
 
-        if (offsetX >= SWIPE_THRESHOLD && onEdit) {
-            setOpenSide("left");
-            return;
-        }
-
-        if (offsetX <= -SWIPE_THRESHOLD && onDelete) {
+        if (info.velocity.x < -200 && onDelete) {
             setOpenSide("right");
             return;
         }
 
+        if (info.velocity.x > 200 && onEdit) {
+            setOpenSide("left");
+            return;
+        }
+
+        if (offsetX < -40 && onDelete) {
+            setOpenSide("right");
+            return;
+        }
+
+        if (offsetX > 40 && onEdit) {
+            setOpenSide("left");
+            return;
+        }
+
         setOpenSide(null);
+    }
+
+    function handleCardClick() {
+        if (openSide !== null) {
+            setOpenSide(null);
+        }
     }
 
     function handleAction(action: "edit" | "delete") {
@@ -54,39 +69,49 @@ export function SwipeableListItem({
     }
 
     return (
-        <div className={`relative w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white touch-pan-y dark:border-slate-800 dark:bg-slate-900 ${className}`} style={style}>
+        <div
+            className={`relative w-full overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 transition-all touch-pan-y ${className}`}
+            style={style}
+        >
             {onEdit ? (
                 <button
                     type="button"
                     onClick={() => handleAction("edit")}
-                    className="absolute inset-y-0 left-0 z-0 flex items-center justify-center bg-gradient-to-b from-emerald-500 to-emerald-700 px-4 text-sm font-semibold text-white transition hover:brightness-105"
+                    aria-label={editLabel}
+                    className="absolute inset-y-0 left-0 z-0 flex w-20 cursor-pointer items-center justify-center rounded-l-2xl bg-emerald-500 text-white transition-colors hover:bg-emerald-600"
                 >
-                    {editLabel}
+                    <Pencil className="h-5 w-5" aria-hidden="true" />
                 </button>
             ) : null}
             {onDelete ? (
-                <div className="absolute inset-y-0 right-0 z-0 flex items-center justify-end rounded-r-xl bg-rose-50 px-3 dark:bg-rose-950/30">
-                    <button
-                        type="button"
-                        onClick={() => handleAction("delete")}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-600 text-white shadow-sm transition-transform hover:bg-rose-700 active:scale-95"
-                        aria-label={deleteLabel}
-                    >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </button>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => handleAction("delete")}
+                    aria-label={deleteLabel}
+                    className="absolute inset-y-0 right-0 z-0 flex w-20 cursor-pointer items-center justify-center rounded-r-2xl bg-rose-500 text-white transition-colors hover:bg-rose-600 active:bg-rose-700"
+                >
+                    <Trash2 className="h-5 w-5" aria-hidden="true" />
+                </button>
             ) : null}
 
             <motion.div
                 drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.15}
+                dragConstraints={{
+                    left: onDelete ? -OPEN_OFFSET : 0,
+                    right: onEdit ? OPEN_OFFSET : 0,
+                }}
+                dragElastic={0.1}
                 dragMomentum={false}
                 onDragEnd={handleDragEnd}
+                onClick={handleCardClick}
                 animate={{ x: openSide === "left" ? OPEN_OFFSET : openSide === "right" ? -OPEN_OFFSET : 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                style={{ touchAction: "pan-y" }}
-                className="relative z-10 h-full w-full rounded-xl bg-white p-2.5 transition-transform duration-200 ease-out dark:bg-slate-900"
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                style={{
+                    touchAction: "pan-y",
+                    transformStyle: "preserve-3d",
+                    backfaceVisibility: "hidden",
+                }}
+                className="relative z-10 h-full w-full transform-gpu will-change-transform cursor-pointer select-none rounded-2xl bg-white p-2.5 shadow-sm dark:bg-slate-900"
             >
                 {children}
             </motion.div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState, type MouseEvent } from "react";
+import { Fragment, useMemo, useRef, useState, type MouseEvent } from "react";
 import { toast } from "react-hot-toast";
 import { ShieldAlert } from "lucide-react";
 import type { DailyMealRecord, Member, MemberMeals } from "@/lib/mess";
@@ -24,6 +24,15 @@ export function DailyMealsSheet({
   onOptimisticToggle,
 }: DailyMealsSheetProps) {
   const activeMembers = getActiveMembers(members);
+  const recordsByDate = useMemo(() => {
+    const recordsByDate = new Map<string, DailyMealRecord>();
+    for (const record of records) {
+      if (!recordsByDate.has(record.date)) {
+        recordsByDate.set(record.date, record);
+      }
+    }
+    return recordsByDate;
+  }, [records]);
   const [draftMeals, setDraftMeals] = useState<Record<string, Record<string, MemberMeals>>>({});
   const [saving, setSaving] = useState(false);
   const togglingMealCells = useRef<Record<string, boolean>>({});
@@ -63,6 +72,10 @@ export function DailyMealsSheet({
   }
 
   const displayRows = buildDisplayRows();
+
+  function getRecordForDate(date: string): DailyMealRecord {
+    return recordsByDate.get(date) ?? { date, meals: {} };
+  }
 
   function getDraftMealValue(record: DailyMealRecord, memberId: string, field: keyof MemberMeals) {
     const memberDraft = draftMeals[record.date]?.[memberId];
@@ -146,42 +159,42 @@ export function DailyMealsSheet({
 
       <div className="hidden overflow-x-auto overflow-y-hidden scroll-smooth [scrollbar-width:none] lg:block">
         <div className="pointer-events-none absolute right-0 top-0 hidden h-full w-10 bg-gradient-to-l from-slate-100/80 to-transparent dark:from-slate-900/70 lg:block" />
-        <table className="w-full text-sm">
+        <table className="w-full min-w-max table-fixed text-sm">
           <thead>
             <tr className="border-b border-slate-200/60 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
-              <th className="sticky left-0 bg-white/80 px-4 py-3 font-medium backdrop-blur dark:bg-slate-900/80 sm:px-6">
+              <th className="sticky left-0 w-28 bg-white/80 px-4 py-3 font-medium backdrop-blur dark:bg-slate-900/80 sm:px-6">
                 Date
               </th>
               {activeMembers.map((member) => (
                 <th
                   key={member.id}
                   colSpan={3}
-                  className="px-2 py-3 text-center font-medium"
+                  className="min-w-[10.5rem] whitespace-normal break-words px-2 py-3 text-center font-medium"
                 >
                   {member.name}
                 </th>
               ))}
             </tr>
             <tr className="border-b border-slate-200/60 text-left text-[10px] uppercase text-slate-400 dark:border-slate-700/60">
-              <th className="sticky left-0 bg-white/80 px-4 py-2 backdrop-blur dark:bg-slate-900/80 sm:px-6" />
+              <th className="sticky left-0 w-28 bg-white/80 px-4 py-2 backdrop-blur dark:bg-slate-900/80 sm:px-6" />
               {activeMembers.map((member) => (
                 <Fragment key={member.id}>
-                  <th className="px-1 py-2 text-center font-normal">B</th>
-                  <th className="px-1 py-2 text-center font-normal">L</th>
-                  <th className="px-1 py-2 text-center font-normal">D</th>
+                  <th className="w-14 px-1 py-2 text-center font-normal">B</th>
+                  <th className="w-14 px-1 py-2 text-center font-normal">L</th>
+                  <th className="w-14 px-1 py-2 text-center font-normal">D</th>
                 </Fragment>
               ))}
             </tr>
           </thead>
           <tbody>
             {displayRows.map((row) => {
-              const record = records.find((item) => item.date === row.date) ?? { date: row.date, meals: {} } as DailyMealRecord;
+              const record = getRecordForDate(row.date);
               const isPast = row.date < todayKey;
               const isFuture = row.date > todayKey;
               const isTodayRow = row.label === "Today";
               return (
                 <tr key={row.date} className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${isTodayRow ? "bg-emerald-50/70 dark:bg-emerald-950/20" : isFuture ? "bg-slate-50/60 text-slate-400 dark:bg-slate-950/30 dark:text-slate-500" : ""}`}>
-                  <td className="sticky left-0 whitespace-nowrap bg-white/80 px-4 py-2.5 font-medium backdrop-blur dark:bg-slate-900/80 sm:px-6">
+                  <td className="sticky left-0 w-28 whitespace-nowrap bg-white/80 px-4 py-2.5 font-medium backdrop-blur dark:bg-slate-900/80 sm:px-6">
                     <div className="flex flex-col">
                       <span>{row.label}</span>
                       {!isPast && row.label !== "Today" && (
@@ -198,7 +211,7 @@ export function DailyMealsSheet({
                         const isEditable = canEditCell(record.date);
                         const isActive = (getDraftMealValue(record, member.id, field) ?? 0) > 0;
                         return (
-                          <td key={field} className="px-1 py-2.5 text-center">
+                          <td key={field} className="w-14 px-1 py-2.5 text-center">
                             {isEditable ? (
                               <button
                                 type="button"
@@ -235,7 +248,7 @@ export function DailyMealsSheet({
 
       <div className="relative space-y-4 p-4 lg:hidden">
         {displayRows.map((row) => {
-          const record = records.find((item) => item.date === row.date) ?? { date: row.date, meals: {} } as DailyMealRecord;
+          const record = getRecordForDate(row.date);
           const isTodayRow = row.label === "Today";
           const isFuture = row.date > todayKey;
           return (

@@ -247,6 +247,13 @@ summary {
 }
 
 @media print {
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   body {
     background: #ffffff !important;
     color: #0f172a !important;
@@ -266,43 +273,129 @@ summary {
     inset: 0 !important;
     width: 100% !important;
     max-width: none !important;
+    margin: 0 !important;
     border: none !important;
+    border-radius: 0 !important;
     box-shadow: none !important;
     background: #ffffff !important;
     color: #0f172a !important;
     padding: 0 !important;
   }
 
-  .summary-print-header {
-    display: block !important;
-    border-bottom: 1px solid #e2e8f0 !important;
+  .print\:hidden,
+  .summary-print-button {
+    display: none !important;
   }
 
-  .summary-print-button,
+  .summary-print-header {
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 12px !important;
+    border-bottom: 2px solid #059669 !important;
+    padding: 0 0 12px !important;
+  }
+
   .summary-chat-link,
   .summary-mobile-cards {
     display: none !important;
   }
 
+  .summary-report-sheet {
+    font-family: Arial, sans-serif !important;
+  }
+
+  .summary-report-sheet h2 {
+    color: #0f172a !important;
+  }
+
+  .summary-report-heading {
+    border-color: #e2e8f0 !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+
+  .summary-report-heading h2 {
+    font-size: 16pt !important;
+    font-weight: 700 !important;
+  }
+
   .summary-print-table {
     display: block !important;
+    width: 100% !important;
     overflow: visible !important;
+  }
+
+  .summary-print-table table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .summary-print-table thead tr {
+    background: #f1f5f9 !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+
+  .summary-print-table th {
+    padding: 10px 12px !important;
+    color: #475569 !important;
+    font-size: 8pt !important;
+    letter-spacing: 0.06em !important;
+  }
+
+  .summary-print-table td {
+    padding: 11px 12px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    font-size: 9.5pt !important;
+  }
+
+  .summary-print-table tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .summary-print-table th:last-child,
+  .summary-print-table td:last-child {
+    text-align: right !important;
+  }
+
+  .summary-balance-badge {
+    display: inline-block !important;
+    white-space: nowrap !important;
+    border-radius: 9999px !important;
+    padding: 4px 9px !important;
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+  }
+
+  .summary-balance-due {
+    border: 1px solid #fecdd3 !important;
+    background: #fff1f2 !important;
+    color: #e11d48 !important;
+  }
+
+  .summary-balance-refund {
+    border: 1px solid #a7f3d0 !important;
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+  }
+
+  .summary-balance-settled {
+    border: 1px solid #e2e8f0 !important;
+    background: #f1f5f9 !important;
+    color: #64748b !important;
   }
 
   .summary-print-logo {
     display: block !important;
     visibility: visible !important;
-    width: 40px !important;
-    height: 40px !important;
-    object-fit: contain !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 0.75rem !important;
+    object-fit: cover !important;
   }
 
-  table,
-  th,
-  td {
+  .summary-print-table th,
+  .summary-print-table td {
     color: #0f172a !important;
-    background: #ffffff !important;
   }
 }

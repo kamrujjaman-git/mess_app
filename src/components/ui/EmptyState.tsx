@@ -26,7 +26,7 @@ export function EmptyState({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className={`flex flex-col items-center justify-center gap-4 rounded-3xl border border-slate-200/80 bg-slate-50/90 px-6 py-10 text-center text-slate-600 shadow-sm shadow-slate-200/30 backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-950/40 dark:text-slate-300 ${className}`}
+            className={`transform-gpu will-change-transform flex flex-col items-center justify-center gap-4 rounded-3xl border border-slate-200/80 bg-slate-50/90 px-6 py-10 text-center text-slate-600 shadow-sm shadow-slate-200/30 backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-950/40 dark:text-slate-300 ${className}`}
         >
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 shadow-inner shadow-emerald-200/70 dark:bg-emerald-500/10 dark:text-emerald-300">
                 <Icon className="h-7 w-7" />

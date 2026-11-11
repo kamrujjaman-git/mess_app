@@ -85,7 +85,7 @@ export function DeleteConfirmationModal({
                             role="dialog"
                             aria-modal="true"
                             aria-labelledby="delete-confirmation-title"
-                            className="relative mx-auto w-full max-w-xs rounded-3xl border border-slate-200/80 bg-white p-6 text-center text-slate-900 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-sm"
+                            className="relative mx-auto w-full max-w-xs transform-gpu will-change-transform rounded-3xl border border-slate-200/80 bg-white p-6 text-center text-slate-900 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-sm"
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
