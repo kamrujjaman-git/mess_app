@@ -23,7 +23,9 @@ import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
 import { DeleteConfirmationModal } from "@/components/ui/DeleteConfirmationModal";
 import { useToast } from "@/components/ui/ToastProvider";
 import { SwipeableListItem } from "./SwipeableListItem";
+import type { DashboardLogSection } from "./Sidebar";
 import { Wallet2, ReceiptText } from "lucide-react";
+import { DashboardSectionHeader } from "./DashboardSectionHeader";
 
 interface BazarDepositLogProps {
   bazar: BazarEntry[];
@@ -45,6 +47,7 @@ interface BazarDepositLogProps {
   onDeleteBill?: (field: BillField) => Promise<void>;
   onAddBazar?: () => void;
   onAddDeposit?: () => void;
+  activeSection?: DashboardLogSection | null;
 }
 
 export function BazarDepositLog({
@@ -61,9 +64,13 @@ export function BazarDepositLog({
   onDeleteBill,
   onAddBazar,
   onAddDeposit,
+  activeSection,
 }: BazarDepositLogProps) {
   const { undo, error } = useToast();
   const activeMembers = getActiveMembers(members);
+  const selectedSection = activeSection === "bills" && !isAdmin
+    ? "bazar"
+    : activeSection ?? "bazar";
 
   const [editingBazarId, setEditingBazarId] = useState<string | null>(null);
   const [bazarDate, setBazarDate] = useState("");
@@ -278,24 +285,42 @@ export function BazarDepositLog({
   }
 
   const billFields: BillField[] = ["houseRent", "buaBill", "otherBills"];
+  const sectionDetails = selectedSection === "bazar"
+    ? {
+      title: "Bazar Log",
+      description: "Review monthly spending, dates, and buyers.",
+      count: visibleBazar.length,
+      badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+    }
+    : selectedSection === "deposits"
+      ? {
+        title: "Deposit Log",
+        description: "Review member deposits and notes.",
+        count: visibleDeposits.length,
+        badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+      }
+      : {
+        title: "Monthly Fixed Bills",
+        description: "Review shared household charges for this month.",
+        count: billFields.length,
+        badgeClass: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
+      };
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md">
-          <div className="border-b border-slate-200/60 bg-slate-50/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/40 sm:px-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold sm:text-lg">Bazar Log</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Track daily bazar spending
-                </p>
-              </div>
-              <div className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-                {visibleBazar.length} items
-              </div>
-            </div>
-          </div>
+      <DashboardSectionHeader
+        title={sectionDetails.title}
+        description={sectionDetails.description}
+        action={
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${sectionDetails.badgeClass}`}>
+            {sectionDetails.count} {sectionDetails.count === 1 ? "item" : "items"}
+          </span>
+        }
+      />
+      {selectedSection !== "bills" ? (
+        <div className="space-y-4">
+          {selectedSection === "bazar" ? (
+            <div id="bazar-log" className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-sm transition-colors dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md">
           {visibleBazar.length === 0 ? (
             <div className="p-4 sm:p-6">
               <EmptyState
@@ -370,7 +395,7 @@ export function BazarDepositLog({
                           <button
                             type="button"
                             onClick={() => setEditingBazarId(null)}
-                            className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600"
+                            className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600 transition-colors duration-150 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                           >
                             <X className="h-4 w-4" />
                             Cancel
@@ -388,9 +413,9 @@ export function BazarDepositLog({
                         deleteLabel="Delete"
                         className="rounded-2xl"
                       >
-                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:hover:border-slate-700 dark:hover:bg-slate-900">
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition-colors duration-150 hover:border-slate-300 dark:border-slate-800/80 dark:bg-slate-900/70 dark:hover:border-slate-700 dark:hover:bg-slate-900">
                           <div className="min-w-0 flex-1">
-                            <p className="break-words text-base font-bold text-slate-900 dark:text-white">
+                            <p className="break-words text-base font-bold tabular-nums text-slate-900 dark:text-white">
                               ৳{formatCurrency(entry.amount)}
                             </p>
                             <p className="mt-1 break-words text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -418,22 +443,11 @@ export function BazarDepositLog({
               </ul>
             </div>
           )}
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md">
-          <div className="border-b border-slate-200/60 bg-slate-50/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/40 sm:px-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold sm:text-lg">Deposit Log</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Member deposits and notes
-                </p>
-              </div>
-              <div className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-                {visibleDeposits.length} items
-              </div>
             </div>
-          </div>
+          ) : null}
+
+          {selectedSection === "deposits" ? (
+            <div id="deposit-log" className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-sm transition-colors dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md">
           {visibleDeposits.length === 0 ? (
             <div className="p-4 sm:p-6">
               <EmptyState
@@ -497,7 +511,7 @@ export function BazarDepositLog({
                           <button
                             type="button"
                             onClick={() => setEditingDepositId(null)}
-                            className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600"
+                            className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600 transition-colors duration-150 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                           >
                             <X className="h-4 w-4" />
                             Cancel
@@ -515,9 +529,9 @@ export function BazarDepositLog({
                         deleteLabel="Delete"
                         className="rounded-2xl"
                       >
-                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800/80 dark:bg-slate-900/70 dark:hover:border-slate-700 dark:hover:bg-slate-900">
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3 py-3 shadow-sm transition-colors duration-150 hover:border-slate-300 dark:border-slate-800/80 dark:bg-slate-900/70 dark:hover:border-slate-700 dark:hover:bg-slate-900">
                           <div className="min-w-0 flex-1">
-                            <p className="text-base font-bold text-slate-900 dark:text-white">
+                            <p className="text-base font-bold tabular-nums text-slate-900 dark:text-white">
                               {entry.memberName} — ৳{formatCurrency(entry.amount)}
                             </p>
                             <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
@@ -542,29 +556,16 @@ export function BazarDepositLog({
               </ul>
             </div>
           )}
-        </div>
-      </div>
-
-      {isAdmin && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md">
-          <div className="border-b border-slate-200/60 bg-slate-50/70 px-4 py-3 dark:border-slate-700/60 dark:bg-slate-900/40 sm:px-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold sm:text-lg">
-                  Monthly Fixed Bills
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Shared household charges
-                </p>
-              </div>
-              <div className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
-                {billFields.length} items
-              </div>
             </div>
-          </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isAdmin && selectedSection === "bills" && (
+        <div id="fixed-bills-log" className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-sm transition-colors dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md">
           <ul className="divide-y divide-slate-300/50 dark:divide-slate-700/60">
             {billFields.map((field) => (
-              <li key={field} className="px-4 py-3 sm:px-6">
+              <li key={field} className="px-4 py-3 transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-slate-800/40 sm:px-6">
                 {editingBillField === field ? (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <span className="min-w-[120px] text-sm font-medium">
@@ -598,7 +599,7 @@ export function BazarDepositLog({
                       <button
                         type="button"
                         onClick={() => setEditingBillField(null)}
-                        className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600"
+                        className="flex h-9 items-center gap-1 rounded-lg px-3 text-sm text-slate-600 transition-colors duration-150 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
                         <X className="h-4 w-4" />
                         Cancel
@@ -613,7 +614,7 @@ export function BazarDepositLog({
                           ? bills.otherBillsDescription
                           : BILL_LABELS[field]}
                       </p>
-                      <p className="text-lg font-bold">
+                      <p className="text-lg font-bold tabular-nums">
                         ৳{formatCurrency(bills[field])}
                       </p>
                     </div>

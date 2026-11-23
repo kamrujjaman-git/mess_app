@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useSyncExternalStore } from "react";
@@ -24,6 +24,7 @@ export function DeleteConfirmationModal({
     onConfirm,
     onCancel,
 }: DeleteConfirmationModalProps) {
+    const reduceMotion = useReducedMotion();
     const cancelButtonRef = useRef<HTMLButtonElement>(null);
     const deleteButtonRef = useRef<HTMLButtonElement>(null);
     const mounted = useSyncExternalStore(
@@ -71,11 +72,15 @@ export function DeleteConfirmationModal({
             <AnimatePresence>
                 {open ? (
                     <motion.div
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.18, ease: "easeOut" }}
+                        transition={
+                            reduceMotion
+                                ? { duration: 0 }
+                                : { type: "spring", stiffness: 300, damping: 28 }
+                        }
                         role="presentation"
                         onMouseDown={(event) => {
                             if (event.target === event.currentTarget && !busy) onCancel();
@@ -85,11 +90,15 @@ export function DeleteConfirmationModal({
                             role="dialog"
                             aria-modal="true"
                             aria-labelledby="delete-confirmation-title"
-                            className="relative mx-auto w-full max-w-xs transform-gpu will-change-transform rounded-3xl border border-slate-200/80 bg-white p-6 text-center text-slate-900 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-sm"
+                            className="relative mx-auto w-full max-w-xs rounded-3xl border border-slate-200/80 bg-white p-6 text-center text-slate-900 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-sm"
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            transition={
+                                reduceMotion
+                                    ? { duration: 0 }
+                                    : { type: "spring", stiffness: 300, damping: 28 }
+                            }
                         >
                             <div className="text-center">
                                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300">
@@ -106,7 +115,7 @@ export function DeleteConfirmationModal({
                                 type="button"
                                 onClick={onCancel}
                                 disabled={busy}
-                                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
                                 aria-label="Close delete confirmation"
                             >
                                 <X className="h-4 w-4" />
@@ -117,7 +126,7 @@ export function DeleteConfirmationModal({
                                     onClick={onCancel}
                                     disabled={busy}
                                     ref={cancelButtonRef}
-                                    className="w-full cursor-pointer rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-400/60 focus:border-slate-400 focus:scale-[1.03] active:scale-95 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus:ring-slate-500/60 disabled:opacity-50"
+                                    className="w-full cursor-pointer rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-colors duration-150 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400/60 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus:ring-slate-500/60 disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
@@ -127,7 +136,7 @@ export function DeleteConfirmationModal({
                                     disabled={busy}
                                     ref={deleteButtonRef}
                                     autoFocus
-                                    className="w-full cursor-pointer rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-rose-500/20 outline-none transition-all hover:bg-rose-700 focus:outline-none focus:ring-4 focus:ring-rose-500/60 focus:ring-offset-2 focus:ring-offset-white focus:scale-[1.03] active:scale-95 dark:focus:ring-offset-slate-900 disabled:cursor-wait disabled:opacity-60"
+                                    className="w-full cursor-pointer rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-rose-500/20 outline-none transition-colors duration-150 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500/60 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 disabled:cursor-wait disabled:opacity-60"
                                 >
                                     {busy ? "Deleting..." : confirmLabel}
                                 </button>

@@ -7,12 +7,15 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Pencil,
   Shield,
   Sun,
   Moon,
+  Menu,
   X,
   Wallet,
 } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "firebase/auth";
 import { db } from "@/lib/firebase";
@@ -27,6 +30,7 @@ import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
 import { useToast } from "@/components/ui/ToastProvider";
 import { formatCurrency } from "@/lib/mess";
 import { DeleteConfirmationModal } from "@/components/ui/DeleteConfirmationModal";
+import { EditProfileModal } from "./EditProfileModal";
 
 interface DashboardNavProps {
   monthKey: string;
@@ -38,6 +42,8 @@ interface DashboardNavProps {
   memberName?: string | null;
   totalBalance?: number | null;
   onLogout: () => void;
+  sidebarExpanded: boolean;
+  onOpenMobileNav: () => void;
 }
 
 export function DashboardNav({
@@ -50,8 +56,11 @@ export function DashboardNav({
   memberName,
   totalBalance,
   onLogout,
+  sidebarExpanded,
+  onOpenMobileNav,
 }: DashboardNavProps) {
   const { isAdmin: authIsAdmin, isSuperAdmin, canDeleteNotifications } = useAuth();
+  const reduceMotion = useReducedMotion();
   const { undo, error } = useToast();
   const [imageFailed, setImageFailed] = useState(false);
   const [isDark, setIsDark] = useState(() => {
@@ -62,13 +71,21 @@ export function DashboardNav({
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [profileOverride, setProfileOverride] = useState<{
+    name: string;
+    photoURL: string | null;
+  } | null>(null);
   const [isCompact, setIsCompact] = useState(false);
+  const compactStateRef = useRef(false);
   const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string | null>(() =>
     typeof window === "undefined" ? null : window.localStorage.getItem("mess_activity_last_seen")
   );
   const [hiddenLogIds, setHiddenLogIds] = useState<string[]>([]);
   const [pendingDeleteLogId, setPendingDeleteLogId] = useState<string | null>(null);
   const notificationContainerRef = useRef<HTMLDivElement | null>(null);
+  const profileTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const profilePopoverRef = useRef<HTMLDivElement | null>(null);
   const pendingDeletes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useEffect(() => {
@@ -85,7 +102,29 @@ export function DashboardNav({
   }, [showNotifications]);
 
   useEffect(() => {
-    const handleScroll = () => setIsCompact(window.scrollY > 36);
+    if (!profileOpen) return;
+
+    function handleOutsidePointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (
+        !profileTriggerRef.current?.contains(target) &&
+        !profilePopoverRef.current?.contains(target)
+      ) {
+        setProfileOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
+  }, [profileOpen]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const nextCompact = window.scrollY > 36;
+      if (compactStateRef.current === nextCompact) return;
+      compactStateRef.current = nextCompact;
+      setIsCompact(nextCompact);
+    };
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -128,8 +167,10 @@ export function DashboardNav({
 
   const roleLabel = isSuperAdmin ? "Super Admin" : isAdmin || authIsAdmin ? "Admin" : "Member";
   const displayName = useMemo(() => {
+    if (profileOverride) return profileOverride.name;
     return memberName?.trim() || user?.displayName?.trim() || "Member";
-  }, [memberName, user]);
+  }, [memberName, profileOverride, user]);
+  const avatarURL = profileOverride ? profileOverride.photoURL : user.photoURL;
 
   const avatarInitial = displayName?.trim()?.charAt(0)?.toUpperCase() ?? "M";
 
@@ -176,23 +217,21 @@ export function DashboardNav({
   }, []);
 
   return (
-    <header className={`relative sticky top-0 z-40 w-full max-w-full overflow-visible border-b border-slate-200/50 bg-white/80 backdrop-blur-lg transition-all duration-300 dark:border-slate-800/50 dark:bg-slate-900/80 ${isCompact ? "shadow-md shadow-slate-900/5" : ""}`}>
-      <div className={`relative mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-2 gap-y-2 px-3 transition-all duration-300 sm:px-4 md:flex-nowrap md:gap-3 lg:px-8 ${isCompact ? "py-2" : "py-3 sm:py-4"}`}>
-        <div className="order-1 flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-10 sm:w-10">
-            <Image
-              src="/logo-512.png"
-              alt="Mess Logo"
-              fill
-              sizes="40px"
-              className="object-cover"
-            />
-          </div>
-          <span className={`truncate font-bold transition-all duration-300 ${isCompact ? "text-sm sm:text-base" : "text-base sm:text-lg"}`}>Mess App</span>
-        </div>
+    <>
+      <header className={`relative sticky top-0 z-40 w-full max-w-full overflow-visible border-b border-slate-200/50 bg-white/80 backdrop-blur-lg transition-[margin,width] duration-200 ease-in-out motion-reduce:transition-none dark:border-slate-800/50 dark:bg-slate-900/80 ${sidebarExpanded ? "md:ml-64 md:w-[calc(100%-16rem)]" : "md:ml-[72px] md:w-[calc(100%-72px)]"} ${isCompact ? "shadow-md shadow-slate-900/5" : ""}`}>
+      <div className={`mx-auto grid w-full max-w-7xl grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2 px-3 transition-[padding] duration-200 sm:px-4 md:flex md:flex-nowrap md:justify-between md:gap-3 lg:px-8 ${isCompact ? "py-2" : "py-3 sm:py-4"}`}>
+        <button
+          type="button"
+          onClick={onOpenMobileNav}
+          className="col-start-1 row-start-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 md:hidden"
+          aria-label="Open navigation menu"
+          aria-haspopup="dialog"
+        >
+          <Menu className="h-5 w-5" aria-hidden="true" />
+        </button>
 
-        <div className="order-3 mt-3 flex w-full justify-center md:absolute md:left-1/2 md:top-1/2 md:order-none md:mt-0 md:w-auto md:-translate-x-1/2 md:-translate-y-1/2">
-          <div className={`flex w-auto max-w-fit items-center justify-center gap-0.5 rounded-full border border-slate-200/90 bg-slate-50/70 px-2.5 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:hover:bg-slate-800 sm:gap-1 sm:px-3 ${isCompact ? "py-1 text-[11px] sm:text-xs" : "py-1.5 text-xs sm:text-sm"}`}>
+        <div className="col-span-2 row-start-2 flex w-full justify-center md:col-span-1 md:row-start-auto md:w-auto md:shrink-0 md:justify-start">
+          <div className={`flex shrink-0 items-center justify-center gap-0.5 rounded-full border border-slate-200/90 bg-slate-50/70 px-2.5 shadow-sm transition-colors dark:border-slate-800/80 dark:bg-slate-900/80 sm:gap-1 sm:px-3 ${isCompact ? "py-1 text-[11px] sm:text-xs" : "py-1.5 text-xs sm:text-sm"}`}>
             <button
               type="button"
               onClick={onPrevMonth}
@@ -201,7 +240,7 @@ export function DashboardNav({
             >
               <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
-            <div className="min-w-0 w-auto max-w-fit">
+            <div className="min-w-[9rem] w-auto max-w-fit xl:min-w-[12rem]">
               <PremiumDatePicker value={monthKey} onChange={onMonthChange} mode="month" />
             </div>
             <button
@@ -215,18 +254,18 @@ export function DashboardNav({
           </div>
         </div>
 
-        <div className="order-2 ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:gap-2 md:order-3 md:flex-1">
+        <div className="col-start-2 row-start-1 ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:gap-1.5 md:ml-0">
           {typeof totalBalance === "number" && (
-            <div className="flex max-w-[5rem] items-center gap-1 rounded-full border border-emerald-200/70 bg-emerald-50/80 px-1.5 py-1 text-[10px] font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-300 sm:max-w-none sm:gap-1.5 sm:px-2.5 sm:text-xs" title="Current meal balance">
-              <Wallet className="h-3.5 w-3.5" />
+            <div className="flex shrink-0 max-w-[5rem] items-center gap-1 rounded-full border border-emerald-200/70 bg-emerald-50/80 px-1.5 py-1 text-[10px] font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-300 sm:max-w-none sm:gap-1.5 sm:px-2.5 sm:text-xs" title="Current meal balance">
+              <Wallet className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">৳{formatCurrency(Math.abs(totalBalance))}</span>
             </div>
           )}
-          <div ref={notificationContainerRef} className="relative inline-block">
+          <div ref={notificationContainerRef} className="relative inline-block shrink-0">
             <button
               type="button"
               onClick={handleBellClick}
-              className="glass relative flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition-all duration-200 hover:scale-105 dark:text-slate-100"
+              className="glass relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-700 transition-colors duration-200 dark:text-slate-100"
               aria-label="Open notifications"
               title="Notifications"
             >
@@ -237,10 +276,19 @@ export function DashboardNav({
                 </span>
               ) : null}
             </button>
-            {showNotifications ? (
-              <aside
-                className="fixed right-3 top-28 z-50 flex w-[calc(100vw-1.5rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:right-6 sm:top-20 sm:w-96"
-              >
+            <AnimatePresence>
+              {showNotifications ? (
+                <motion.aside
+                  initial={reduceMotion ? false : { opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={
+                    reduceMotion
+                      ? { duration: 0 }
+                      : { type: "spring", stiffness: 300, damping: 28 }
+                  }
+                  className="fixed right-3 top-28 z-50 flex w-[calc(100vw-1.5rem)] max-w-sm transform-gpu flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl will-change-transform dark:border-slate-800 dark:bg-slate-900 sm:right-6 sm:top-20 sm:w-96"
+                >
                 <div className="flex items-center justify-between border-b border-slate-200/80 px-4 py-3 dark:border-slate-800/80">
                   <div>
                     <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">Activity Log</h2>
@@ -298,36 +346,41 @@ export function DashboardNav({
                     })
                   )}
                 </div>
-              </aside>
-            ) : null}
+                </motion.aside>
+              ) : null}
+            </AnimatePresence>
           </div>
 
           <button
             type="button"
             onClick={() => setIsDark((prev) => !prev)}
-            className="glass flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-700 transition-all duration-200 hover:scale-105 dark:text-slate-100"
+            className="glass flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-700 transition-colors duration-200 dark:text-slate-100"
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
             {isDark ? <Sun className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Moon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
           </button>
 
-          <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:flex">
-            <Shield className="h-3 w-3" />
-            {roleLabel}
+          <span
+            title={roleLabel}
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 md:flex lg:h-auto lg:w-auto lg:gap-1 lg:px-2.5 lg:py-1 lg:text-xs lg:font-semibold"
+          >
+            <Shield className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+            <span className="sr-only lg:not-sr-only">{roleLabel}</span>
           </span>
 
-          <div className="relative flex min-w-0 items-center gap-1.5 sm:gap-2">
+          <div className="relative flex shrink-0 items-center gap-1.5 sm:gap-2">
             <button
+              ref={profileTriggerRef}
               type="button"
               onClick={() => setProfileOpen((previous) => !previous)}
               className="relative shrink-0 rounded-full"
-              aria-label="Open profile menu"
+              aria-label={profileOpen ? "Close profile menu" : "Open profile menu"}
               aria-expanded={profileOpen}
             >
-              {user?.photoURL && !imageFailed ? (
+              {avatarURL && !imageFailed ? (
                 <Image
-                  src={user.photoURL}
+                  src={avatarURL}
                   alt={displayName}
                   width={36}
                   height={36}
@@ -343,7 +396,7 @@ export function DashboardNav({
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900" aria-label="Online" />
             </button>
 
-            <div className="hidden min-w-0 flex-col sm:flex">
+            <div className="hidden min-w-0 flex-col xl:flex">
               <span className="max-w-[110px] truncate text-xs font-semibold text-slate-800 dark:text-slate-100">
                 {displayName}
               </span>
@@ -351,12 +404,35 @@ export function DashboardNav({
                 {roleLabel}
               </span>
             </div>
-            {profileOpen && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-2xl border border-slate-200/70 bg-white/95 p-2 text-left shadow-xl backdrop-blur-lg dark:border-slate-700/70 dark:bg-slate-900/95 sm:right-0">
+            <AnimatePresence>
+              {profileOpen && (
+                <motion.div
+                  ref={profilePopoverRef}
+                  initial={reduceMotion ? false : { opacity: 0, y: -4, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                  transition={
+                    reduceMotion
+                      ? { duration: 0 }
+                      : { type: "spring", stiffness: 300, damping: 28 }
+                  }
+                  className="absolute right-0 top-full z-50 mt-2 w-52 transform-gpu rounded-2xl border border-slate-200/70 bg-white/95 p-2 text-left shadow-xl backdrop-blur-lg will-change-transform dark:border-slate-700/70 dark:bg-slate-900/95 sm:right-0"
+                >
                 <div className="border-b border-slate-200/70 px-3 pb-2 dark:border-slate-700/70">
                   <p className="truncate text-sm font-semibold">{displayName}</p>
                   <p className="truncate text-xs text-slate-500 dark:text-slate-400">{roleLabel}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    setEditProfileOpen(true);
+                  }}
+                  className="mt-2 flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit Profile
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -368,8 +444,9 @@ export function DashboardNav({
                   <LogOut className="h-4 w-4" />
                   Sign out
                 </button>
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
         </div>
@@ -382,6 +459,24 @@ export function DashboardNav({
         }}
         onCancel={() => setPendingDeleteLogId(null)}
       />
-    </header>
+      </header>
+      <AnimatePresence>
+        {editProfileOpen ? (
+          <EditProfileModal
+            user={user}
+            initialName={displayName}
+            initialPhotoURL={avatarURL}
+            onClose={() => {
+              setEditProfileOpen(false);
+              requestAnimationFrame(() => profileTriggerRef.current?.focus());
+            }}
+            onSaved={(name, photoURL) => {
+              setProfileOverride({ name, photoURL });
+              setImageFailed(false);
+            }}
+          />
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 }

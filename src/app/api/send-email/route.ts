@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { getAdminAuth, getAdminFirestore } from "@/lib/firebase-admin";
 
+const EMAIL_RATE_LIMIT = 10;
+const EMAIL_RATE_WINDOW_MS = 60 * 60 * 1000;
+const SAFE_EMAIL_TAGS = new Set(["p", "br", "strong", "b", "em", "i", "ul", "ol", "li"]);
+
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -19,6 +23,31 @@ function escapeHtml(value: unknown): string {
         .replaceAll("'", "&#39;");
 }
 
+function sanitizeEmailHtml(value: string): string {
+    const tokenPattern = /<[^>]*>/g;
+    let result = "";
+    let cursor = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = tokenPattern.exec(value)) !== null) {
+        result += escapeHtml(value.slice(cursor, match.index));
+        const tagMatch = match[0].match(/^<\s*(\/?)\s*([a-z][a-z0-9]*)\b[^>]*>$/i);
+        if (tagMatch) {
+            const tagName = tagMatch[2].toLowerCase();
+            if (SAFE_EMAIL_TAGS.has(tagName)) {
+                result += tagName === "br"
+                    ? "<br>"
+                    : `<${tagMatch[1] ? "/" : ""}${tagName}>`;
+            }
+        } else {
+            result += escapeHtml(match[0]);
+        }
+        cursor = tokenPattern.lastIndex;
+    }
+
+    return result + escapeHtml(value.slice(cursor));
+}
+
 function normalizeRecipientEmails(value: unknown): string[] {
     const emailList = Array.isArray(value)
         ? value
@@ -31,7 +60,9 @@ function normalizeRecipientEmails(value: unknown): string[] {
         .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
 }
 
-async function authorizeRequest(request: Request): Promise<Set<string>> {
+async function authorizeRequest(
+    request: Request
+): Promise<{ allowedRecipients: Set<string>; uid: string }> {
     const authorization = request.headers.get("authorization") ?? "";
     const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
     if (!token) {
@@ -54,7 +85,8 @@ async function authorizeRequest(request: Request): Promise<Set<string>> {
             .filter((member) =>
                 member &&
                 typeof member === "object" &&
-                member.status === "active" &&
+                member.status !== "inactive" &&
+                member.status !== "removed" &&
                 member.active !== false &&
                 member.isBlocked !== true &&
                 member.isRemoved !== true &&
@@ -70,7 +102,30 @@ async function authorizeRequest(request: Request): Promise<Set<string>> {
         throw new Error("The account is not an active system member.");
     }
 
-    return allowedRecipients;
+    return { allowedRecipients, uid: decodedToken.uid };
+}
+
+async function consumeEmailRateLimit(uid: string): Promise<boolean> {
+    const firestore = getAdminFirestore();
+    const rateLimitRef = firestore.doc(`rate_limits/email_${encodeURIComponent(uid)}`);
+
+    return firestore.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(rateLimitRef);
+        const now = Date.now();
+        const windowStartedAt = snapshot.get("windowStartedAt");
+        const count = snapshot.get("count");
+        const windowStart = typeof windowStartedAt === "number" ? windowStartedAt : 0;
+        const requestCount = typeof count === "number" ? count : 0;
+
+        if (!snapshot.exists || now - windowStart >= EMAIL_RATE_WINDOW_MS || now < windowStart) {
+            transaction.set(rateLimitRef, { windowStartedAt: now, count: 1 });
+            return true;
+        }
+        if (requestCount >= EMAIL_RATE_LIMIT) return false;
+
+        transaction.update(rateLimitRef, { count: requestCount + 1 });
+        return true;
+    });
 }
 
 function buildModernHtmlTemplate({
@@ -138,9 +193,9 @@ function buildModernHtmlTemplate({
 
 export async function POST(request: Request) {
     try {
-        let allowedRecipients: Set<string>;
+        let authorization: { allowedRecipients: Set<string>; uid: string };
         try {
-            allowedRecipients = await authorizeRequest(request);
+            authorization = await authorizeRequest(request);
         } catch (authorizationError) {
             return NextResponse.json(
                 { ok: false, error: authorizationError instanceof Error ? authorizationError.message : "Unauthorized" },
@@ -151,7 +206,7 @@ export async function POST(request: Request) {
         const body = (await request.json().catch(() => ({}))) ?? {};
         const recipientEmails = normalizeRecipientEmails(body.emails ?? body.email ?? body.recipientEmail)
             .map((email) => email.toLowerCase());
-        if (recipientEmails.some((email) => !allowedRecipients.has(email))) {
+        if (recipientEmails.some((email) => !authorization.allowedRecipients.has(email))) {
             return NextResponse.json(
                 { ok: false, error: "Recipients must be active members of the mess." },
                 { status: 403 }
@@ -179,11 +234,28 @@ export async function POST(request: Request) {
             });
         }
 
+        let withinRateLimit: boolean;
+        try {
+            withinRateLimit = await consumeEmailRateLimit(authorization.uid);
+        } catch (rateLimitError) {
+            console.error("Email rate limit check failed:", rateLimitError);
+            return NextResponse.json(
+                { ok: false, error: "Email service is temporarily unavailable. Try again later." },
+                { status: 503 }
+            );
+        }
+        if (!withinRateLimit) {
+            return NextResponse.json(
+                { ok: false, error: "Email sending limit reached. Try again in an hour." },
+                { status: 429 }
+            );
+        }
+
         const subject = typeof body.subject === "string" && body.subject.trim().length > 0
             ? body.subject.trim().slice(0, 200)
             : "Mess App Notification";
         const html = typeof body.html === "string" && body.html.trim().length > 0
-            ? escapeHtml(body.html)
+            ? sanitizeEmailHtml(body.html)
             : buildModernHtmlTemplate({
                 title: "Mess App Update",
                 summary: "Your latest mess update is ready.",

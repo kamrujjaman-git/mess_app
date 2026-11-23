@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { ShoppingCart, Users, Wallet2 } from "lucide-react";
 
@@ -21,12 +21,14 @@ export function EmptyState({
     onAction,
     className = "",
 }: EmptyStateProps) {
+    const reduceMotion = useReducedMotion();
+
     return (
         <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className={`transform-gpu will-change-transform flex flex-col items-center justify-center gap-4 rounded-3xl border border-slate-200/80 bg-slate-50/90 px-6 py-10 text-center text-slate-600 shadow-sm shadow-slate-200/30 backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-950/40 dark:text-slate-300 ${className}`}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.16, ease: "easeOut" }}
+            className={`flex flex-col items-center justify-center gap-4 rounded-3xl border border-slate-200/80 bg-slate-50/90 px-6 py-10 text-center text-slate-600 shadow-sm shadow-slate-200/30 backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-950/40 dark:text-slate-300 ${className}`}
         >
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 shadow-inner shadow-emerald-200/70 dark:bg-emerald-500/10 dark:text-emerald-300">
                 <Icon className="h-7 w-7" />
@@ -41,7 +43,7 @@ export function EmptyState({
                 <button
                     type="button"
                     onClick={onAction}
-                    className="mt-2 inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition duration-200 hover:bg-emerald-500 active:scale-95"
+                    className="mt-2 inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-colors duration-150 hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                 >
                     {actionButtonLabel}
                 </button>

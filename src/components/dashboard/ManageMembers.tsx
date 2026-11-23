@@ -19,9 +19,11 @@ import type { Member } from "@/lib/mess";
 import { buildWhatsAppLink, normalizeWhatsAppNumber } from "@/lib/mess";
 import { InlineActions, inputClass } from "./InlineActions";
 import { DeleteConfirmationModal } from "@/components/ui/DeleteConfirmationModal";
+import { DashboardSectionHeader } from "./DashboardSectionHeader";
 
 interface ManageMembersProps {
   members: Member[];
+  activeView: "add" | "all";
   onAddMember: (name: string, email: string, whatsAppNumber?: string) => Promise<void>;
   onUpdateMember: (member: Member) => Promise<void>;
   onSetMemberStatus: (memberId: string, status: Member["status"]) => Promise<void>;
@@ -47,6 +49,7 @@ function WhatsAppActionIcon() {
 
 export function ManageMembers({
   members,
+  activeView,
   onAddMember,
   onUpdateMember,
   onSetMemberStatus,
@@ -172,75 +175,92 @@ export function ManageMembers({
 
   return (
     <div className="space-y-4">
-      <div className="glass-card rounded-2xl p-4 sm:p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold">Add New Member</h3>
-          <span className="text-xs text-slate-500">
-            {activeCount} active / {members.length} total
-          </span>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Full name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className={`${inputClass} pl-9`}
-            />
-          </div>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="email"
-              placeholder="Email address"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className={`${inputClass} pl-9`}
-            />
-          </div>
-          <input
-            type="text"
-            placeholder="WhatsApp number"
-            value={newWhatsAppNumber}
-            onChange={(e) => setNewWhatsAppNumber(e.target.value)}
-            className={inputClass}
+      {activeView === "add" ? (
+        <>
+          <DashboardSectionHeader
+            title="Add New Member"
+            description="Add a member and optional contact details."
+            action={
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                {activeCount} active / {members.length} total
+              </span>
+            }
           />
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={saving === "add" || !newName.trim()}
-            className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {saving === "add" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <UserPlus className="h-4 w-4" />
-                Add
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+          <div id="admin-add-member" className="glass-card rounded-2xl p-4 sm:p-6">
+            <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+              <label className="block min-w-0">
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Full name</span>
+                <span className="relative block">
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className={`${inputClass} pl-9`}
+                  />
+                </span>
+              </label>
+              <label className="block min-w-0">
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Email address</span>
+                <span className="relative block">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className={`${inputClass} pl-9`}
+                  />
+                </span>
+              </label>
+              <label className="block min-w-0">
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">WhatsApp number</span>
+                <input
+                  type="text"
+                  value={newWhatsAppNumber}
+                  onChange={(e) => setNewWhatsAppNumber(e.target.value)}
+                  className={inputClass}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleAdd}
+                disabled={saving === "add" || !newName.trim()}
+                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 disabled:opacity-60"
+              >
+                {saving === "add" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4" />
+                    Add
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
 
-      <div className="glass-card overflow-hidden rounded-2xl">
-        <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
-          <h3 className="text-base font-semibold">All Members</h3>
-        </div>
-
-        {members.length === 0 ? (
-          <p className="p-6 text-center text-sm text-slate-500">
-            No members yet. Add one above.
-          </p>
-        ) : (
-          <ul className="divide-y divide-slate-300/50 dark:divide-slate-700/60">
-            {members.map((member) => (
+      {activeView === "all" ? (
+        <>
+          <DashboardSectionHeader
+            title="All Members"
+            description="Review member details, status, and access."
+            action={
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                {members.length} members
+              </span>
+            }
+          />
+          <div id="admin-all-members" className="glass-card overflow-hidden rounded-2xl">
+          {members.length === 0 ? (
+            <p className="p-6 text-center text-sm text-slate-500">No members yet.</p>
+          ) : (
+            <ul className="divide-y divide-slate-300/50 dark:divide-slate-700/60">
+              {members.map((member) => (
               <li
                 key={member.id}
-                className={`px-4 py-4 sm:px-6 ${member.status === "inactive" ? "opacity-60" : ""
-                  }`}
+                className="px-4 py-4 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40 sm:px-6"
               >
                 {editingId === member.id ? (
                   <div className="space-y-3">
@@ -339,7 +359,7 @@ export function ManageMembers({
                       )}
                     </div>
 
-                    <div className="flex items-center justify-start gap-2 sm:gap-3">
+                    <div className="flex flex-wrap items-center justify-start gap-2 sm:flex-nowrap sm:gap-3">
                       {isSuperAdmin && (
                         <button
                           type="button"
@@ -397,29 +417,33 @@ export function ManageMembers({
                             <UserCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           )}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setMemberPendingDelete(member)}
-                          disabled={saving === `delete-${member.id}`}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 sm:h-9 sm:w-9"
-                          title={`Delete ${member.name}`}
-                          aria-label={`Delete ${member.name}`}
-                        >
-                          {saving === `delete-${member.id}` ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          )}
-                        </button>
+                        {isSuperAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() => setMemberPendingDelete(member)}
+                            disabled={saving === `delete-${member.id}`}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 sm:h-9 sm:w-9"
+                            title={`Delete ${member.name}`}
+                            aria-label={`Delete ${member.name}`}
+                          >
+                            {saving === `delete-${member.id}` ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            )}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </div>
                 )}
               </li>
-            ))}
-          </ul>
-        )}
-      </div>
+              ))}
+            </ul>
+          )}
+          </div>
+        </>
+      ) : null}
       <DeleteConfirmationModal
         open={Boolean(memberPendingDelete)}
         title="Delete this entry?"

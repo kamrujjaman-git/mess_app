@@ -23,7 +23,9 @@ import {
   BillField,
   createDefaultMembers,
   createEmptyDailyMeals,
+  getAllowedMemberEmails,
   getActiveMembers,
+  isMemberActive,
   isDateOnOrBeforeToday,
 } from "./mess";
 
@@ -86,8 +88,15 @@ function getActivityAuthor(): string {
 
 function adminEmailsForMembers(members: Member[]): string[] {
   return members
-    .filter((member) => member.isAdmin === true && member.email.trim())
+    .filter((member) => isMemberActive(member) && member.isAdmin === true && member.email.trim())
     .map((member) => member.email.trim().toLowerCase());
+}
+
+function memberAccessFields(members: Member[]) {
+  return {
+    activeEmails: getAllowedMemberEmails(members),
+    adminEmails: adminEmailsForMembers(members),
+  };
 }
 
 function parseMembers(data: Record<string, unknown> | undefined): Member[] {
@@ -136,14 +145,7 @@ export async function getMembers(): Promise<Member[]> {
 
 export async function getActiveMemberEmails(): Promise<string[]> {
   const members = await getMembers();
-  return members
-    .filter(
-      (member) =>
-        member.status === "active" &&
-        typeof member.email === "string" &&
-        member.email.trim().length > 0
-    )
-    .map((member) => member.email.trim());
+  return getAllowedMemberEmails(members);
 }
 
 export async function getUserByUid(uid: string): Promise<Member | null> {
@@ -205,7 +207,7 @@ export async function updateUserEmail(userDocId: string, email: string, name?: s
 export async function setMembers(members: Member[]): Promise<void> {
   await setDoc(doc(db, "settings", "members"), {
     members,
-    adminEmails: adminEmailsForMembers(members),
+    ...memberAccessFields(members),
   });
 }
 
@@ -239,7 +241,7 @@ export async function addMember(
     const nextMembers = [...members, newMember];
     transaction.set(membersRef, {
       members: nextMembers,
-      adminEmails: adminEmailsForMembers(nextMembers),
+      ...memberAccessFields(nextMembers),
     });
   });
   return newMember;
@@ -299,7 +301,7 @@ export async function updateMember(updated: Member): Promise<void> {
     nextMembers[index] = normalizedMember;
     transaction.set(membersRef, {
       members: nextMembers,
-      adminEmails: adminEmailsForMembers(nextMembers),
+      ...memberAccessFields(nextMembers),
     });
     for (const userSnapshot of userSnapshots) {
       if (!userSnapshot.exists()) continue;
@@ -346,24 +348,75 @@ export async function setMemberStatus(
   status: Member["status"]
 ): Promise<void> {
   const membersRef = doc(db, "settings", "members");
+  const initialSnapshot = await getDoc(membersRef);
+  const initialMembers = parseMembers(
+    initialSnapshot.exists() ? initialSnapshot.data() : undefined
+  );
+  const initialMember = initialMembers.find((member) => member.id === memberId);
+  if (!initialMember) {
+    throw new Error("Member not found. Refresh the dashboard and try again.");
+  }
+
+  const profileRefs = new Map<string, ReturnType<typeof doc>>();
+  const directProfileRef = doc(db, "users", memberId);
+  profileRefs.set(directProfileRef.path, directProfileRef);
+  if (initialMember.email.trim()) {
+    const profileEmails = [...new Set([
+      initialMember.email.trim(),
+      initialMember.email.trim().toLowerCase(),
+    ])];
+    const profileSnapshots = await Promise.all(
+      profileEmails.map((email) =>
+        getDocs(query(collection(db, "users"), where("email", "==", email)))
+      )
+    );
+    for (const profileSnapshot of profileSnapshots) {
+      for (const profile of profileSnapshot.docs) {
+        profileRefs.set(profile.ref.path, profile.ref);
+      }
+    }
+  }
+
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(membersRef);
     const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
     const index = members.findIndex((m) => m.id === memberId);
-    if (index === -1) return;
+    if (index === -1) {
+      throw new Error("Member not found. Refresh the dashboard and try again.");
+    }
+    if (JSON.stringify(members[index]) !== JSON.stringify(initialMember)) {
+      throw new Error("This member changed while you were updating status. Refresh and try again.");
+    }
+
+    const userSnapshots = await Promise.all(
+      [...profileRefs.values()].map((profileRef) => transaction.get(profileRef))
+    );
     const nextMembers = [...members];
     nextMembers[index] = {
       ...nextMembers[index],
       status,
       active: status === "active",
-      ...(status === "active"
-        ? { isRemoved: false, isBlocked: false }
-        : {}),
+      isRemoved: status === "removed"
+        ? true
+        : status === "active"
+          ? false
+          : Boolean(nextMembers[index].isRemoved),
+      isBlocked: status === "active" ? false : Boolean(nextMembers[index].isBlocked),
     };
     transaction.set(membersRef, {
       members: nextMembers,
-      adminEmails: adminEmailsForMembers(nextMembers),
+      ...memberAccessFields(nextMembers),
     });
+    for (const userSnapshot of userSnapshots) {
+      if (!userSnapshot.exists()) continue;
+      transaction.update(userSnapshot.ref, {
+        status,
+        active: status === "active",
+        isAdmin: Boolean(nextMembers[index].isAdmin),
+        isBlocked: Boolean(nextMembers[index].isBlocked),
+        isRemoved: Boolean(nextMembers[index].isRemoved),
+      });
+    }
   });
 }
 
@@ -405,9 +458,8 @@ export async function updateBillField(
   field: BillField,
   value: number
 ): Promise<void> {
-  const bills = await getMonthBills(monthKey);
-  bills[field] = Math.round(value);
-  await updateMonthBills(monthKey, bills);
+  assertNonNegativeAmount(value);
+  await setDoc(monthDoc(monthKey), { [field]: Math.round(value) }, { merge: true });
 }
 
 export async function deleteBillField(

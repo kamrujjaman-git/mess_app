@@ -130,8 +130,25 @@ async function deleteMemberData(memberId: string, performedBy: string) {
     }
 
     const remainingMembers = members.filter((member) => member.id !== memberId);
+    const activeMembers = remainingMembers.filter((member) =>
+      member.status !== "inactive" &&
+      member.status !== "removed" &&
+      member.active !== false &&
+      member.isBlocked !== true &&
+      member.isRemoved !== true
+    );
     const adminEmails = remainingMembers
-      .filter((member) => member.isAdmin === true)
+      .filter((member) =>
+        member.status !== "inactive" &&
+        member.status !== "removed" &&
+        member.active !== false &&
+        member.isBlocked !== true &&
+        member.isRemoved !== true &&
+        member.isAdmin === true
+      )
+      .map(getMemberEmail)
+      .filter(Boolean);
+    const activeEmails = activeMembers
       .map(getMemberEmail)
       .filter(Boolean);
 
@@ -153,6 +170,7 @@ async function deleteMemberData(memberId: string, performedBy: string) {
     transaction.set(membersRef, {
       ...(settings ?? {}),
       members: remainingMembers,
+      activeEmails,
       adminEmails,
     });
     for (const profileRef of profiles.values()) {

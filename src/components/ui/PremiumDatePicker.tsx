@@ -151,7 +151,7 @@ export function PremiumDatePicker({
                     onClick={openPicker}
                     aria-haspopup="dialog"
                     aria-expanded={open}
-                    className="glass flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-slate-800 transition-all hover:scale-[1.01] dark:text-slate-100"
+                    className="glass flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-slate-800 transition-colors duration-150 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
                 >
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                         <CalendarDays className="h-4 w-4" />
@@ -206,7 +206,7 @@ export function PremiumDatePicker({
                                             onChange(formatValue(visibleYear, visibleMonth, day, mode));
                                             setOpen(false);
                                         }}
-                                        className={`h-9 rounded-xl text-sm font-semibold transition ${parsed.year === visibleYear && parsed.month === visibleMonth && parsed.day === day
+                                        className={`h-9 rounded-xl text-sm font-semibold transition-colors duration-150 ${parsed.year === visibleYear && parsed.month === visibleMonth && parsed.day === day
                                             ? "border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg"
                                             : "text-slate-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-35 dark:text-slate-200 dark:hover:bg-slate-800"}`}
                                     >
@@ -224,7 +224,7 @@ export function PremiumDatePicker({
                                     key={month}
                                     type="button"
                                     onClick={() => selectMonth(index)}
-                                    className={`rounded-xl px-2 py-3 text-xs font-semibold transition ${parsed.year === visibleYear && parsed.month === index
+                                    className={`rounded-xl px-2 py-3 text-xs font-semibold transition-colors duration-150 ${parsed.year === visibleYear && parsed.month === index
                                         ? "border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg"
                                         : "text-slate-700 hover:bg-emerald-50 dark:text-slate-200 dark:hover:bg-slate-800"}`}
                                 >
@@ -241,7 +241,7 @@ export function PremiumDatePicker({
                                     key={year}
                                     type="button"
                                     onClick={() => selectYear(year)}
-                                    className={`rounded-xl px-2 py-3 text-xs font-semibold transition ${parsed.year === year
+                                    className={`rounded-xl px-2 py-3 text-xs font-semibold transition-colors duration-150 ${parsed.year === year
                                         ? "border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg"
                                         : "text-slate-700 hover:bg-emerald-50 dark:text-slate-200 dark:hover:bg-slate-800"}`}
                                 >

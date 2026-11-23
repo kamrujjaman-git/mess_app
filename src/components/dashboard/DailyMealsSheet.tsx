@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { ShieldAlert } from "lucide-react";
 import type { DailyMealRecord, Member, MemberMeals } from "@/lib/mess";
 import { getActiveMembers } from "@/lib/mess";
+import { DashboardSectionHeader } from "./DashboardSectionHeader";
 
 interface DailyMealsSheetProps {
   records: DailyMealRecord[];
@@ -131,9 +132,24 @@ export function DailyMealsSheet({
     setSaving(true);
     try {
       await onEdit(record.date, mergedMeals);
+      setDraftMeals((previous) => {
+        const next = { ...previous };
+        delete next[record.date];
+        return next;
+      });
       toast.success("Meal sheet updated.");
     } catch (error) {
       console.error("Firestore Save Error:", error);
+      setDraftMeals((previous) => {
+        const next = { ...previous };
+        if (Object.keys(currentDraft).length > 0) {
+          next[record.date] = currentDraft;
+        } else {
+          delete next[record.date];
+        }
+        return next;
+      });
+      onOptimisticToggle?.(record.date, memberId, field, currentValue > 0);
       toast.error("Failed to save meal selection. Please try again.");
     } finally {
       setSaving(false);
@@ -142,14 +158,12 @@ export function DailyMealsSheet({
   }
 
   return (
-    <div className="glass-card overflow-hidden rounded-2xl">
-      <div className="border-b border-slate-200/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
-        <h2 className="text-base font-semibold sm:text-lg">Daily Meal Sheet</h2>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Select a date and update meal entries for all members.
-        </p>
-      </div>
-
+    <div className="space-y-4">
+      <DashboardSectionHeader
+        title="Daily Meal Sheet"
+        description="Review meal entries by date and member."
+      />
+      <div className="glass-card rounded-2xl">
       {mealLockBanner && (
         <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200 sm:px-6">
           <ShieldAlert className="h-4 w-4" />
@@ -157,31 +171,30 @@ export function DailyMealsSheet({
         </div>
       )}
 
-      <div className="hidden overflow-x-auto overflow-y-hidden scroll-smooth [scrollbar-width:none] lg:block">
-        <div className="pointer-events-none absolute right-0 top-0 hidden h-full w-10 bg-gradient-to-l from-slate-100/80 to-transparent dark:from-slate-900/70 lg:block" />
+      <div className="custom-scrollbar hidden max-h-[70vh] overflow-auto overscroll-contain scroll-smooth rounded-b-2xl lg:block">
         <table className="w-full min-w-max table-fixed text-sm">
           <thead>
-            <tr className="border-b border-slate-200/60 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
-              <th className="sticky left-0 w-28 bg-white/80 px-4 py-3 font-medium backdrop-blur dark:bg-slate-900/80 sm:px-6">
-                Date
+            <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-800 dark:text-slate-100">
+              <th className="sticky left-0 top-0 z-30 h-12 w-28 whitespace-nowrap border-b-2 border-slate-300 bg-slate-100 px-4 py-3 font-bold sm:px-6 dark:border-slate-600 dark:bg-slate-800">
+                DATE
               </th>
               {activeMembers.map((member) => (
                 <th
                   key={member.id}
                   colSpan={3}
-                  className="min-w-[10.5rem] whitespace-normal break-words px-2 py-3 text-center font-medium"
+                  className="sticky top-0 z-20 h-12 min-w-[10.5rem] whitespace-nowrap border-b-2 border-slate-300 bg-slate-100 px-2 py-3 text-center font-bold dark:border-slate-600 dark:bg-slate-800"
                 >
                   {member.name}
                 </th>
               ))}
             </tr>
-            <tr className="border-b border-slate-200/60 text-left text-[10px] uppercase text-slate-400 dark:border-slate-700/60">
-              <th className="sticky left-0 w-28 bg-white/80 px-4 py-2 backdrop-blur dark:bg-slate-900/80 sm:px-6" />
+            <tr className="text-left text-[10px] font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">
+              <th className="sticky left-0 top-12 z-30 h-10 w-28 border-b border-slate-300 bg-slate-50 px-4 py-2 sm:px-6 dark:border-slate-600 dark:bg-slate-800" />
               {activeMembers.map((member) => (
                 <Fragment key={member.id}>
-                  <th className="w-14 px-1 py-2 text-center font-normal">B</th>
-                  <th className="w-14 px-1 py-2 text-center font-normal">L</th>
-                  <th className="w-14 px-1 py-2 text-center font-normal">D</th>
+                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-2 text-center font-bold dark:border-slate-600 dark:bg-slate-800">B</th>
+                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-2 text-center font-bold dark:border-slate-600 dark:bg-slate-800">L</th>
+                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-2 text-center font-bold dark:border-slate-600 dark:bg-slate-800">D</th>
                 </Fragment>
               ))}
             </tr>
@@ -194,7 +207,7 @@ export function DailyMealsSheet({
               const isTodayRow = row.label === "Today";
               return (
                 <tr key={row.date} className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${isTodayRow ? "bg-emerald-50/70 dark:bg-emerald-950/20" : isFuture ? "bg-slate-50/60 text-slate-400 dark:bg-slate-950/30 dark:text-slate-500" : ""}`}>
-                  <td className="sticky left-0 w-28 whitespace-nowrap bg-white/80 px-4 py-2.5 font-medium backdrop-blur dark:bg-slate-900/80 sm:px-6">
+                  <td className={`sticky left-0 w-28 whitespace-nowrap px-4 py-2.5 font-medium backdrop-blur sm:px-6 ${isTodayRow ? "bg-emerald-50/95 dark:bg-emerald-950/90" : isFuture ? "bg-slate-50/95 dark:bg-slate-950/90" : "bg-white/95 dark:bg-slate-900/95"}`}>
                     <div className="flex flex-col">
                       <span>{row.label}</span>
                       {!isPast && row.label !== "Today" && (
@@ -217,9 +230,9 @@ export function DailyMealsSheet({
                                 type="button"
                                 onClick={(event) => handleMealToggleClick(event, record, member, field)}
                                 disabled={saving}
-                                className={`mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border-t border-white/40 px-2 text-[11px] font-semibold transition ${isActive
+                                className={`mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border px-2 text-[11px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isActive
                                   ? "border-emerald-500 bg-emerald-500 text-white shadow-sm"
-                                  : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                  : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-slate-700"
                                   }`}
                               >
                                 {isActive ? "ON" : "OFF"}
@@ -227,8 +240,8 @@ export function DailyMealsSheet({
                             ) : (
                               <div
                                 className={`mx-auto flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-medium ${isActive
-                                  ? "border border-emerald-500/30 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold"
-                                  : "border border-slate-200/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                  ? "border-emerald-500/30 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                  : "border-slate-200/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                   }`}
                               >
                                 {isActive ? "ON" : "—"}
@@ -270,9 +283,9 @@ export function DailyMealsSheet({
                             type="button"
                             onClick={(event) => handleMealToggleClick(event, record, member, field)}
                             disabled={saving}
-                            className={`h-10 min-w-10 cursor-pointer rounded-full border-t border-white/40 px-2 text-[11px] font-semibold ${isActive
+                            className={`h-10 min-w-10 cursor-pointer rounded-full border px-2 text-[11px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isActive
                               ? "border-emerald-500 bg-emerald-500 text-white"
-                              : "border-slate-200 bg-white text-slate-600"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-slate-700"
                               }`}
                           >
                             {field[0].toUpperCase()}
@@ -281,8 +294,8 @@ export function DailyMealsSheet({
                           <div
                             key={field}
                             className={`flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-semibold ${isActive
-                              ? "border border-emerald-500/30 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold"
-                              : "border border-slate-200/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              ? "border-emerald-500/30 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "border-slate-200/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                               }`}
                           >
                             {field[0].toUpperCase()}
@@ -296,6 +309,7 @@ export function DailyMealsSheet({
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

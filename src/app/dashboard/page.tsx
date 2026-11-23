@@ -7,6 +7,13 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { AccessDeniedScreen } from "@/components/AccessDeniedScreen";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import {
+  Sidebar,
+  type AdminSection,
+  type DashboardLogSection,
+  type DashboardTab,
+  type SidebarDestination,
+} from "@/components/dashboard/Sidebar";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { SummaryTable } from "@/components/dashboard/SummaryTable";
 import { DailyMealsSheet } from "@/components/dashboard/DailyMealsSheet";
@@ -16,7 +23,6 @@ import { LogCardSkeleton, MealSheetSkeleton, SummaryCardSkeleton } from "@/compo
 import {
   calculateMessStats,
   formatMonthKey,
-  formatMonthLabel,
   type DailyMealRecord,
   type MemberMeals,
   type Member,
@@ -41,9 +47,6 @@ import {
   deleteMember,
   type MonthData,
 } from "@/lib/firestore";
-
-type Tab = "summary" | "meals" | "logs" | "admin";
-type AdminSubTab = "entries" | "members";
 
 async function notifyByEmail(
   user: { getIdToken: () => Promise<string> } | null,
@@ -72,21 +75,29 @@ async function notifyByEmail(
   }
 }
 
-const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
-  { id: "summary", label: "Summary" },
-  { id: "meals", label: "Meals" },
-  { id: "logs", label: "Bazar & Deposits" },
-  { id: "admin", label: "Admin", adminOnly: true },
-];
-
-function getTabFromUrl(tab: string | null): Tab {
-  return tab === "summary" || tab === "meals" || tab === "logs" || tab === "admin"
+function getTabFromUrl(tab: string | null): DashboardTab {
+  return tab === "cards" || tab === "summary" || tab === "meals" || tab === "logs" || tab === "admin"
     ? tab
-    : "summary";
+    : tab === null
+      ? "cards"
+      : "summary";
 }
 
-function getSubTabFromUrl(subTab: string | null): AdminSubTab {
-  return subTab === "members" ? "members" : "entries";
+function getSectionFromUrl(section: string | null): DashboardLogSection | null {
+  return section === "bazar" || section === "deposits" || section === "bills"
+    ? section
+    : null;
+}
+
+function getAdminSectionFromUrl(section: string | null): AdminSection | null {
+  return section === "daily-meals" ||
+    section === "add-bazar" ||
+    section === "add-deposit" ||
+    section === "fixed-bills" ||
+    section === "add-member" ||
+    section === "all-members"
+    ? section
+    : null;
 }
 
 function DashboardLoading() {
@@ -94,7 +105,7 @@ function DashboardLoading() {
     <div className="min-h-screen flex-1 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-7xl space-y-6">
         <div className="h-16 animate-pulse rounded-2xl bg-slate-200/70 dark:bg-slate-800/70" />
-        <SummaryCardSkeleton count={6} />
+        <SummaryCardSkeleton count={7} />
         <LogCardSkeleton />
       </div>
     </div>
@@ -122,7 +133,17 @@ function DashboardContent() {
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<{ monthKey: string; message: string } | null>(null);
   const activeTab = getTabFromUrl(searchParams.get("tab"));
-  const activeSubTab = getSubTabFromUrl(searchParams.get("subtab"));
+  const requestedAdminSection = getAdminSectionFromUrl(searchParams.get("adminSection"));
+  const legacyAdminSubTab = searchParams.get("subtab");
+  const activeSection = getSectionFromUrl(searchParams.get("section"));
+  const activeAdminSection = requestedAdminSection ??
+    (activeTab === "admin"
+      ? legacyAdminSubTab === "members"
+        ? "all-members"
+        : "daily-meals"
+      : null);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const currentMember = user?.email
     ? members.find(
       (member) =>
@@ -136,7 +157,11 @@ function DashboardContent() {
     }
   }, [user, loading, router]);
 
-  const currentTab = isAdmin && activeTab === "admin" ? "admin" : activeTab === "admin" ? "summary" : activeTab;
+  const currentTab = isAdmin && activeTab === "admin"
+    ? "admin"
+    : activeTab === "admin"
+      ? "summary"
+      : activeTab;
   useEffect(() => {
     if (!user || !hasAccess) return;
     const unsub = subscribeToMonthData(
@@ -207,23 +232,28 @@ function DashboardContent() {
     });
   }, []);
 
-  const updateTab = useCallback(
-    (tab: Tab) => {
+  const updateDestination = useCallback(
+    (destination: SidebarDestination) => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set("tab", tab);
-      if (tab !== "admin") {
-        params.delete("subtab");
+      params.set("tab", destination.tab);
+      if (destination.tab === "logs" && destination.section) {
+        params.set("section", destination.section);
+      } else {
+        params.delete("section");
       }
-      router.replace(`/dashboard?${params.toString()}`);
-    },
-    [router, searchParams]
-  );
 
-  const updateAdminSubTab = useCallback(
-    (subTab: AdminSubTab) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("tab", "admin");
-      params.set("subtab", subTab);
+      if (destination.tab === "admin") {
+        const adminSection = destination.adminSection;
+        params.set(
+          "subtab",
+          adminSection === "add-member" || adminSection === "all-members" ? "members" : "entries"
+        );
+        if (adminSection) params.set("adminSection", adminSection);
+        else params.delete("adminSection");
+      } else {
+        params.delete("subtab");
+        params.delete("adminSection");
+      }
       router.replace(`/dashboard?${params.toString()}`);
     },
     [router, searchParams]
@@ -484,7 +514,7 @@ function DashboardContent() {
     : null;
 
   const currentDataReady = monthLoadedKey === monthKey;
-  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
+  const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
 
   if (loading || accessLoading || !user) {
     return (
@@ -516,56 +546,56 @@ function DashboardContent() {
         memberName={memberDisplayName}
         totalBalance={stats?.remainingBalance ?? null}
         onLogout={handleLogout}
+        sidebarExpanded={sidebarExpanded}
+        onOpenMobileNav={() => setMobileNavOpen(true)}
+      />
+      <Sidebar
+        activeTab={currentTab}
+        activeSection={activeSection}
+        activeAdminSection={activeAdminSection}
+        isAdmin={isAdmin}
+        expanded={sidebarExpanded}
+        mobileOpen={mobileNavOpen}
+        onToggleExpanded={() => setSidebarExpanded((expanded) => !expanded)}
+        onCloseMobile={closeMobileNav}
+        onNavigate={updateDestination}
       />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      <main
+        className={`w-full min-w-0 flex-1 px-4 py-6 transition-[margin,width] duration-200 ease-in-out motion-reduce:transition-none sm:px-6 lg:px-8 ${
+          sidebarExpanded
+            ? "md:ml-64 md:w-[calc(100%-16rem)]"
+            : "md:ml-[72px] md:w-[calc(100%-72px)]"
+        }`}
+      >
+        <div className="mx-auto w-full min-w-0 max-w-7xl">
         {currentDataError ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-center text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
             {currentDataError}
           </div>
         ) : dataLoading || !currentDataReady || !monthData || !stats ? (
           <div className="space-y-6">
-            <SummaryCardSkeleton count={isAdmin ? 6 : 5} />
-            {currentTab === "meals" ? <MealSheetSkeleton /> : <LogCardSkeleton />}
+            {currentTab === "cards" ? (
+              <SummaryCardSkeleton count={isAdmin ? 7 : 6} />
+            ) : currentTab === "meals" ? (
+              <MealSheetSkeleton />
+            ) : currentTab === "summary" ? (
+              <div className="h-72 animate-pulse rounded-3xl border border-slate-200/70 bg-slate-200/50 dark:border-slate-800 dark:bg-slate-800/50" />
+            ) : (
+              <LogCardSkeleton />
+            )}
           </div>
         ) : (
           <>
-            <div className="mb-6">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-                    Viewing
-                  </p>
-                  <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {`Selected month — ${formatMonthLabel(monthKey)}`}
-                  </h2>
-                </div>
-              </div>
-
-              <OverviewCards
-                stats={stats}
-                bills={monthData.bills}
-                isAdmin={isAdmin}
-              />
-            </div>
-
-            <div className="mb-6 overflow-x-auto whitespace-nowrap scrollbar-none">
-              <div className="flex w-fit items-center gap-2 rounded-2xl border border-slate-200/60 bg-slate-100/80 p-1.5 shadow-sm backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-800/60">
-                {visibleTabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => updateTab(tab.id)}
-                    className={`shrink-0 rounded-xl px-5 py-2 text-sm transition-all ${currentTab === tab.id
-                      ? "bg-emerald-600 font-semibold text-white shadow-md shadow-emerald-600/20"
-                      : "font-medium text-slate-600 hover:bg-white/60 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/50 dark:hover:text-white"
-                      }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {currentTab === "cards" ? (
+              <section aria-label="Overview" className="mb-6 min-w-0">
+                <OverviewCards
+                  stats={stats}
+                  bills={monthData.bills}
+                  isAdmin={isAdmin}
+                />
+              </section>
+            ) : null}
 
             {currentTab === "summary" && (
               <SummaryTable members={stats.members} monthKey={monthKey} isAdmin={isAdmin} />
@@ -595,8 +625,9 @@ function DashboardContent() {
                 onDeleteDeposit={isAdmin ? handleDeleteDeposit : undefined}
                 onEditBill={isAdmin ? handleEditBill : undefined}
                 onDeleteBill={isAdmin ? handleDeleteBill : undefined}
-                onAddBazar={isAdmin ? () => updateAdminSubTab("entries") : undefined}
-                onAddDeposit={isAdmin ? () => updateAdminSubTab("entries") : undefined}
+                onAddBazar={isAdmin ? () => updateDestination({ tab: "admin", adminSection: "add-bazar" }) : undefined}
+                onAddDeposit={isAdmin ? () => updateDestination({ tab: "admin", adminSection: "add-deposit" }) : undefined}
+                activeSection={activeSection}
               />
             )}
 
@@ -606,8 +637,7 @@ function DashboardContent() {
                 members={monthData.members}
                 bills={monthData.bills}
                 selectedMonthKey={monthKey}
-                subTab={activeSubTab}
-                onSubTabChange={updateAdminSubTab}
+                activeSection={activeAdminSection}
                 onSaveMeals={handleSaveMeals}
                 onAddBazar={handleAddBazar}
                 onAddDeposit={handleAddDeposit}
@@ -621,6 +651,7 @@ function DashboardContent() {
 
           </>
         )}
+        </div>
       </main>
     </div>
   );

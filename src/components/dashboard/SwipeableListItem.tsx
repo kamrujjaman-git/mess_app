@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type PanInfo } from "framer-motion";
+import { motion, useReducedMotion, type PanInfo } from "framer-motion";
 import { Pencil, Trash2 } from "lucide-react";
 import { type CSSProperties, type ReactNode, useState } from "react";
 
@@ -25,6 +25,7 @@ export function SwipeableListItem({
     className = "",
     style,
 }: SwipeableListItemProps) {
+    const reduceMotion = useReducedMotion();
     const [openSide, setOpenSide] = useState<"left" | "right" | null>(null);
 
     function handleDragEnd(_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) {
@@ -70,7 +71,7 @@ export function SwipeableListItem({
 
     return (
         <div
-            className={`relative w-full overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 transition-all touch-pan-y ${className}`}
+            className={`relative w-full touch-pan-y overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition-colors duration-150 dark:border-slate-800 dark:bg-slate-900 ${className}`}
             style={style}
         >
             {onEdit ? (
@@ -105,13 +106,11 @@ export function SwipeableListItem({
                 onDragEnd={handleDragEnd}
                 onClick={handleCardClick}
                 animate={{ x: openSide === "left" ? OPEN_OFFSET : openSide === "right" ? -OPEN_OFFSET : 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 30 }}
                 style={{
                     touchAction: "pan-y",
-                    transformStyle: "preserve-3d",
-                    backfaceVisibility: "hidden",
                 }}
-                className="relative z-10 h-full w-full transform-gpu will-change-transform cursor-pointer select-none rounded-2xl bg-white p-2.5 shadow-sm dark:bg-slate-900"
+                className="relative z-10 h-full w-full cursor-pointer select-none rounded-2xl bg-white p-2.5 shadow-sm dark:bg-slate-900"
             >
                 {children}
             </motion.div>

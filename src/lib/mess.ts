@@ -140,16 +140,24 @@ export function createDefaultMembers(): Member[] {
 }
 
 export function normalizeMemberStatus(
-  member: Pick<Member, "status" | "active"> | null | undefined
+  member:
+    | Pick<Member, "status" | "active"> &
+        Partial<Pick<Member, "isBlocked" | "isRemoved">>
+    | null
+    | undefined
 ): MemberStatus {
-  if (!member) return "inactive";
+  if (!member || member.isBlocked || member.isRemoved) return "inactive";
   if (member.status === "inactive" || member.status === "removed") return "inactive";
   if (member.active === false) return "inactive";
   return "active";
 }
 
 export function isMemberActive(
-  member: Pick<Member, "status" | "active"> | null | undefined
+  member:
+    | Pick<Member, "status" | "active"> &
+        Partial<Pick<Member, "isBlocked" | "isRemoved">>
+    | null
+    | undefined
 ): boolean {
   return normalizeMemberStatus(member) === "active";
 }

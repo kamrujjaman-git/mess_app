@@ -8,6 +8,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { formatCurrency, type MessStats, type MonthBills } from "@/lib/mess";
+import { DashboardSectionHeader } from "./DashboardSectionHeader";
 
 interface OverviewCardsProps {
   stats: MessStats;
@@ -77,31 +78,34 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
   const visibleCards = isAdmin ? cards : cards.filter((card) => card.label !== "Rent + Bua");
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
-      {visibleCards.map((card) => (
-        <div
-          key={card.label}
-          className={`rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3.5 shadow-sm transition-all hover:shadow dark:border-slate-800/80 dark:bg-slate-900/80 dark:backdrop-blur-md sm:p-5 ${isAdmin && card.label === "Rent + Bua" ? "col-span-2 sm:col-span-1" : ""
-            }`}
-        >
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <span className="min-w-0 truncate text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">
-              {card.label}
-            </span>
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${card.color} shadow-sm`}
-            >
-              <card.icon className="h-4.5 w-4.5 text-white" />
+    <div>
+      <DashboardSectionHeader
+        title="Overview"
+        description="Monthly totals and shared costs at a glance."
+      />
+      <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 ${isAdmin ? "xl:grid-cols-4" : "xl:grid-cols-6"}`}>
+        {visibleCards.map((card) => (
+          <div
+            key={card.label}
+            className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-sm transition-colors duration-150 dark:border-slate-800/80 dark:bg-slate-900 sm:p-5"
+          >
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">
+                {card.label}
+              </span>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${card.color}`}>
+                <card.icon className="h-4.5 w-4.5 text-white" />
+              </div>
             </div>
+            <p className="min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
+              {card.value}
+            </p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {card.sub}
+            </p>
           </div>
-          <p className="min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
-            {card.value}
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {card.sub}
-          </p>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

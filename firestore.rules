@@ -16,25 +16,30 @@ service cloud.firestore {
       request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower();
   }
 
-  function isActiveUser(userId) {
-    return exists(/databases/$(database)/documents/users/$(userId)) &&
-      get(/databases/$(database)/documents/users/$(userId)).data.status == "active" &&
-      get(/databases/$(database)/documents/users/$(userId)).data.active == true &&
-      get(/databases/$(database)/documents/users/$(userId)).data.isBlocked != true &&
-      get(/databases/$(database)/documents/users/$(userId)).data.isRemoved != true;
+  function isActiveMember() {
+    return verifiedSignedIn() &&
+      request.auth.token.email != null &&
+      exists(/databases/$(database)/documents/settings/members) &&
+      get(/databases/$(database)/documents/settings/members).data.activeEmails is list &&
+      get(/databases/$(database)/documents/settings/members).data.activeEmails.hasAny([
+        request.auth.token.email.lower()
+      ]);
   }
 
   function isAdmin() {
     return isSuperAdmin() || (
-      verifiedSignedIn() &&
-      (
-        (request.auth.token.email != null &&
-          get(/databases/$(database)/documents/settings/members).data.adminEmails != null &&
-          get(/databases/$(database)/documents/settings/members).data.adminEmails.hasAny([request.auth.token.email.lower()])) ||
-        (isActiveUser(request.auth.uid) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
-      )
+      isActiveMember() &&
+      get(/databases/$(database)/documents/settings/members).data.adminEmails is list &&
+      get(/databases/$(database)/documents/settings/members).data.adminEmails.hasAny([
+        request.auth.token.email.lower()
+      ])
     );
+  }
+
+  function memberDirectoryUpdateIsSafe() {
+    let affectedKeys = request.resource.data.diff(resource.data).affectedKeys();
+    return !affectedKeys.hasAny(['adminEmails']) &&
+      (!affectedKeys.hasAny(['activeEmails']) || affectedKeys.hasAny(['members']));
   }
 
   function isSelf(userId) {
@@ -61,12 +66,15 @@ service cloud.firestore {
     return value is number && value >= 0;
   }
 
+  function validOptionalMoney(data, field) {
+    return !(field in data) || validMoney(data[field]);
+  }
+
   match /settings/members {
-    allow read: if verifiedSignedIn();
+    allow read: if isActiveMember() || isSuperAdmin();
     allow create: if isSuperAdmin();
     allow update: if isSuperAdmin() ||
-      (isAdmin() &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['adminEmails']));
+      (isAdmin() && memberDirectoryUpdateIsSafe());
     allow delete: if isSuperAdmin();
   }
 
@@ -84,16 +92,16 @@ service cloud.firestore {
   }
 
   match /months/{monthKey} {
-    allow read: if verifiedSignedIn();
+    allow read: if isActiveMember() || isSuperAdmin();
     allow create, update: if isAdmin() &&
-      validMoney(request.resource.data.houseRent) &&
-      validMoney(request.resource.data.buaBill) &&
-      validMoney(request.resource.data.otherBills);
+      validOptionalMoney(request.resource.data, 'houseRent') &&
+      validOptionalMoney(request.resource.data, 'buaBill') &&
+      validOptionalMoney(request.resource.data, 'otherBills');
     allow delete: if isAdmin();
   }
 
   match /months/{monthKey}/dailyMeals/{date} {
-    allow read: if verifiedSignedIn();
+    allow read: if isActiveMember() || isSuperAdmin();
     allow create, update: if isAdmin() &&
       validEntryDate(monthKey, request.resource.data.date) &&
       request.resource.data.meals is map;
@@ -101,7 +109,7 @@ service cloud.firestore {
   }
 
   match /months/{monthKey}/bazar/{entryId} {
-    allow read: if verifiedSignedIn();
+    allow read: if isActiveMember() || isSuperAdmin();
     allow create, update: if isAdmin() &&
       validEntryDate(monthKey, request.resource.data.date) &&
       validMoney(request.resource.data.amount) &&
@@ -110,7 +118,7 @@ service cloud.firestore {
   }
 
   match /months/{monthKey}/deposits/{entryId} {
-    allow read: if verifiedSignedIn();
+    allow read: if isActiveMember() || isSuperAdmin();
     allow create, update: if isAdmin() &&
       validEntryDate(monthKey, request.resource.data.date) &&
       validMoney(request.resource.data.amount) &&
@@ -119,7 +127,7 @@ service cloud.firestore {
   }
 
   match /activity_logs/{logId} {
-    allow read: if verifiedSignedIn();
+    allow read: if isActiveMember() || isSuperAdmin();
     allow create: if isAdmin() &&
       request.resource.data.action is string &&
       request.resource.data.details is string &&

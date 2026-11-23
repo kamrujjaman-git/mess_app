@@ -2,21 +2,20 @@
 
 import { useState } from "react";
 import { toast } from "react-hot-toast";
-import { Loader2, Save, Plus, Users, NotebookPen } from "lucide-react";
+import { Loader2, Save, Plus } from "lucide-react";
 import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
 import { getActiveMembers, getTodayDateString, isDateOnOrBeforeToday } from "@/lib/mess";
 import { ManageMembers } from "./ManageMembers";
 import { inputClass } from "./InlineActions";
 import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
-
-type AdminSubTab = "entries" | "members";
+import type { AdminSection } from "./Sidebar";
+import { DashboardSectionHeader } from "./DashboardSectionHeader";
 
 interface AdminPanelProps {
   members: Member[];
   bills: MonthBills;
   selectedMonthKey: string;
-  subTab: AdminSubTab;
-  onSubTabChange: (subTab: AdminSubTab) => void;
+  activeSection?: AdminSection | null;
   onSaveMeals?: (
     date: string,
     meals: Record<string, MemberMeals>
@@ -40,8 +39,7 @@ export function AdminPanel({
   members,
   bills,
   selectedMonthKey,
-  subTab,
-  onSubTabChange,
+  activeSection,
   onSaveMeals,
   onAddBazar,
   onAddDeposit,
@@ -52,6 +50,7 @@ export function AdminPanel({
   onDeleteMember,
 }: AdminPanelProps) {
   const activeMembers = getActiveMembers(members);
+  const selectedSection = activeSection ?? "daily-meals";
 
   const [mealDate, setMealDate] = useState(`${selectedMonthKey}-01`);
   const [mealInputs, setMealInputs] = useState<Record<string, MemberMeals>>(
@@ -193,40 +192,12 @@ export function AdminPanel({
     }
   }
 
-  const subTabs: { id: AdminSubTab; label: string; icon: typeof NotebookPen }[] = [
-    { id: "entries", label: "Add Entries", icon: NotebookPen },
-    { id: "members", label: "Manage Members", icon: Users },
-  ];
-
   return (
     <div className="space-y-4">
-      <div className="glass rounded-2xl p-1">
-        <div className="grid grid-cols-2 gap-1">
-          {subTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = subTab === tab.id;
-
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onSubTabChange(tab.id)}
-                className={`relative flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${isActive
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25"
-                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                  }`}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {subTab === "members" ? (
+      {selectedSection === "add-member" || selectedSection === "all-members" ? (
         <ManageMembers
           members={members}
+          activeView={selectedSection === "add-member" ? "add" : "all"}
           onAddMember={onAddMember}
           onUpdateMember={onUpdateMember}
           onSetMemberStatus={onSetMemberStatus}
@@ -234,27 +205,41 @@ export function AdminPanel({
         />
       ) : (
         <>
-          <div className="glass-card rounded-2xl p-4 sm:p-6">
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-base font-semibold">Daily Meals</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Select a date and update meal entries for all members.
-                </p>
-              </div>
-            </div>
+          <DashboardSectionHeader
+            title={
+              selectedSection === "daily-meals"
+                ? "Daily Meals"
+                : selectedSection === "add-bazar"
+                  ? "Add Bazar"
+                  : selectedSection === "add-deposit"
+                    ? "Add Deposit"
+                    : "Set Fixed Bills"
+            }
+            description={
+              selectedSection === "daily-meals"
+                ? "Log breakfast, lunch, and dinner for each active member."
+                : selectedSection === "add-bazar"
+                  ? "Record a bazar expense and the members who shared it."
+                  : selectedSection === "add-deposit"
+                    ? "Record a deposit for a member."
+                    : "Set monthly rent, service, and other shared charges."
+            }
+          />
+          {selectedSection === "daily-meals" ? (
+            <div id="admin-daily-meals" className="glass-card rounded-2xl p-4 sm:p-6">
             <div className="mb-4">
-              <label className="mb-1 block text-xs font-medium text-slate-500">
-                Date
-              </label>
               <PremiumDatePicker value={mealDate} onChange={setMealDate} label="Date" maxDate={getTodayDateString()} />
             </div>
             {activeMembers.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No active members. Add members in the Manage Members tab.
-              </p>
+              <p className="text-sm text-slate-500">No active members.</p>
             ) : (
               <div className="space-y-3">
+                <div className="grid grid-cols-[1fr_repeat(3,64px)] items-end gap-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:grid-cols-[1fr_repeat(3,80px)]">
+                  <span>Member</span>
+                  <span className="text-center">Breakfast</span>
+                  <span className="text-center">Lunch</span>
+                  <span className="text-center">Dinner</span>
+                </div>
                 {activeMembers.map((member) => (
                   <div
                     key={member.id}
@@ -271,6 +256,7 @@ export function AdminPanel({
                           step="0.5"
                           min="0"
                           placeholder={field[0].toUpperCase()}
+                          aria-label={`${member.name} ${field}`}
                           value={mealInputs[member.id]?.[field] || ""}
                           onChange={(e) =>
                             updateMeal(member.id, field, e.target.value)
@@ -298,27 +284,32 @@ export function AdminPanel({
                 </>
               )}
             </button>
-          </div>
+            </div>
+          ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="glass-card rounded-2xl p-4 sm:p-6">
-              <h3 className="mb-4 text-base font-semibold">Add Bazar</h3>
+          <div className="space-y-4">
+            {selectedSection === "add-bazar" ? (
+              <div id="admin-add-bazar" className="glass-card rounded-2xl p-4 sm:p-6">
               <div className="space-y-3">
                 <PremiumDatePicker value={bazarDate} onChange={setBazarDate} label="Date" maxDate={getTodayDateString()} />
-                <input
-                  type="number"
-                  placeholder="Amount (৳)"
-                  value={bazarAmount}
-                  onChange={(e) => setBazarAmount(e.target.value)}
-                  className={inputClass}
-                />
-                <input
-                  type="text"
-                  placeholder="Description (optional)"
-                  value={bazarDesc}
-                  onChange={(e) => setBazarDesc(e.target.value)}
-                  className={inputClass}
-                />
+                <label className="block space-y-1">
+                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Amount (৳)</span>
+                  <input
+                    type="number"
+                    value={bazarAmount}
+                    onChange={(e) => setBazarAmount(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Description (optional)</span>
+                  <input
+                    type="text"
+                    value={bazarDesc}
+                    onChange={(e) => setBazarDesc(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
                 <div className="space-y-2">
                   <label className="mb-1 block text-xs font-medium text-slate-500">
                     Buyers
@@ -362,38 +353,46 @@ export function AdminPanel({
                   </>
                 )}
               </button>
-            </div>
+              </div>
+            ) : null}
 
-            <div className="glass-card rounded-2xl p-4 sm:p-6">
-              <h3 className="mb-4 text-base font-semibold">Add Deposit</h3>
+            {selectedSection === "add-deposit" ? (
+              <div id="admin-add-deposit" className="glass-card rounded-2xl p-4 sm:p-6">
               <div className="space-y-3">
-                <select
-                  value={selectedDepositMemberId}
-                  onChange={(e) => setDepositMemberId(e.target.value)}
-                  className={inputClass}
-                >
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                      {m.status === "inactive" ? " (Inactive)" : ""}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  placeholder="Amount (৳)"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className={inputClass}
-                />
+                <label className="block space-y-1">
+                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Member</span>
+                  <select
+                    value={selectedDepositMemberId}
+                    onChange={(e) => setDepositMemberId(e.target.value)}
+                    className={inputClass}
+                  >
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                        {m.status === "inactive" ? " (Inactive)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block space-y-1">
+                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Amount (৳)</span>
+                  <input
+                    type="number"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
                 <PremiumDatePicker value={depositDate} onChange={setDepositDate} label="Date" maxDate={getTodayDateString()} />
-                <input
-                  type="text"
-                  placeholder="Note (optional)"
-                  value={depositNote}
-                  onChange={(e) => setDepositNote(e.target.value)}
-                  className={inputClass}
-                />
+                <label className="block space-y-1">
+                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Note (optional)</span>
+                  <input
+                    type="text"
+                    value={depositNote}
+                    onChange={(e) => setDepositNote(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
               </div>
               <button
                 type="button"
@@ -410,13 +409,12 @@ export function AdminPanel({
                   </>
                 )}
               </button>
-            </div>
+              </div>
+            ) : null}
           </div>
 
-          <div className="glass-card rounded-2xl p-4 sm:p-6">
-            <h3 className="mb-4 text-base font-semibold">
-              Monthly Fixed Bills (Quick Set)
-            </h3>
+          {selectedSection === "fixed-bills" ? (
+            <div id="admin-fixed-bills" className="glass-card rounded-2xl p-4 sm:p-6">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500">
@@ -500,6 +498,7 @@ export function AdminPanel({
               )}
             </button>
           </div>
+          ) : null}
         </>
       )}
     </div>

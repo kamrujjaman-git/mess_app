@@ -26,6 +26,15 @@ A sleek, real-time, full-stack **Mess Management Web Application** built to auto
 * Compact WhatsApp direct-action buttons for quick member communication.
 * Snappy UI toast notifications with smart auto-dismissal and close controls.
 * Tab state retention across page reloads.
+* Responsive dashboard navigation with separate Overview and Summary Table views, a collapsible desktop sidebar, and a mobile navigation drawer.
+
+### Dashboard Navigation Design
+
+The dashboard keeps its existing data subscription and screen components while using URL-backed navigation for Overview, Summary Table, Meals, Bazar & Deposits, and Admin. Existing `tab=meals`, `tab=logs`, and `tab=admin` links remain valid; `tab=summary` continues to open the Summary Table. Log and Admin selections render only the selected view; the legacy `tab=logs` URL opens Bazar Log by default. Admin sidebar items open only the selected form or member-management view and remain protected by the current role checks.
+
+On desktop, the sidebar can collapse from 256px to a 72px icon rail, with the app logo and collapse control at the top and the content offset following its width. Below 768px, navigation moves into a hamburger-triggered slide-over drawer. On desktop and laptop widths, the month selector and header actions share one row; narrower mobile layouts may use a second row. Wide tables scroll within their own panels. Nonessential transitions honor the operating system's reduced-motion preference.
+
+**Design decisions:** Extend the current dashboard shell instead of introducing separate routes or local-only navigation; conditionally render one selected view in the existing log/Admin components; separate cards from the summary table. These choices preserve current workflows and browser navigation while limiting layout and performance risk.
 
 ---
 
@@ -46,7 +55,7 @@ Follow these steps to set up and run the project locally.
 ### 📋 Prerequisites
 
 Make sure you have installed:
-* **Node.js** (v18.x or higher)
+* **Node.js** (>=20.9.0)
 * **npm** or **yarn** / **pnpm**
 * A **Firebase Project** with Firestore Database and Google Authentication enabled.
 
@@ -75,50 +84,17 @@ npm run dev
 4. Open in Browser:
 Navigate to http://localhost:3000 to view the application in action.
 
+🖼️ Profile Picture Storage
+Profile pictures use the configured Firebase Storage bucket. Make sure the Firebase Admin service account used by the API has permission to write Storage objects, then deploy the per-user Storage rules from the repository root:
+```bash
+firebase deploy --only storage
+```
+The bucket must be set in `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`. The profile API also requires the Firebase Admin credentials already used by the server-side API routes.
+
 🔒 Firestore Security Rules Setup
-To enforce dynamic admin authorization while enabling members to toggle their daily meals safely, paste the following rules into your Firebase Console > Firestore Database > Rules:
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+Deploy the repository rules with `firebase deploy --only firestore:rules` after connecting the Firebase CLI to the correct project.
 
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isSuperAdmin() {
-      return isAuthenticated() && 
-        request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower();
-    }
-
-    function isAdmin() {
-      return isAuthenticated() && (
-        isSuperAdmin() ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-
-    // All authenticated users can read data
-    match /{document=**} {
-      allow read: if isAuthenticated();
-    }
-
-    // Role modification is strictly protected for Super Admin only
-    match /users/{userId} {
-      allow update: if isSuperAdmin() || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
-      allow create, delete: if isAdmin();
-    }
-
-    // Admins can add/edit bazaar and deposit logs
-    match /{document=**} {
-      allow write: if isAdmin();
-    }
-
-    // Authenticated members can manage/toggle their meal entries
-    match /{document=**} {
-      allow create, update: if isAuthenticated();
-    }
-  }
-}
+**Existing project data must be migrated before deploying these rules:** populate `settings/members.activeEmails` with normalized emails for members whose status is not `inactive` or `removed`, `active` is not `false`, and `isBlocked` / `isRemoved` are not `true` (legacy records without a status are treated as active). Populate `adminEmails` with the subset of those members whose `isAdmin` is `true`. These arrays are maintained automatically by the app after deployment. The configured Super Admin retains access during migration.
 
 📦 Deployment
 This project is optimized for deployment on Vercel:
