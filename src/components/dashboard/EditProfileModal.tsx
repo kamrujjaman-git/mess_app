@@ -17,9 +17,10 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { isProfileUpdateFailure, isProfileUpdateSuccess } from "@/lib/profile";
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+const MAX_INLINE_AVATAR_SIZE = 80 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const CROP_VIEW_SIZE = 256;
-const CROP_OUTPUT_SIZE = 512;
+const CROP_OUTPUT_SIZE = 256;
 
 interface ImageDimensions {
   width: number;
@@ -74,7 +75,6 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) 
 
 async function createCroppedAvatar(
   image: HTMLImageElement,
-  file: File,
   zoom: number,
   position: CropPosition
 ): Promise<File> {
@@ -91,6 +91,8 @@ async function createCroppedAvatar(
     throw new Error("Could not prepare the cropped profile picture.");
   }
 
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, CROP_OUTPUT_SIZE, CROP_OUTPUT_SIZE);
   context.imageSmoothingQuality = "high";
   const scale = getCoverScale(dimensions, zoom);
   const outputScale = CROP_OUTPUT_SIZE / CROP_VIEW_SIZE;
@@ -106,21 +108,26 @@ async function createCroppedAvatar(
     height * outputScale
   );
 
-  let blob = await canvasToBlob(canvas, file.type, 0.9);
-  if (blob.size > MAX_AVATAR_SIZE) {
-    blob = await canvasToBlob(canvas, "image/webp", 0.85);
+  let blob: Blob | null = null;
+  for (const type of ["image/webp", "image/jpeg"]) {
+    for (const quality of [0.82, 0.74, 0.66, 0.58]) {
+      const candidate = await canvasToBlob(canvas, type, quality);
+      if (candidate.type === type && candidate.size <= MAX_INLINE_AVATAR_SIZE) {
+        blob = candidate;
+        break;
+      }
+    }
+    if (blob) break;
   }
-  if (blob.size > MAX_AVATAR_SIZE) {
-    throw new Error("The cropped profile picture must be 2MB or smaller.");
+  if (!blob) {
+    throw new Error("Could not compress this picture below 80KB. Choose a simpler image and try again.");
   }
 
   const extension = blob.type === "image/jpeg"
     ? "jpg"
-    : blob.type === "image/png"
-      ? "png"
-      : blob.type === "image/webp"
-        ? "webp"
-        : null;
+    : blob.type === "image/webp"
+      ? "webp"
+      : null;
   if (!extension) {
     throw new Error("Choose a JPG, PNG, or WEBP image.");
   }
@@ -272,7 +279,7 @@ export function EditProfileModal({
         }
         formData.set(
           "avatar",
-          await createCroppedAvatar(cropImage, selectedFile, zoom, cropPosition)
+          await createCroppedAvatar(cropImage, zoom, cropPosition)
         );
       }
 
@@ -403,7 +410,7 @@ export function EditProfileModal({
               />
               <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
                 Recommended: square (1:1), 256 x 256px to 512 x 512px, JPG, PNG, or WEBP.
-                Maximum file size: 2MB.
+                Maximum source file size: 2MB. Saved as a 256 x 256px JPEG or WEBP under 80KB.
               </p>
             </div>
           </div>

@@ -63,6 +63,8 @@ export function DashboardNav({
     isAdmin: authIsAdmin,
     isSuperAdmin,
     canDeleteNotifications,
+    members,
+    userProfilePhotoURL,
     refreshUserProfile,
   } = useAuth();
   const reduceMotion = useReducedMotion();
@@ -157,11 +159,18 @@ export function DashboardNav({
   }, [visibleActivityLogs, lastSeenTimestamp]);
 
   const roleLabel = isSuperAdmin ? "Super Admin" : isAdmin || authIsAdmin ? "Admin" : "Member";
+  const memberPhotoURL = useMemo(() => {
+    const email = user.email?.trim().toLowerCase();
+    if (!email) return null;
+    return members.find((member) => member.email.trim().toLowerCase() === email)?.photoURL ?? null;
+  }, [members, user.email]);
   const displayName = useMemo(() => {
     if (profileOverride) return profileOverride.name;
     return memberName?.trim() || user?.displayName?.trim() || "Member";
   }, [memberName, profileOverride, user]);
-  const avatarURL = profileOverride ? profileOverride.photoURL : user.photoURL;
+  const avatarURL = profileOverride
+    ? profileOverride.photoURL
+    : memberPhotoURL ?? userProfilePhotoURL ?? user.photoURL;
 
   const avatarInitial = displayName?.trim()?.charAt(0)?.toUpperCase() ?? "M";
 

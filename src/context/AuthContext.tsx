@@ -16,7 +16,8 @@ import {
   GoogleAuthProvider,
   type User,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { subscribeToMembers } from "@/lib/firestore";
 import { isMemberActive, type Member } from "@/lib/mess";
 
@@ -32,6 +33,7 @@ interface AuthContextValue {
   hasAccess: boolean;
   accessDeniedReason: AccessDeniedReason;
   members: Member[];
+  userProfilePhotoURL: string | null;
   profileVersion: number;
   signInWithGoogle: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
@@ -45,6 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
   const [membersReady, setMembersReady] = useState(false);
+  const [userProfile, setUserProfile] = useState<{
+    uid: string;
+    photoURL: string | null;
+  } | null>(null);
   const [profileVersion, setProfileVersion] = useState(0);
 
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
@@ -130,6 +136,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    return onSnapshot(
+      doc(db, "users", user.uid),
+      (snapshot) => {
+        const photoURL = snapshot.data()?.photoURL;
+        setUserProfile({
+          uid: user.uid,
+          photoURL: typeof photoURL === "string" ? photoURL : null,
+        });
+      },
+      (error) => {
+        console.error("Failed to subscribe to the signed-in user profile:", error);
+        setUserProfile({ uid: user.uid, photoURL: null });
+      }
+    );
+  }, [user]);
+
+  const userProfilePhotoURL = userProfile && userProfile.uid === user?.uid
+    ? userProfile.photoURL
+    : null;
+
   const signInWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
@@ -171,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasAccess,
         accessDeniedReason,
         members,
+        userProfilePhotoURL,
         profileVersion,
         signInWithGoogle,
         refreshUserProfile,

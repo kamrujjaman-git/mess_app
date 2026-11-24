@@ -10,6 +10,13 @@ import type { ProfileUpdateResponse } from "@/lib/profile";
 export const runtime = "nodejs";
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+const MAX_INLINE_AVATAR_SIZE = 80 * 1024;
+const MAX_MEMBERS_DOCUMENT_BYTES = 850 * 1024;
+
+interface AvatarUploadResult {
+  photoURL: string;
+  isDataURL: boolean;
+}
 
 class ProfileUpdateError extends Error {
   constructor(message: string, readonly status: number, readonly step: string) {
@@ -48,11 +55,25 @@ function profileErrorResponse(error: string, status: number, step: string, cause
 
 function isStorageBucketNotFound(error: unknown): boolean {
   if (!isRecord(error)) return false;
+  const message = typeof error.message === "string" ? error.message : "";
   return error.code === 404 ||
     error.code === "404" ||
     error.code === "storage/bucket-not-found" ||
     error.statusCode === 404 ||
-    (isRecord(error.response) && error.response.status === 404);
+    error.status === 404 ||
+    (isRecord(error.response) && error.response.status === 404) ||
+    /(?:specified )?bucket (?:does not exist|not found)/i.test(message);
+}
+
+function isStorageConfigurationError(error: unknown): boolean {
+  if (isRecord(error) && error.step === "storage-configuration") return true;
+  if (!(error instanceof Error)) return false;
+  return /(?:Firebase )?Storage bucket (?:is not configured|configuration is invalid)|Use a Firebase Storage bucket/i
+    .test(error.message);
+}
+
+function isDataImageURL(value: unknown): value is string {
+  return typeof value === "string" && /^data:image\/(?:jpeg|png|webp);base64,/i.test(value);
 }
 
 function detectedImageType(bytes: Buffer): string | null {
@@ -77,7 +98,21 @@ function detectedImageType(bytes: Buffer): string | null {
   return null;
 }
 
-async function uploadAvatar(file: File, uid: string): Promise<string> {
+function createInlineAvatar(bytes: Buffer, imageType: string): AvatarUploadResult {
+  if (bytes.length > MAX_INLINE_AVATAR_SIZE) {
+    throw new ProfileUpdateError(
+      "This picture is too large to save without Firebase Storage. Choose a picture under 80KB.",
+      413,
+      "storage-fallback-size"
+    );
+  }
+  return {
+    photoURL: `data:${imageType};base64,${bytes.toString("base64")}`,
+    isDataURL: true,
+  };
+}
+
+async function uploadAvatar(file: File, uid: string): Promise<AvatarUploadResult> {
   if (file.size === 0 || file.size > MAX_AVATAR_SIZE) {
     throw new ProfileUpdateError(
       "The profile picture must be between 1 byte and 2MB.",
@@ -98,7 +133,15 @@ async function uploadAvatar(file: File, uid: string): Promise<string> {
 
   const objectPath = `users/${uid}/profile/avatar`;
   const downloadToken = randomUUID();
-  const buckets = await getAdminStorageBuckets();
+  let buckets: Awaited<ReturnType<typeof getAdminStorageBuckets>>;
+  try {
+    buckets = await getAdminStorageBuckets();
+  } catch (error) {
+    if (isStorageConfigurationError(error)) {
+      return createInlineAvatar(bytes, imageType);
+    }
+    throw error;
+  }
   const metadata = {
     resumable: false,
     metadata: {
@@ -114,17 +157,26 @@ async function uploadAvatar(file: File, uid: string): Promise<string> {
   for (const [index, bucket] of buckets.entries()) {
     try {
       await bucket.file(objectPath).save(bytes, metadata);
-      return `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${downloadToken}`;
+      return {
+        photoURL: `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${downloadToken}`,
+        isDataURL: false,
+      };
     } catch (error) {
       lastError = error;
-      if (!isStorageBucketNotFound(error) || index === buckets.length - 1) {
+      if (!isStorageBucketNotFound(error)) {
         throw error;
       }
-      console.error("[api/profile] step=storage-upload bucket-not-found; trying fallback", error);
+      if (index < buckets.length - 1) {
+        console.warn("[api/profile] step=storage-upload bucket-not-found; trying fallback bucket", error);
+      }
     }
   }
 
-  throw lastError ?? new Error("No usable Firebase Storage bucket is configured.");
+  if (lastError && !isStorageBucketNotFound(lastError)) {
+    throw lastError;
+  }
+  console.warn("[api/profile] step=storage-upload bucket-not-found; using Firestore data URL", lastError);
+  return createInlineAvatar(bytes, imageType);
 }
 
 async function updateProfile(request: Request) {
@@ -225,7 +277,7 @@ async function updateProfile(request: Request) {
   const membersRef = firestore.doc("settings/members");
   const profileRefs = new Map<string, typeof userRef>([[userRef.path, userRef]]);
   const tokenEmail = decodedToken.email?.trim() || callerEmail;
-  let storedProfilePhotoURL: string | null = null;
+  const storedProfilePhotoURLs: string[] = [];
   try {
     const emailVariants = [...new Set([tokenEmail, callerEmail])];
     const [existingUser, ...emailProfiles] = await Promise.all([
@@ -243,15 +295,16 @@ async function updateProfile(request: Request) {
         "profile-lookup"
       );
     }
-    storedProfilePhotoURL =
-      typeof existingUserData?.photoURL === "string" ? existingUserData.photoURL : null;
+    if (typeof existingUserData?.photoURL === "string") {
+      storedProfilePhotoURLs.push(existingUserData.photoURL);
+    }
 
     for (const profileSnapshot of emailProfiles) {
       for (const profile of profileSnapshot.docs) {
         profileRefs.set(profile.ref.path, profile.ref);
         const profilePhotoURL = profile.data().photoURL;
-        if (!storedProfilePhotoURL && typeof profilePhotoURL === "string") {
-          storedProfilePhotoURL = profilePhotoURL;
+        if (typeof profilePhotoURL === "string") {
+          storedProfilePhotoURLs.push(profilePhotoURL);
         }
       }
     }
@@ -265,24 +318,21 @@ async function updateProfile(request: Request) {
   }
 
   let photoURL: string | undefined;
+  let photoURLIsDataURL = false;
   try {
     if (rawAvatar instanceof File) {
-      photoURL = await uploadAvatar(rawAvatar, decodedToken.uid);
+      const uploadResult = await uploadAvatar(rawAvatar, decodedToken.uid);
+      photoURL = uploadResult.photoURL;
+      photoURLIsDataURL = uploadResult.isDataURL;
     }
   } catch (error) {
     if (error instanceof ProfileUpdateError) {
       return profileErrorResponse(error.message, error.status, error.step, error);
     }
-    const isStorageConfigurationError =
-      error instanceof Error &&
-      (error.message.startsWith("Firebase Storage bucket") ||
-        error.message.startsWith("Use a Firebase Storage bucket"));
     return profileErrorResponse(
-      isStorageConfigurationError
-        ? "Profile picture storage is not configured correctly. Contact an administrator."
-        : "Could not upload your profile picture. Check storage configuration and try again.",
+      "Could not upload your profile picture. Check storage configuration and try again.",
       503,
-      isStorageConfigurationError ? "storage-configuration" : "storage-upload",
+      "storage-upload",
       error
     );
   }
@@ -291,7 +341,9 @@ async function updateProfile(request: Request) {
     ReturnType<ReturnType<typeof getAdminAuth>["updateUser"]>
   >;
   try {
-    const authUpdates = photoURL ? { displayName: name, photoURL } : { displayName: name };
+    const authUpdates = photoURL && !photoURLIsDataURL
+      ? { displayName: name, photoURL }
+      : { displayName: name };
     updatedUser = await adminAuth.updateUser(decodedToken.uid, authUpdates);
   } catch (error) {
     return profileErrorResponse(
@@ -338,7 +390,16 @@ async function updateProfile(request: Request) {
         typeof matchingMember.photoURL === "string"
         ? matchingMember.photoURL
         : null;
-      nextPhotoURL = photoURL ?? updatedUser.photoURL ?? storedProfilePhotoURL ?? memberPhotoURL;
+      const firestoreDataPhotoURL = [
+        ...storedProfilePhotoURLs,
+        ...(memberPhotoURL ? [memberPhotoURL] : []),
+      ].find(isDataImageURL);
+      const firestorePhotoURL = storedProfilePhotoURLs[0] ?? memberPhotoURL;
+      nextPhotoURL = photoURL ??
+        firestoreDataPhotoURL ??
+        updatedUser.photoURL ??
+        firestorePhotoURL ??
+        null;
 
       const profilePatch: Record<string, unknown> = {
         name,
@@ -397,11 +458,31 @@ async function updateProfile(request: Request) {
           const activeAdmins = activeMembers.filter((member) =>
             isRecord(member) && member.isAdmin === true
           );
-          transaction.set(membersRef, {
+          const membersUpdate = {
             members: updatedMembers,
             activeEmails: activeMembers.map((member) => normalizeEmail(member.email)),
             adminEmails: activeAdmins.map((member) => normalizeEmail(member.email)),
-          }, { merge: true });
+          };
+          const projectedMembersDocument = {
+            ...membersSnapshot.data(),
+            ...membersUpdate,
+          };
+          const hasDataURLAvatar = updatedMembers.some(
+            (member) => isRecord(member) && isDataImageURL(member.photoURL)
+          );
+          const serializedDocument = JSON.stringify(projectedMembersDocument);
+          if (
+            hasDataURLAvatar &&
+            serializedDocument &&
+            Buffer.byteLength(serializedDocument, "utf8") > MAX_MEMBERS_DOCUMENT_BYTES
+          ) {
+            throw new ProfileUpdateError(
+              "The member profile data is too large to store another inline picture. Reduce the roster picture sizes or provision Firebase Storage.",
+              413,
+              "firestore-roster-size"
+            );
+          }
+          transaction.set(membersRef, membersUpdate, { merge: true });
         }
       }
     });
