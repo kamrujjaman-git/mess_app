@@ -1,7 +1,6 @@
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
-import { getStorage, type Storage } from "firebase-admin/storage";
 
 let adminApp: App | undefined;
 
@@ -66,6 +65,7 @@ function getAdminApp(): App {
     const clientEmail = normalizeConfigValue(process.env.FIREBASE_CLIENT_EMAIL);
     const rawPrivateKey = normalizeConfigValue(process.env.FIREBASE_PRIVATE_KEY);
     const privateKey = rawPrivateKey
+        .replace(/\\\\r\\\\n/g, "\n")
         .replace(/\\\\n/g, "\n")
         .replace(/\\r?\\n/g, "\n")
         .replace(/\r\n/g, "\n");
@@ -83,7 +83,7 @@ function getAdminApp(): App {
     const storageBucket = configuredStorageBucket();
     adminApp = initializeApp({
         credential: cert({ projectId, clientEmail, privateKey }),
-        ...(storageBucket ? { storageBucket } : {}),
+        storageBucket: storageBucket ?? `${projectId}.firebasestorage.app`,
     });
 
     return adminApp;
@@ -97,18 +97,35 @@ export function getAdminFirestore(): Firestore {
     return getFirestore(getAdminApp());
 }
 
-export function getAdminStorage(): Storage {
-    return getStorage(getAdminApp());
-}
-
-export function getAdminStorageBucket() {
+export async function getAdminStorageBuckets() {
     const app = getAdminApp();
-    const configuredBucket = normalizeConfigValue(process.env.FIREBASE_STORAGE_BUCKET) ||
+    const configuredValue = normalizeConfigValue(process.env.FIREBASE_STORAGE_BUCKET) ||
         normalizeConfigValue(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-    const bucketValue = configuredBucket || app.options.storageBucket;
-    if (!bucketValue) {
+    const projectId = normalizeConfigValue(process.env.FIREBASE_PROJECT_ID) ||
+        normalizeConfigValue(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) ||
+        normalizeConfigValue(app.options.projectId);
+    const bucketNames = new Set<string>();
+
+    if (configuredValue) {
+        try {
+            bucketNames.add(normalizeStorageBucketName(configuredValue));
+        } catch (error) {
+            console.error("[firebase-admin] storage-bucket-configuration:", error);
+        }
+    }
+
+    if (app.options.storageBucket) {
+        bucketNames.add(normalizeStorageBucketName(app.options.storageBucket));
+    }
+    if (projectId) {
+        bucketNames.add(`${projectId}.firebasestorage.app`);
+        bucketNames.add(`${projectId}.appspot.com`);
+    }
+    if (!bucketNames.size) {
         throw new Error("Firebase Storage bucket is not configured.");
     }
 
-    return getStorage(app).bucket(normalizeStorageBucketName(bucketValue));
+    const { getStorage } = await import("firebase-admin/storage");
+    const storage = getStorage(app);
+    return [...bucketNames].map((bucketName) => storage.bucket(bucketName));
 }

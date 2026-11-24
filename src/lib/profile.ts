@@ -7,6 +7,7 @@ export interface ProfileUpdateSuccess {
 export interface ProfileUpdateFailure {
   ok: false;
   error: string;
+  step: string;
 }
 
 export type ProfileUpdateResponse = ProfileUpdateSuccess | ProfileUpdateFailure;
@@ -21,5 +22,7 @@ export function isProfileUpdateResponse(value: unknown): value is ProfileUpdateR
     return typeof value.name === "string" &&
       (typeof value.photoURL === "string" || value.photoURL === null);
   }
-  return value.ok === false && typeof value.error === "string";
+  return value.ok === false &&
+    typeof value.error === "string" &&
+    typeof value.step === "string";
 }

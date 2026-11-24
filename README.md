@@ -93,6 +93,7 @@ firebase deploy --only storage
 ```
 The bucket must be set in `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`. The profile API also requires the Firebase Admin credentials already used by the server-side API routes.
 Set `FIREBASE_PROJECT_ID` if it differs from `NEXT_PUBLIC_FIREBASE_PROJECT_ID`; `FIREBASE_STORAGE_BUCKET` can optionally override `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`. Keep Admin credentials server-only and encode private-key line breaks as `\n` when the deployment provider requires a single-line value.
+Use Node.js 22.x for local runs and the Vercel project runtime; `firebase-admin` 14 requires Node.js 22 or newer.
 
 🔒 Firestore Security Rules Setup
 Deploy the repository rules with `firebase deploy --only firestore:rules` after connecting the Firebase CLI to the correct project.

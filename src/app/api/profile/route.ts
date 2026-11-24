@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   getAdminAuth,
   getAdminFirestore,
-  getAdminStorageBucket,
+  getAdminStorageBuckets,
 } from "@/lib/firebase-admin";
 import type { ProfileUpdateResponse } from "@/lib/profile";
 
@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 
 class ProfileUpdateError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly step: string) {
     super(message);
     this.name = "ProfileUpdateError";
   }
@@ -38,8 +38,21 @@ function isInvalidIdTokenError(error: unknown): boolean {
   ]).has(error.code);
 }
 
-function profileErrorResponse(error: string, status: number) {
-  return NextResponse.json<ProfileUpdateResponse>({ ok: false, error }, { status });
+function profileErrorResponse(error: string, status: number, step: string, cause?: unknown) {
+  console.error(`[api/profile] step=${step} error=${error}`, cause);
+  return NextResponse.json<ProfileUpdateResponse>(
+    { ok: false, error, step },
+    { status }
+  );
+}
+
+function isStorageBucketNotFound(error: unknown): boolean {
+  if (!isRecord(error)) return false;
+  return error.code === 404 ||
+    error.code === "404" ||
+    error.code === "storage/bucket-not-found" ||
+    error.statusCode === 404 ||
+    (isRecord(error.response) && error.response.status === 404);
 }
 
 function detectedImageType(bytes: Buffer): string | null {
@@ -66,19 +79,27 @@ function detectedImageType(bytes: Buffer): string | null {
 
 async function uploadAvatar(file: File, uid: string): Promise<string> {
   if (file.size === 0 || file.size > MAX_AVATAR_SIZE) {
-    throw new ProfileUpdateError("The profile picture must be between 1 byte and 2MB.", 400);
+    throw new ProfileUpdateError(
+      "The profile picture must be between 1 byte and 2MB.",
+      400,
+      "image-validation"
+    );
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
   const imageType = detectedImageType(bytes);
   if (!imageType || file.type !== imageType) {
-    throw new ProfileUpdateError("Choose a valid JPG, PNG, or WEBP image.", 400);
+    throw new ProfileUpdateError(
+      "Choose a valid JPG, PNG, or WEBP image.",
+      400,
+      "image-validation"
+    );
   }
 
   const objectPath = `users/${uid}/profile/avatar`;
   const downloadToken = randomUUID();
-  const bucket = getAdminStorageBucket();
-  await bucket.file(objectPath).save(bytes, {
+  const buckets = await getAdminStorageBuckets();
+  const metadata = {
     resumable: false,
     metadata: {
       contentType: imageType,
@@ -87,26 +108,45 @@ async function uploadAvatar(file: File, uid: string): Promise<string> {
         firebaseStorageDownloadTokens: downloadToken,
       },
     },
-  });
+  };
+  let lastError: unknown;
 
-  return `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${downloadToken}`;
+  for (const [index, bucket] of buckets.entries()) {
+    try {
+      await bucket.file(objectPath).save(bytes, metadata);
+      return `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${downloadToken}`;
+    } catch (error) {
+      lastError = error;
+      if (!isStorageBucketNotFound(error) || index === buckets.length - 1) {
+        throw error;
+      }
+      console.error("[api/profile] step=storage-upload bucket-not-found; trying fallback", error);
+    }
+  }
+
+  throw lastError ?? new Error("No usable Firebase Storage bucket is configured.");
 }
 
 async function updateProfile(request: Request) {
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) {
-    return profileErrorResponse("Sign in again before updating your profile.", 401);
+    return profileErrorResponse(
+      "Sign in again before updating your profile.",
+      401,
+      "authorization"
+    );
   }
 
   let adminAuth: ReturnType<typeof getAdminAuth>;
   try {
     adminAuth = getAdminAuth();
   } catch (error) {
-    console.error("Profile update Firebase Admin authentication initialization failed:", error);
     return profileErrorResponse(
       "Firebase Admin credentials are missing or invalid. Contact an administrator.",
-      503
+      503,
+      "firebase-admin-initialization",
+      error
     );
   }
 
@@ -116,44 +156,70 @@ async function updateProfile(request: Request) {
   try {
     decodedToken = await adminAuth.verifyIdToken(token, true);
   } catch (error) {
-    console.error("Profile update token verification failed:", error);
     return isInvalidIdTokenError(error)
-      ? profileErrorResponse("The session is invalid or expired. Sign in again.", 401)
-      : profileErrorResponse("Could not verify your session right now. Try again.", 503);
+      ? profileErrorResponse(
+        "The session is invalid or expired. Sign in again.",
+        401,
+        "token-verification",
+        error
+      )
+      : profileErrorResponse(
+        "Could not verify your session right now. Try again.",
+        503,
+        "token-verification",
+        error
+      );
   }
 
   const callerEmail = normalizeEmail(decodedToken.email);
   if (decodedToken.email_verified !== true || !callerEmail) {
-    return profileErrorResponse("A verified account is required to update your profile.", 403);
+    return profileErrorResponse(
+      "A verified account is required to update your profile.",
+      403,
+      "account-validation"
+    );
   }
 
   let formData: FormData;
   try {
     formData = await request.formData();
-  } catch {
-    return profileErrorResponse("A valid profile update is required.", 400);
+  } catch (error) {
+    return profileErrorResponse(
+      "A valid profile update is required.",
+      400,
+      "body-parsing",
+      error
+    );
   }
 
   const rawName = formData.get("name");
   if (typeof rawName !== "string") {
-    return profileErrorResponse("Enter a valid profile name.", 400);
+    return profileErrorResponse("Enter a valid profile name.", 400, "input-validation");
   }
   const name = rawName.trim();
   if (!name || name.length > 80) {
-    return profileErrorResponse("Names must be between 1 and 80 characters.", 400);
+    return profileErrorResponse(
+      "Names must be between 1 and 80 characters.",
+      400,
+      "input-validation"
+    );
   }
 
   const rawAvatar = formData.get("avatar");
   if (rawAvatar !== null && (typeof File === "undefined" || !(rawAvatar instanceof File))) {
-    return profileErrorResponse("Choose a valid image file.", 400);
+    return profileErrorResponse("Choose a valid image file.", 400, "image-validation");
   }
 
   let firestore: ReturnType<typeof getAdminFirestore>;
   try {
     firestore = getAdminFirestore();
   } catch (error) {
-    console.error("Could not initialize the profile database:", error);
-    return profileErrorResponse("Profile service is temporarily unavailable. Try again.", 503);
+    return profileErrorResponse(
+      "Could not initialize the profile database. Try again or contact an administrator.",
+      503,
+      "firestore-initialization",
+      error
+    );
   }
   const userRef = firestore.doc(`users/${decodedToken.uid}`);
   const membersRef = firestore.doc("settings/members");
@@ -173,7 +239,8 @@ async function updateProfile(request: Request) {
     if (storedEmail && storedEmail !== callerEmail) {
       return profileErrorResponse(
         "Your account record does not match your sign-in email. Contact an administrator.",
-        403
+        403,
+        "profile-lookup"
       );
     }
     storedProfilePhotoURL =
@@ -189,8 +256,12 @@ async function updateProfile(request: Request) {
       }
     }
   } catch (error) {
-    console.error("Could not look up profile records by user ID and email:", error);
-    return profileErrorResponse("Could not verify your profile record. Try again.", 503);
+    return profileErrorResponse(
+      "Could not look up your profile records. Try again or contact an administrator.",
+      503,
+      "profile-lookup",
+      error
+    );
   }
 
   let photoURL: string | undefined;
@@ -200,9 +271,8 @@ async function updateProfile(request: Request) {
     }
   } catch (error) {
     if (error instanceof ProfileUpdateError) {
-      return profileErrorResponse(error.message, error.status);
+      return profileErrorResponse(error.message, error.status, error.step, error);
     }
-    console.error("Profile picture storage upload failed:", error);
     const isStorageConfigurationError =
       error instanceof Error &&
       (error.message.startsWith("Firebase Storage bucket") ||
@@ -211,7 +281,9 @@ async function updateProfile(request: Request) {
       isStorageConfigurationError
         ? "Profile picture storage is not configured correctly. Contact an administrator."
         : "Could not upload your profile picture. Check storage configuration and try again.",
-      503
+      503,
+      isStorageConfigurationError ? "storage-configuration" : "storage-upload",
+      error
     );
   }
 
@@ -222,10 +294,11 @@ async function updateProfile(request: Request) {
     const authUpdates = photoURL ? { displayName: name, photoURL } : { displayName: name };
     updatedUser = await adminAuth.updateUser(decodedToken.uid, authUpdates);
   } catch (error) {
-    console.error("Firebase Authentication profile update failed:", error);
     return profileErrorResponse(
       "Could not update your sign-in profile. Try again or contact an administrator.",
-      503
+      503,
+      "auth-profile-update",
+      error
     );
   }
 
@@ -246,7 +319,8 @@ async function updateProfile(request: Request) {
       if (transactionEmail && transactionEmail !== callerEmail) {
         throw new ProfileUpdateError(
           "Your account record changed during the update. Contact an administrator.",
-          403
+          403,
+          "profile-lookup"
         );
       }
 
@@ -338,13 +412,14 @@ async function updateProfile(request: Request) {
       photoURL: nextPhotoURL,
     });
   } catch (error) {
-    console.error("Profile record synchronization failed:", error);
     if (error instanceof ProfileUpdateError) {
-      return profileErrorResponse(error.message, error.status);
+      return profileErrorResponse(error.message, error.status, error.step, error);
     }
     return profileErrorResponse(
       "Your sign-in profile may have updated, but the member record could not be synced. Save again or contact an administrator.",
-      503
+      503,
+      "firestore-sync",
+      error
     );
   }
 }
@@ -353,10 +428,11 @@ export async function POST(request: Request) {
   try {
     return await updateProfile(request);
   } catch (error) {
-    console.error("Unexpected profile update failure:", error);
     return profileErrorResponse(
       "Could not update your profile because of a server error. Try again or contact an administrator.",
-      500
+      500,
+      "unexpected",
+      error
     );
   }
 }
