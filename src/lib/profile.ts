@@ -10,19 +10,28 @@ export interface ProfileUpdateFailure {
   step: string;
 }
 
+export interface ProfileUpdateErrorPayload {
+  error: string;
+  step?: string;
+}
+
 export type ProfileUpdateResponse = ProfileUpdateSuccess | ProfileUpdateFailure;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-export function isProfileUpdateResponse(value: unknown): value is ProfileUpdateResponse {
+export function isProfileUpdateSuccess(value: unknown): value is ProfileUpdateSuccess {
   if (!isRecord(value)) return false;
-  if (value.ok === true) {
-    return typeof value.name === "string" &&
-      (typeof value.photoURL === "string" || value.photoURL === null);
-  }
-  return value.ok === false &&
+  return value.ok === true &&
+    typeof value.name === "string" &&
+    (typeof value.photoURL === "string" || value.photoURL === null);
+}
+
+export function isProfileUpdateFailure(value: unknown): value is ProfileUpdateErrorPayload {
+  if (!isRecord(value)) return false;
+  return (value.ok === undefined || value.ok === false) &&
     typeof value.error === "string" &&
-    typeof value.step === "string";
+    value.error.trim().length > 0 &&
+    (value.step === undefined || typeof value.step === "string");
 }

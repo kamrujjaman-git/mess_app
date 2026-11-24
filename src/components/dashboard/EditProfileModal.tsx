@@ -14,7 +14,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ImagePlus, LoaderCircle, Pencil, UserRound, X } from "lucide-react";
 import type { User } from "firebase/auth";
 import { useToast } from "@/components/ui/ToastProvider";
-import { isProfileUpdateResponse } from "@/lib/profile";
+import { isProfileUpdateFailure, isProfileUpdateSuccess } from "@/lib/profile";
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -289,24 +289,25 @@ export function EditProfileModal({
       try {
         result = JSON.parse(responseText);
       } catch {
-        throw new Error(
-          response.ok
-            ? "The profile service returned an invalid response. Try again."
-            : `Could not update your profile (HTTP ${response.status}). Try again.`
-        );
+        throw new Error(response.ok
+          ? "The profile service returned an invalid response. Try again."
+          : `Could not update your profile (HTTP ${response.status}). Try again.`);
       }
 
-      if (!isProfileUpdateResponse(result)) {
+      const serverFailure = isProfileUpdateFailure(result) ? result : null;
+      if (!response.ok || serverFailure) {
+        if (serverFailure?.step) {
+          console.error(
+            `[EditProfileModal] Profile API failed at step=${serverFailure.step} (HTTP ${response.status}).`
+          );
+        }
         throw new Error(
-          response.ok
-            ? "The profile service returned an incomplete response. Try again."
-            : `Could not update your profile (HTTP ${response.status}). Try again.`
+          serverFailure?.error ||
+            `Could not update your profile (HTTP ${response.status}). Try again.`
         );
       }
-      if (!response.ok || !result.ok) {
-        throw new Error(
-          result.ok ? "Could not update your profile. Try again." : result.error
-        );
+      if (!isProfileUpdateSuccess(result)) {
+        throw new Error("The profile service returned an incomplete response. Try again.");
       }
 
       onSaved(result.name, result.photoURL);
