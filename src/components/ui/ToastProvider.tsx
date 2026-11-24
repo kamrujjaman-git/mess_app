@@ -10,7 +10,7 @@ import {
     type ReactNode,
 } from "react";
 import toast, { Toaster, resolveValue, type Toast } from "react-hot-toast";
-import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
+import { AlertCircle, Info, X } from "lucide-react";
 
 type ToastTone = "success" | "error" | "info";
 
@@ -31,6 +31,34 @@ type ToastContextValue = {
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
+
+function AnimatedSuccessCheck() {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            className="success-check-icon h-5 w-5 flex-shrink-0 text-success"
+            fill="none"
+            aria-hidden="true"
+        >
+            <circle
+                cx="12"
+                cy="12"
+                r="6"
+                className="success-check-circle"
+                stroke="currentColor"
+                strokeWidth="2"
+            />
+            <path
+                d="m9.5 12.2 1.7 1.7 3.6-4"
+                className="success-check-tick"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
 
 export function ToastProvider({ children }: { children: ReactNode }) {
     const activeToastsRef = useRef<Set<string>>(new Set());
@@ -87,7 +115,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const undo = useCallback((title: string, onUndo: () => void) => {
         return toast.custom(
             (toastItem) => (
-                <div className={`flex w-[min(92vw,28rem)] items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-3 text-slate-800 shadow-lg shadow-slate-200/50 backdrop-blur-md transition-all duration-300 dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-100 dark:shadow-black/40 ${toastItem.visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"}`}>
+                <div className={`flex w-[min(92vw,28rem)] items-center justify-between gap-4 rounded-2xl border border-subtle/80 bg-surface/95 px-4 py-3 text-primary shadow-lg shadow-slate-200/50 backdrop-blur-md transition-all duration-300 dark:shadow-black/40 ${toastItem.visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"}`}>
                     <span className="min-w-0 text-sm font-semibold">{title}</span>
                     <button
                         type="button"
@@ -95,7 +123,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             onUndo();
                             toast.dismiss(toastItem.id);
                         }}
-                        className="min-h-9 shrink-0 rounded-lg bg-emerald-50 px-3 text-sm font-bold text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+                        className="min-h-9 shrink-0 rounded-lg bg-success-surface px-3 text-sm font-bold text-success-on-surface transition hover:bg-success-border"
                     >
                         Undo
                     </button>
@@ -122,12 +150,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
         return (
             <div
-                className={`flex w-[min(92vw,28rem)] min-w-0 items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-3 text-slate-800 shadow-lg shadow-slate-200/50 backdrop-blur-md transition-all duration-300 ease-out dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-100 dark:shadow-black/40 sm:px-5 ${toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"}`}
+                className={`flex w-[min(92vw,28rem)] min-w-0 items-center justify-between gap-3 rounded-2xl border border-subtle/80 bg-surface/95 px-4 py-3 text-primary shadow-lg shadow-slate-200/50 backdrop-blur-md transition-all duration-300 ease-out dark:shadow-black/40 sm:px-5 ${toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"}`}
             >
                 <div className="flex items-center gap-3">
-                    {isSuccess && <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-500 stroke-[2.2] drop-shadow" />}
-                    {isError && <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 stroke-[2.2] drop-shadow" />}
-                    {!isSuccess && !isError && <Info className="w-5 h-5 text-sky-400 flex-shrink-0 stroke-[2.2] drop-shadow" />}
+                    {isSuccess && <AnimatedSuccessCheck />}
+                    {isError && (
+                        <span className="form-error-shake inline-flex flex-shrink-0">
+                            <AlertCircle className="h-5 w-5 text-danger stroke-[2.2]" />
+                        </span>
+                    )}
+                    {!isSuccess && !isError && <Info className="w-5 h-5 text-info flex-shrink-0 stroke-[2.2]" />}
 
                     <span className="text-sm font-semibold tracking-wide">{resolveValue(toastItem.message, toastItem)}</span>
                 </div>
@@ -136,7 +168,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     type="button"
                     aria-label="Dismiss notification"
                     onClick={() => toast.dismiss(toastItem.id)}
-                    className="z-10 ml-auto flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200/80 bg-white/70 text-slate-500 shadow-sm transition-colors duration-200 hover:bg-white hover:text-slate-800 active:scale-90 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+                    className="z-10 ml-auto flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-subtle/80 bg-surface/70 text-muted shadow-sm transition-colors duration-200 hover:bg-surface hover:text-primary active:scale-90 dark:bg-elevated/80 dark:hover:bg-container"
                 >
                     <X className="w-3.5 h-3.5 stroke-[2.5]" />
                 </button>

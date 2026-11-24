@@ -137,10 +137,10 @@ export function PremiumDatePicker({
 
     return (
         <div ref={rootRef} className={`relative min-w-0 ${className}`}>
-            {label ? <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">{label}</span> : null}
+            {label ? <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-secondary dark:text-secondary">{label}</span> : null}
             {mode === "month" ? (
-                <div className="flex min-h-9 w-auto max-w-fit items-center gap-2 px-2 py-1 text-xs font-semibold text-slate-800 sm:min-h-10 sm:text-sm dark:text-slate-100">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-emerald-700 dark:text-emerald-300">
+                <div className="flex min-h-9 w-auto max-w-fit items-center gap-2 px-2 py-1 text-xs font-semibold text-primary sm:min-h-10 sm:text-sm">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-brand">
                         <CalendarDays className="h-4 w-4" />
                     </span>
                     <span className="whitespace-nowrap">{displayLabel}</span>
@@ -151,9 +151,9 @@ export function PremiumDatePicker({
                     onClick={openPicker}
                     aria-haspopup="dialog"
                     aria-expanded={open}
-                    className="glass flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-slate-800 transition-colors duration-150 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+                    className="tactile-press glass flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-primary transition-colors duration-150 hover:bg-container"
                 >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-success-surface text-success">
                         <CalendarDays className="h-4 w-4" />
                     </span>
                     <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
@@ -161,12 +161,12 @@ export function PremiumDatePicker({
             )}
 
             {open && mode !== "month" ? (
-                <div className="absolute left-0 top-[calc(100%+0.6rem)] z-[999] w-[min(20rem,calc(100vw-2rem))] rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-900/20 backdrop-blur-2xl dark:border-slate-800 dark:bg-slate-900/95" role="dialog" aria-label={label ?? "Choose date"}>
+                <div className="popover-appear absolute left-0 top-[calc(100%+0.6rem)] z-[999] w-[min(20rem,calc(100vw-2rem))] origin-top-left transform-gpu rounded-3xl border border-subtle/80 bg-surface/95 p-4 shadow-2xl shadow-slate-900/20 backdrop-blur-2xl dark:border-subtle dark:bg-surface/95" role="dialog" aria-label={label ?? "Choose date"}>
                     <div className="mb-3 flex items-center justify-between gap-2">
                         <button
                             type="button"
                             onClick={() => shiftPeriod(-1)}
-                            className="glass flex h-9 w-9 items-center justify-center rounded-full text-slate-700 dark:text-slate-100"
+                            className="glass flex h-9 w-9 items-center justify-center rounded-full text-secondary"
                             aria-label="Previous period"
                         >
                             <ChevronLeft className="h-4 w-4" />
@@ -174,7 +174,7 @@ export function PremiumDatePicker({
                         <button
                             type="button"
                             onClick={() => setView(view === "days" ? "months" : view === "months" ? "years" : "days")}
-                            className="rounded-xl px-3 py-2 text-sm font-bold text-slate-900 transition hover:bg-emerald-50 dark:text-slate-100 dark:hover:bg-slate-800"
+                            className="rounded-xl px-3 py-2 text-sm font-bold text-primary transition hover:bg-success-surface"
                             aria-label="Switch date picker view"
                         >
                             {view === "years" ? `${yearStart}-${yearStart + 9}` : `${monthNames[visibleMonth]} ${visibleYear}`}
@@ -182,7 +182,7 @@ export function PremiumDatePicker({
                         <button
                             type="button"
                             onClick={() => shiftPeriod(1)}
-                            className="glass flex h-9 w-9 items-center justify-center rounded-full text-slate-700 dark:text-slate-100"
+                            className="glass flex h-9 w-9 items-center justify-center rounded-full text-secondary"
                             aria-label="Next period"
                         >
                             <ChevronRight className="h-4 w-4" />
@@ -191,7 +191,7 @@ export function PremiumDatePicker({
 
                     {view === "days" ? (
                         <>
-                            <div className="mb-2 grid grid-cols-7 text-center text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+                            <div className="mb-2 grid grid-cols-7 text-center text-[10px] font-bold uppercase tracking-wide text-muted dark:text-secondary">
                                 {weekdayNames.map((day) => <span key={day}>{day}</span>)}
                             </div>
                             <div className="grid grid-cols-7 gap-1">
@@ -206,9 +206,9 @@ export function PremiumDatePicker({
                                             onChange(formatValue(visibleYear, visibleMonth, day, mode));
                                             setOpen(false);
                                         }}
-                                        className={`h-9 rounded-xl text-sm font-semibold transition-colors duration-150 ${parsed.year === visibleYear && parsed.month === visibleMonth && parsed.day === day
-                                            ? "border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg"
-                                            : "text-slate-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-35 dark:text-slate-200 dark:hover:bg-slate-800"}`}
+                                        className={`h-9 rounded-xl text-sm font-semibold tabular-nums transition-colors duration-150 ${parsed.year === visibleYear && parsed.month === visibleMonth && parsed.day === day
+                                            ? "border-t border-brand-fill-hover bg-brand-fill text-brand-on-fill shadow-lg"
+                                            : "text-secondary hover:bg-success-surface disabled:cursor-not-allowed disabled:opacity-35"}`}
                                     >
                                         {day}
                                     </button>
@@ -225,8 +225,8 @@ export function PremiumDatePicker({
                                     type="button"
                                     onClick={() => selectMonth(index)}
                                     className={`rounded-xl px-2 py-3 text-xs font-semibold transition-colors duration-150 ${parsed.year === visibleYear && parsed.month === index
-                                        ? "border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg"
-                                        : "text-slate-700 hover:bg-emerald-50 dark:text-slate-200 dark:hover:bg-slate-800"}`}
+                                        ? "border-t border-brand-fill-hover bg-brand-fill text-brand-on-fill shadow-lg"
+                                        : "text-secondary hover:bg-success-surface"}`}
                                 >
                                     {month.slice(0, 3)}
                                 </button>
@@ -241,9 +241,9 @@ export function PremiumDatePicker({
                                     key={year}
                                     type="button"
                                     onClick={() => selectYear(year)}
-                                    className={`rounded-xl px-2 py-3 text-xs font-semibold transition-colors duration-150 ${parsed.year === year
-                                        ? "border-t border-white/40 bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg"
-                                        : "text-slate-700 hover:bg-emerald-50 dark:text-slate-200 dark:hover:bg-slate-800"}`}
+                                    className={`rounded-xl px-2 py-3 text-xs font-semibold tabular-nums transition-colors duration-150 ${parsed.year === year
+                                        ? "border-t border-brand-fill-hover bg-brand-fill text-brand-on-fill shadow-lg"
+                                        : "text-secondary hover:bg-success-surface"}`}
                                 >
                                     {year}
                                 </button>

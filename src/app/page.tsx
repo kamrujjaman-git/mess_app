@@ -62,7 +62,7 @@ export default function LoginPage() {
   if (loading || accessLoading) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-brand" />
       </div>
     );
   }
@@ -82,15 +82,15 @@ export default function LoginPage() {
   return (
     <div className="relative flex flex-1 min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-8 sm:px-6">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-emerald-400/20 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-teal-400/20 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-brand/10 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-brand/10 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/10 blur-3xl" />
       </div>
 
       <main className="relative z-10 w-full max-w-md sm:max-w-lg">
         <div className="glass-card rounded-3xl p-6 sm:p-10">
           <div className="mb-8 flex flex-col items-center text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 shadow-lg shadow-emerald-500/25">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-container shadow-lg shadow-brand/20">
               <Image
                 src="/logo-512.png"
                 alt="Mess Logo"
@@ -102,28 +102,28 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               Mess App
             </h1>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 sm:text-base">
+            <p className="mt-2 text-sm text-secondary dark:text-muted sm:text-base">
               Track meals, bazar costs &amp; balances — all in one place
             </p>
           </div>
 
           <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-xl bg-white/50 p-3 dark:bg-slate-800/40">
-              <Sparkles className="h-5 w-5 shrink-0 text-emerald-500" />
+            <div className="flex items-center gap-3 rounded-xl bg-surface/50 p-3 dark:bg-elevated/40">
+              <Sparkles className="h-5 w-5 shrink-0 text-brand" />
               <span className="text-xs font-medium sm:text-sm">Live Stats</span>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-white/50 p-3 dark:bg-slate-800/40">
-              <TrendingUp className="h-5 w-5 shrink-0 text-teal-500" />
+            <div className="flex items-center gap-3 rounded-xl bg-surface/50 p-3 dark:bg-elevated/40">
+              <TrendingUp className="h-5 w-5 shrink-0 text-brand" />
               <span className="text-xs font-medium sm:text-sm">Smart Calc</span>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-white/50 p-3 dark:bg-slate-800/40">
-              <Shield className="h-5 w-5 shrink-0 text-cyan-500" />
+            <div className="flex items-center gap-3 rounded-xl bg-surface/50 p-3 dark:bg-elevated/40">
+              <Shield className="h-5 w-5 shrink-0 text-brand" />
               <span className="text-xs font-medium sm:text-sm">Secure Auth</span>
             </div>
           </div>
 
           {error && (
-            <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-400">
+            <div className="mb-4 rounded-xl border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-on-surface">
               {error}
             </div>
           )}
@@ -132,7 +132,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleSignIn}
             disabled={signingIn}
-            className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white text-base font-semibold text-slate-800 shadow-md transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-60 dark:bg-slate-800 dark:text-slate-100 dark:shadow-slate-900/50"
+            className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-surface text-base font-semibold text-primary shadow-md transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-60"
           >
             {signingIn ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -144,7 +144,7 @@ export default function LoginPage() {
             )}
           </button>
 
-          <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-500">
+          <p className="mt-6 text-center text-xs text-muted dark:text-muted">
             6 members · 3 meals daily · Real-time balance tracking
           </p>
         </div>

@@ -14,6 +14,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ImagePlus, LoaderCircle, Pencil, UserRound, X } from "lucide-react";
 import type { User } from "firebase/auth";
 import { useToast } from "@/components/ui/ToastProvider";
+import { AnimatedFormError } from "@/components/ui/AnimatedFormError";
+import { createIdempotencyKey } from "@/lib/idempotency";
 import { isProfileUpdateFailure, isProfileUpdateSuccess } from "@/lib/profile";
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
@@ -155,8 +157,10 @@ export function EditProfileModal({
   const [cropPosition, setCropPosition] = useState<CropPosition>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [errorMessage, setErrorMessage] = useState("");
+  const [errorAttempt, setErrorAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const cropImageRef = useRef<HTMLImageElement | null>(null);
+  const submissionInFlightRef = useRef(false);
   const cropDragRef = useRef<{
     pointerId: number;
     clientX: number;
@@ -178,6 +182,11 @@ export function EditProfileModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose, saving]);
 
+  function showError(message: string) {
+    setErrorMessage(message);
+    setErrorAttempt((attempt) => attempt + 1);
+  }
+
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
@@ -189,7 +198,7 @@ export function EditProfileModal({
       setImageDimensions(null);
       setCropPosition({ x: 0, y: 0 });
       setZoom(1);
-      setErrorMessage("Choose a JPG, PNG, or WEBP image.");
+      showError("Choose a JPG, PNG, or WEBP image.");
       return;
     }
     if (file.size > MAX_AVATAR_SIZE) {
@@ -198,7 +207,7 @@ export function EditProfileModal({
       setImageDimensions(null);
       setCropPosition({ x: 0, y: 0 });
       setZoom(1);
-      setErrorMessage("The profile picture must be 2MB or smaller.");
+      showError("The profile picture must be 2MB or smaller.");
       return;
     }
 
@@ -257,16 +266,18 @@ export function EditProfileModal({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submissionInFlightRef.current) return;
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setErrorMessage("Enter a name before saving.");
+      showError("Enter a name before saving.");
       return;
     }
     if (trimmedName.length > 80) {
-      setErrorMessage("Names must be 80 characters or fewer.");
+      showError("Names must be 80 characters or fewer.");
       return;
     }
 
+    submissionInFlightRef.current = true;
     setSaving(true);
     setErrorMessage("");
     try {
@@ -287,6 +298,7 @@ export function EditProfileModal({
         method: "POST",
         headers: {
           Authorization: `Bearer ${await user.getIdToken()}`,
+          "X-Idempotency-Key": createIdempotencyKey(),
         },
         body: formData,
       });
@@ -322,10 +334,11 @@ export function EditProfileModal({
       onClose();
     } catch (error) {
       console.error("Profile update failed:", error);
-      setErrorMessage(
+      showError(
         error instanceof Error ? error.message : "Could not update your profile. Try again."
       );
     } finally {
+      submissionInFlightRef.current = false;
       setSaving(false);
     }
   }
@@ -339,7 +352,7 @@ export function EditProfileModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: reduceMotion ? 0 : 0.15 }}
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !saving) onClose();
       }}
@@ -352,12 +365,12 @@ export function EditProfileModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-profile-title"
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:p-6"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-subtle bg-surface p-4 text-primary shadow-2xl sm:p-6"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="edit-profile-title" className="text-lg font-semibold">Edit Profile</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <h2 id="edit-profile-title" className="text-balance text-lg font-semibold">Edit Profile</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted">
               Update the name and picture shown in Mess App.
             </p>
           </div>
@@ -366,7 +379,7 @@ export function EditProfileModal({
             onClick={onClose}
             disabled={saving}
             aria-label="Close profile editor"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+            className="tactile-press flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-container disabled:opacity-50 dark:text-muted dark:hover:bg-elevated"
           >
             <X className="h-4 w-4" />
           </button>
@@ -374,7 +387,7 @@ export function EditProfileModal({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-5">
           <div className="flex items-center gap-4">
-            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-xl font-bold text-emerald-700 ring-2 ring-emerald-500/25 dark:bg-emerald-950 dark:text-emerald-300">
+            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-success-surface text-xl font-bold text-success ring-2 ring-brand/25">
               {visibleImageURL && !previewFailed ? (
                 <Image
                   src={visibleImageURL}
@@ -396,7 +409,7 @@ export function EditProfileModal({
             <div className="min-w-0">
               <label
                 htmlFor="profile-picture"
-                className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="tactile-press inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-subtle px-3 text-sm font-medium text-secondary transition-colors hover:bg-elevated dark:border-subtle dark:text-secondary dark:hover:bg-elevated"
               >
                 <ImagePlus className="h-4 w-4" />
                 Choose picture
@@ -408,7 +421,7 @@ export function EditProfileModal({
                 onChange={handleFileChange}
                 className="sr-only"
               />
-              <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-xs leading-5 text-muted dark:text-muted">
                 Recommended: square (1:1), 256 x 256px to 512 x 512px, JPG, PNG, or WEBP.
                 Maximum source file size: 2MB. Saved as a 256 x 256px JPEG or WEBP under 80KB.
               </p>
@@ -416,10 +429,10 @@ export function EditProfileModal({
           </div>
 
           {previewURL ? (
-            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-950/40">
+            <div className="space-y-3 rounded-xl border border-subtle bg-elevated/70 p-3">
               <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="font-medium text-slate-700 dark:text-slate-200">Adjust 1:1 crop</span>
-                <span className="text-slate-500 dark:text-slate-400">Drag to position</span>
+                <span className="font-medium text-secondary dark:text-secondary">Adjust 1:1 crop</span>
+                <span className="text-muted dark:text-muted">Drag to position</span>
               </div>
               <div
                 role="group"
@@ -430,7 +443,7 @@ export function EditProfileModal({
                 onPointerUp={handleCropPointerEnd}
                 onPointerCancel={handleCropPointerEnd}
                 onKeyDown={handleCropKeyDown}
-                className="relative mx-auto h-[256px] w-[256px] cursor-grab touch-none select-none overflow-hidden rounded-xl bg-slate-200 outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-slate-800"
+                className="relative mx-auto h-[256px] w-[256px] cursor-grab touch-none select-none overflow-hidden rounded-xl bg-container outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Image
                   ref={cropImageRef}
@@ -447,7 +460,7 @@ export function EditProfileModal({
                     });
                     setCropPosition({ x: 0, y: 0 });
                   }}
-                  onError={() => setErrorMessage("Could not load this image. Choose a valid JPG, PNG, or WEBP file.")}
+                  onError={() => showError("Could not load this image. Choose a valid JPG, PNG, or WEBP file.")}
                   style={{
                     objectFit: "cover",
                     transform: `translate(${cropPosition.x}px, ${cropPosition.y}px) scale(${zoom})`,
@@ -456,9 +469,9 @@ export function EditProfileModal({
                   className="pointer-events-none select-none"
                 />
               </div>
-              <label className="flex items-center justify-between gap-3 text-xs font-medium text-slate-700 dark:text-slate-200">
+              <label className="flex items-center justify-between gap-3 text-xs font-medium text-secondary dark:text-secondary">
                 <span>Zoom</span>
-                <span className="tabular-nums text-slate-500 dark:text-slate-400">{zoom.toFixed(1)}×</span>
+                <span className="tabular-nums text-muted dark:text-muted">{zoom.toFixed(1)}×</span>
                 <input
                   type="range"
                   min="1"
@@ -475,7 +488,7 @@ export function EditProfileModal({
                     }
                   }}
                   aria-label="Zoom profile picture"
-                  className="w-36 accent-emerald-600"
+                  className="w-36 accent-brand"
                 />
               </label>
             </div>
@@ -487,7 +500,7 @@ export function EditProfileModal({
             </label>
             <div className="relative">
               <UserRound
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
                 aria-hidden="true"
               />
               <input
@@ -500,34 +513,27 @@ export function EditProfileModal({
                   setName(event.currentTarget.value);
                   setErrorMessage("");
                 }}
-                className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                className="h-11 w-full rounded-xl border border-subtle bg-surface pl-10 pr-3 text-sm text-primary outline-none transition-colors placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/15"
                 placeholder="Your name"
               />
             </div>
           </div>
 
-          {errorMessage ? (
-            <p
-              role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
-            >
-              {errorMessage}
-            </p>
-          ) : null}
+          <AnimatedFormError message={errorMessage} attempt={errorAttempt} />
 
-          <div className="flex justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <div className="flex justify-end gap-2 border-t border-subtle pt-4 dark:border-subtle">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="min-h-10 rounded-xl px-4 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="tactile-press min-h-10 rounded-xl px-4 text-sm font-medium text-secondary transition-colors hover:bg-container disabled:opacity-50 dark:text-secondary dark:hover:bg-elevated"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="tactile-press inline-flex min-h-10 items-center gap-2 rounded-xl bg-brand-fill px-4 text-sm font-semibold text-brand-on-fill transition-colors hover:bg-brand-fill-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />

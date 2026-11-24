@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { createIdempotencyKey } from "@/lib/idempotency";
 import { useAuth } from "@/context/AuthContext";
 import { AccessDeniedScreen } from "@/components/AccessDeniedScreen";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
@@ -64,6 +65,7 @@ async function notifyByEmail(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${idToken}`,
+        "X-Idempotency-Key": createIdempotencyKey(),
       },
       body: JSON.stringify({ emails: recipients, subject, html }),
     });
@@ -104,7 +106,7 @@ function DashboardLoading() {
   return (
     <div className="min-h-screen flex-1 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-7xl space-y-6">
-        <div className="h-16 animate-pulse rounded-2xl bg-slate-200/70 dark:bg-slate-800/70" />
+        <div className="h-16 animate-pulse rounded-2xl bg-container/70 dark:bg-elevated/70" />
         <SummaryCardSkeleton count={7} />
         <LogCardSkeleton />
       </div>
@@ -522,7 +524,7 @@ function DashboardContent() {
   if (loading || accessLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-brand" />
       </div>
     );
   }
@@ -573,7 +575,7 @@ function DashboardContent() {
       >
         <div className="mx-auto w-full min-w-0 max-w-7xl">
         {currentDataError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-center text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+          <div className="rounded-2xl border border-danger-border bg-danger-surface px-4 py-6 text-center text-sm leading-relaxed text-danger-on-surface">
             {currentDataError}
           </div>
         ) : dataLoading || !currentDataReady || !monthData || !stats ? (
@@ -583,7 +585,7 @@ function DashboardContent() {
             ) : currentTab === "meals" ? (
               <MealSheetSkeleton />
             ) : currentTab === "summary" ? (
-              <div className="h-72 animate-pulse rounded-3xl border border-slate-200/70 bg-slate-200/50 dark:border-slate-800 dark:bg-slate-800/50" />
+              <div className="h-72 animate-pulse rounded-3xl border border-subtle/70 bg-container/50 dark:border-subtle dark:bg-elevated/50" />
             ) : (
               <LogCardSkeleton />
             )}

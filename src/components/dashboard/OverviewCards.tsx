@@ -7,6 +7,7 @@ import {
   Home,
   Wallet,
 } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { formatCurrency, type MessStats, type MonthBills } from "@/lib/mess";
 import { DashboardSectionHeader } from "./DashboardSectionHeader";
 
@@ -16,17 +17,49 @@ interface OverviewCardsProps {
   isAdmin?: boolean;
 }
 
+function RollingNumber({ value, reduceMotion }: { value: string; reduceMotion: boolean }) {
+  return (
+    <span aria-label={value} className="tabular-nums">
+      <span aria-hidden="true" className="inline-flex items-baseline tabular-nums">
+        {Array.from(value).map((character, index) => {
+          if (!/\d/.test(character)) {
+            return <span key={`static-${index}-${character}`}>{character}</span>;
+          }
+
+          return (
+            <span
+              key={`digit-${index}`}
+              className="relative inline-flex h-[1.2em] min-w-[0.58em] items-center justify-center overflow-hidden align-middle"
+            >
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.span
+                  key={character}
+                  initial={reduceMotion ? false : { y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "-100%" }}
+                  transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  {character}
+                </motion.span>
+              </AnimatePresence>
+            </span>
+          );
+        })}
+      </span>
+    </span>
+  );
+}
+
 export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsProps) {
+  const reduceMotion = useReducedMotion() ?? false;
   const remainingBalance = stats.remainingBalance;
   const balanceCard = {
     label: "Meal Balance",
     value: `৳${formatCurrency(Math.abs(remainingBalance))}`,
     sub: remainingBalance >= 0 ? "in mess cash" : "negative balance / due",
     icon: Wallet,
-    color:
-      remainingBalance >= 0
-        ? "from-emerald-500 to-teal-600"
-        : "from-rose-500 to-red-600",
+    color: remainingBalance >= 0 ? "bg-brand-fill" : "bg-danger-fill",
   };
 
   const cards = [
@@ -35,28 +68,28 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       value: `৳${formatCurrency(stats.mealRate)}`,
       sub: "per meal",
       icon: TrendingUp,
-      color: "from-emerald-500 to-teal-600",
+      color: "bg-brand-fill",
     },
     {
       label: "Total Bazar",
       value: `৳${formatCurrency(stats.totalBazar)}`,
       sub: "this month",
       icon: ShoppingCart,
-      color: "from-blue-500 to-cyan-600",
+      color: "bg-brand-fill",
     },
     {
       label: "Total Meals",
       value: formatCurrency(stats.totalMeals),
       sub: "all members",
       icon: Utensils,
-      color: "from-violet-500 to-purple-600",
+      color: "bg-brand-fill",
     },
     {
       label: "Total Deposits",
       value: `৳${formatCurrency(stats.totalDeposits)}`,
       sub: "given this month",
       icon: Wallet,
-      color: "from-teal-500 to-emerald-600",
+      color: "bg-brand-fill",
     },
     balanceCard,
     {
@@ -64,14 +97,14 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       value: `৳${formatCurrency(bills.houseRent + bills.buaBill)}`,
       sub: "informational fixed costs",
       icon: Home,
-      color: "from-orange-500 to-amber-600",
+      color: "bg-brand-fill",
     },
     {
       label: bills.otherBillsDescription || "Other Bills",
       value: `৳${formatCurrency(bills.otherBills)}`,
       sub: "informational fixed cost",
       icon: Home,
-      color: "from-sky-500 to-blue-600",
+      color: "bg-brand-fill",
     },
   ];
 
@@ -83,24 +116,24 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
         title="Overview"
         description="Monthly totals and shared costs at a glance."
       />
-      <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 ${isAdmin ? "xl:grid-cols-4" : "xl:grid-cols-6"}`}>
+      <div className={`overview-cards-strip -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 scrollbar-hide sm:mx-0 sm:grid sm:snap-none sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 ${isAdmin ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-6"}`}>
         {visibleCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-sm transition-colors duration-150 dark:border-slate-800/80 dark:bg-slate-900 sm:p-5"
+            className="w-[72%] shrink-0 snap-start rounded-2xl border border-subtle/90 bg-surface p-3.5 shadow-sm transition-colors duration-150 dark:border-subtle/80 dark:bg-surface sm:w-auto sm:p-5"
           >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="min-w-0 truncate text-xs font-medium text-slate-500 dark:text-slate-400 sm:text-sm">
+              <span className="min-w-0 truncate text-xs font-medium text-muted dark:text-muted sm:text-sm">
                 {card.label}
               </span>
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${card.color}`}>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${card.color}`}>
                 <card.icon className="h-4.5 w-4.5 text-white" />
               </div>
             </div>
-            <p className="min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
-              {card.value}
+            <p className="min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold tabular-nums tracking-tight text-primary sm:text-2xl">
+              <RollingNumber value={card.value} reduceMotion={reduceMotion} />
             </p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-xs text-muted dark:text-muted">
               {card.sub}
             </p>
           </div>

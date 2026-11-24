@@ -162,7 +162,7 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
       />
       <div className="glass-card rounded-2xl">
       {mealLockBanner && (
-        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200 sm:px-6">
+        <div className="flex items-center gap-2 border-b border-warning-border bg-warning-surface px-4 py-3 text-sm font-medium leading-relaxed text-warning-on-surface sm:px-6">
           <ShieldAlert className="h-4 w-4" />
           <span>{mealLockBanner}</span>
         </div>
@@ -171,8 +171,8 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
       <div className="custom-scrollbar hidden max-h-[70vh] overflow-auto overscroll-contain rounded-b-2xl lg:block">
         <table className="w-full min-w-max table-fixed border-separate border-spacing-0 text-sm">
           <thead>
-            <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-800 dark:text-slate-100">
-              <th className="sticky left-0 top-0 z-30 h-12 w-28 border-b-2 border-slate-300 bg-slate-100 px-4 py-0 font-bold leading-none sm:px-6 dark:border-slate-600 dark:bg-slate-800">
+            <tr className="text-left text-xs font-bold uppercase tracking-wide text-primary">
+              <th className="sticky left-0 top-0 z-30 h-12 w-28 border-b-2 border-subtle bg-container px-4 py-0 font-bold leading-none sm:px-6 dark:border-subtle dark:bg-elevated">
                 DATE
               </th>
               {activeMembers.map((member) => (
@@ -180,19 +180,19 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                   key={member.id}
                   colSpan={3}
                   title={member.name}
-                  className="sticky top-0 z-20 h-12 min-w-[10.5rem] overflow-hidden border-b-2 border-slate-300 bg-slate-100 px-2 py-0 text-center font-bold leading-none dark:border-slate-600 dark:bg-slate-800"
+                  className="sticky top-0 z-20 h-12 min-w-[10.5rem] overflow-hidden border-b-2 border-subtle bg-container px-2 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated"
                 >
                   <span className="block truncate">{member.name}</span>
                 </th>
               ))}
             </tr>
-            <tr className="text-left text-[10px] font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">
-              <th className="sticky left-0 top-12 z-30 h-10 w-28 border-b border-slate-300 bg-slate-50 px-4 py-0 leading-none sm:px-6 dark:border-slate-600 dark:bg-slate-800" />
+            <tr className="text-left text-[10px] font-bold uppercase tracking-wide text-secondary dark:text-secondary">
+              <th className="sticky left-0 top-12 z-30 h-10 w-28 border-b border-subtle bg-elevated px-4 py-0 leading-none sm:px-6 dark:border-subtle dark:bg-elevated" />
               {activeMembers.map((member) => (
                 <Fragment key={member.id}>
-                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-0 text-center font-bold leading-none dark:border-slate-600 dark:bg-slate-800">B</th>
-                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-0 text-center font-bold leading-none dark:border-slate-600 dark:bg-slate-800">L</th>
-                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-0 text-center font-bold leading-none dark:border-slate-600 dark:bg-slate-800">D</th>
+                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-subtle bg-elevated px-1 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated">B</th>
+                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-subtle bg-elevated px-1 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated">L</th>
+                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-subtle bg-elevated px-1 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated">D</th>
                 </Fragment>
               ))}
             </tr>
@@ -204,15 +204,15 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
               const isFuture = row.date > todayKey;
               const isTodayRow = row.label === "Today";
               return (
-                <tr key={row.date} className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${isTodayRow ? "bg-emerald-50/70 dark:bg-emerald-950/20" : isFuture ? "bg-slate-50/60 text-slate-400 dark:bg-slate-950/30 dark:text-slate-500" : ""}`}>
-                  <td className={`sticky left-0 z-10 w-28 whitespace-nowrap px-4 py-2.5 font-medium sm:px-6 ${isTodayRow ? "bg-emerald-50 dark:bg-emerald-950" : isFuture ? "bg-slate-50 dark:bg-slate-950" : "bg-white dark:bg-slate-900"}`}>
+                <tr key={row.date} className={`border-b border-subtle last:border-0 ${isTodayRow ? "bg-success-surface/70" : isFuture ? "bg-elevated/60 text-muted" : ""}`}>
+                  <td className={`sticky left-0 z-10 w-28 whitespace-nowrap px-4 py-2.5 font-medium sm:px-6 ${isTodayRow ? "bg-success-surface" : isFuture ? "bg-elevated" : "bg-surface"}`}>
                     <div className="flex flex-col">
                       <span>{row.label}</span>
                       {!isPast && row.label !== "Today" && (
-                        <span className="text-[11px] font-normal text-slate-400">{record.date.slice(5)}</span>
+                        <span className="text-[11px] font-normal tabular-nums text-muted">{record.date.slice(5)}</span>
                       )}
                       {row.label === "Today" && (
-                        <span className="text-[11px] font-normal text-slate-400">{todayKey.slice(5)}</span>
+                        <span className="text-[11px] font-normal tabular-nums text-muted">{todayKey.slice(5)}</span>
                       )}
                     </div>
                   </td>
@@ -228,18 +228,18 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                                 type="button"
                                 onClick={(event) => handleMealToggleClick(event, record, member, field)}
                                 disabled={saving}
-                                className={`mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border px-2 text-[11px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isActive
-                                  ? "border-emerald-500 bg-emerald-500 text-white shadow-sm"
-                                  : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-slate-700"
+                                className={`mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border px-2 text-[11px] font-semibold tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${isActive
+                                  ? "border-brand-fill bg-brand-fill text-brand-on-fill shadow-sm"
+                                  : "border-subtle bg-surface text-secondary hover:border-brand hover:bg-success-surface"
                                   }`}
                               >
                                 {isActive ? "ON" : "OFF"}
                               </button>
                             ) : (
                               <div
-                                className={`mx-auto flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-medium ${isActive
-                                  ? "border-emerald-500/30 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                                  : "border-slate-200/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                className={`mx-auto flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-medium tabular-nums ${isActive
+                                  ? "border-success-border bg-success-surface text-success-on-surface"
+                                  : "border-subtle/70 bg-container text-secondary"
                                   }`}
                               >
                                 {isActive ? "ON" : "—"}
@@ -263,9 +263,9 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
           const isTodayRow = row.label === "Today";
           const isFuture = row.date > todayKey;
           return (
-            <div key={row.date} className={`rounded-xl border p-4 ${isTodayRow ? "border-emerald-300 bg-emerald-50/70 dark:border-emerald-700 dark:bg-emerald-950/20" : isFuture ? "border-slate-200/60 bg-slate-50/60 text-slate-400 dark:border-slate-800/60 dark:bg-slate-950/30 dark:text-slate-500" : "border-transparent bg-white/50 dark:bg-slate-800/40"}`}>
+            <div key={row.date} className={`rounded-xl border p-4 ${isTodayRow ? "border-success-border bg-success-surface/70" : isFuture ? "border-subtle/60 bg-elevated/60 text-muted" : "border-transparent bg-surface/50 dark:bg-elevated/40"}`}>
               <div className="mb-3 flex items-center justify-between">
-                <p className="font-semibold">{row.label} · {row.label === "Today" ? todayKey.slice(5) : row.label}</p>
+                <p className="font-semibold tabular-nums">{row.label} · {row.label === "Today" ? todayKey.slice(5) : row.label}</p>
               </div>
               <div className="space-y-3">
                 {activeMembers.map((member) => (
@@ -281,9 +281,9 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                             type="button"
                             onClick={(event) => handleMealToggleClick(event, record, member, field)}
                             disabled={saving}
-                            className={`h-10 min-w-10 cursor-pointer rounded-full border px-2 text-[11px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isActive
-                              ? "border-emerald-500 bg-emerald-500 text-white"
-                              : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-slate-700"
+                            className={`h-10 min-w-10 cursor-pointer rounded-full border px-2 text-[11px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${isActive
+                              ? "border-brand-fill bg-brand-fill text-brand-on-fill"
+                              : "border-subtle bg-surface text-secondary hover:border-brand hover:bg-success-surface"
                               }`}
                           >
                             {field[0].toUpperCase()}
@@ -292,8 +292,8 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                           <div
                             key={field}
                             className={`flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-semibold ${isActive
-                              ? "border-emerald-500/30 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                              : "border-slate-200/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                              ? "border-success-border bg-success-surface text-success-on-surface"
+                              : "border-subtle/70 bg-container text-secondary"
                               }`}
                           >
                             {field[0].toUpperCase()}

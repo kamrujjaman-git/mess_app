@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 import {
@@ -56,6 +57,7 @@ export function ManageMembers({
   onSetMemberStatus,
   onDeleteMember,
 }: ManageMembersProps) {
+  const reduceMotion = useReducedMotion() ?? false;
   const { isSuperAdmin } = useAuth();
   const primaryAdminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").trim().toLowerCase();
 
@@ -182,17 +184,17 @@ export function ManageMembers({
             title="Add New Member"
             description="Add a member and optional contact details."
             action={
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                {activeCount} active / {members.length} total
+              <span className="text-xs font-medium text-secondary dark:text-secondary">
+                <span className="tabular-nums">{activeCount} active / {members.length} total</span>
               </span>
             }
           />
           <div id="admin-add-member" className="glass-card rounded-2xl p-4 sm:p-6">
             <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
               <label className="block min-w-0">
-                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Full name</span>
+                <span className="mb-1 block text-xs font-medium text-secondary dark:text-secondary">Full name</span>
                 <span className="relative block">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                   <input
                     type="text"
                     value={newName}
@@ -202,9 +204,9 @@ export function ManageMembers({
                 </span>
               </label>
               <label className="block min-w-0">
-                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Email address</span>
+                <span className="mb-1 block text-xs font-medium text-secondary dark:text-secondary">Email address</span>
                 <span className="relative block">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                   <input
                     type="email"
                     value={newEmail}
@@ -214,7 +216,7 @@ export function ManageMembers({
                 </span>
               </label>
               <label className="block min-w-0">
-                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">WhatsApp number</span>
+                <span className="mb-1 block text-xs font-medium text-secondary dark:text-secondary">WhatsApp number</span>
                 <input
                   type="text"
                   value={newWhatsAppNumber}
@@ -226,7 +228,7 @@ export function ManageMembers({
                 type="button"
                 onClick={handleAdd}
                 disabled={saving === "add" || !newName.trim()}
-                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 disabled:opacity-60"
+                className="tactile-press flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-fill px-5 text-sm font-semibold text-brand-on-fill transition-colors duration-150 hover:bg-brand-fill-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
               >
                 {saving === "add" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -248,23 +250,23 @@ export function ManageMembers({
             title="All Members"
             description="Review member details, status, and access."
             action={
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                {members.length} members
+              <span className="text-xs font-medium text-secondary dark:text-secondary">
+                <span className="tabular-nums">{members.length}</span> members
               </span>
             }
           />
           <div id="admin-all-members" className="glass-card overflow-hidden rounded-2xl">
           {members.length === 0 ? (
-            <p className="p-6 text-center text-sm text-slate-500">No members yet.</p>
+            <p className="p-6 text-center text-sm text-muted">No members yet.</p>
           ) : (
-            <ul className="divide-y divide-slate-300/50 dark:divide-slate-700/60">
+            <ul className="divide-y divide-subtle/60">
               {members.map((member) => (
               <li
                 key={member.id}
                 className={`px-4 py-4 transition-colors sm:px-6 ${
                   member.status === "active"
-                    ? "hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
-                    : "bg-slate-100/70 text-slate-600 hover:bg-slate-100 dark:bg-slate-950/30 dark:text-slate-400 dark:hover:bg-slate-900/50"
+                    ? "hover:bg-elevated/80 dark:hover:bg-elevated/40"
+                    : "bg-container/70 text-secondary hover:bg-container"
                 }`}
               >
                 {editingId === member.id ? (
@@ -297,7 +299,7 @@ export function ManageMembers({
                         type="button"
                         onClick={() => handleSaveEdit(member)}
                         disabled={saving === member.id}
-                        className="flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                        className="tactile-press flex h-9 items-center gap-1.5 rounded-lg bg-brand-fill px-3 text-sm font-medium text-brand-on-fill hover:bg-brand-fill-hover disabled:opacity-60"
                       >
                         {saving === member.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -311,7 +313,7 @@ export function ManageMembers({
                       <button
                         type="button"
                         onClick={() => setEditingId(null)}
-                        className="h-9 rounded-lg px-3 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                        className="h-9 rounded-lg px-3 text-sm font-medium text-secondary hover:bg-container dark:text-muted dark:hover:bg-elevated"
                       >
                         Cancel
                       </button>
@@ -330,7 +332,7 @@ export function ManageMembers({
                           className="h-10 w-10 shrink-0 rounded-full object-cover"
                         />
                       ) : (
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-container text-sm font-semibold text-secondary dark:bg-container dark:text-secondary">
                           {(member.name.trim().charAt(0) || "M").toUpperCase()}
                         </span>
                       )}
@@ -339,18 +341,18 @@ export function ManageMembers({
                         <p className="truncate font-medium">{member.name}</p>
                         <span
                           className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${member.status === "active"
-                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                            : "border border-slate-300/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            ? "bg-success-surface text-success-on-surface"
+                            : "border border-subtle/70 bg-container text-secondary dark:border-subtle dark:bg-elevated dark:text-secondary"
                             }`}
                         >
                           {member.status === "active" ? "Active" : "INACTIVE"}
                         </span>
                         {primaryAdminEmail && member.email?.trim().toLowerCase() === primaryAdminEmail ? (
-                          <span className="flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                          <span className="flex-shrink-0 rounded-full bg-success-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-success-on-surface">
                             Super Admin
                           </span>
                         ) : member.isAdmin ? (
-                          <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                          <span className="flex-shrink-0 rounded-full bg-warning-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning-on-surface">
                             Admin
                           </span>
                         ) : null}
@@ -359,7 +361,7 @@ export function ManageMembers({
                             href={buildWhatsAppLink(member, 0)}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                            className="flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-success-border bg-success-surface text-success transition hover:bg-success-border"
                             aria-label={`Open WhatsApp for ${member.name}`}
                             title={`Open WhatsApp for ${member.name}`}
                           >
@@ -368,12 +370,12 @@ export function ManageMembers({
                         )}
                       </div>
                       {member.email && (
-                        <p className="mt-0.5 truncate text-sm text-slate-500">
+                        <p className="mt-0.5 truncate text-sm text-muted">
                           {member.email}
                         </p>
                       )}
                       {member.whatsAppNumber && (
-                        <p className="mt-0.5 truncate text-sm text-slate-500">
+                        <p className="mt-0.5 truncate text-sm text-muted">
                           WhatsApp: {member.whatsAppNumber}
                         </p>
                       )}
@@ -386,20 +388,42 @@ export function ManageMembers({
                           type="button"
                           onClick={() => handleToggleAdminAccess(member)}
                           disabled={saving === `admin-${member.id}`}
-                          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors sm:h-9 sm:px-3 sm:text-xs ${member.isAdmin
-                            ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/50 dark:text-amber-300"
-                            : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300"
+                          className={`tactile-toggle inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors sm:h-9 sm:px-3 sm:text-xs ${member.isAdmin
+                            ? "bg-warning-surface text-warning-on-surface hover:bg-warning-border"
+                            : "bg-success-surface text-success-on-surface hover:bg-success-border"
                             }`}
                           title={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
                           aria-label={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
                         >
-                          {saving === `admin-${member.id}` ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
-                          ) : member.isAdmin ? (
-                            <ShieldOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          ) : (
-                            <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          )}
+                          <AnimatePresence initial={false} mode="wait">
+                            {saving === `admin-${member.id}` ? (
+                              <motion.span
+                                key="saving"
+                                initial={reduceMotion ? false : { scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.8, opacity: 0 }}
+                                transition={reduceMotion ? { duration: 0 } : { duration: 0.12 }}
+                                className="inline-flex"
+                              >
+                                <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
+                              </motion.span>
+                            ) : (
+                              <motion.span
+                                key={member.isAdmin ? "admin" : "member"}
+                                initial={reduceMotion ? false : { scale: 0.75, rotate: -8 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                exit={{ scale: 0.8, opacity: 0 }}
+                                transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 24 }}
+                                className="inline-flex"
+                              >
+                                {member.isAdmin ? (
+                                  <ShieldOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                ) : (
+                                  <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                )}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
                           <span className="whitespace-nowrap">
                             {member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
                           </span>
@@ -415,9 +439,9 @@ export function ManageMembers({
                           type="button"
                           onClick={() => handleToggleStatus(member)}
                           disabled={saving === `status-${member.id}` || saving === `remove-${member.id}`}
-                          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors sm:h-9 sm:w-9 ${member.status === "active"
-                            ? "text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/40"
-                            : "text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                          className={`tactile-toggle flex h-8 w-8 items-center justify-center rounded-lg transition-colors sm:h-9 sm:w-9 ${member.status === "active"
+                            ? "text-warning hover:bg-warning-surface"
+                            : "text-brand hover:bg-success-surface"
                             }`}
                           aria-label={
                             member.status === "active"
@@ -430,20 +454,42 @@ export function ManageMembers({
                               : "Reactivate"
                           }
                         >
-                          {saving === `status-${member.id}` ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
-                          ) : member.status === "active" ? (
-                            <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          ) : (
-                            <UserCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          )}
+                          <AnimatePresence initial={false} mode="wait">
+                            {saving === `status-${member.id}` ? (
+                              <motion.span
+                                key="saving"
+                                initial={reduceMotion ? false : { scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.8, opacity: 0 }}
+                                transition={reduceMotion ? { duration: 0 } : { duration: 0.12 }}
+                                className="inline-flex"
+                              >
+                                <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" />
+                              </motion.span>
+                            ) : (
+                              <motion.span
+                                key={member.status}
+                                initial={reduceMotion ? false : { scale: 0.75, rotate: -8 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                exit={{ scale: 0.8, opacity: 0 }}
+                                transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 24 }}
+                                className="inline-flex"
+                              >
+                                {member.status === "active" ? (
+                                  <UserX className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                ) : (
+                                  <UserCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                )}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
                         </button>
                         {isSuperAdmin ? (
                           <button
                             type="button"
                             onClick={() => setMemberPendingDelete(member)}
                             disabled={saving === `delete-${member.id}`}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 sm:h-9 sm:w-9"
+                            className="tactile-press flex h-8 w-8 items-center justify-center rounded-lg text-danger transition hover:bg-danger-surface sm:h-9 sm:w-9"
                             title={`Delete ${member.name}`}
                             aria-label={`Delete ${member.name}`}
                           >
@@ -467,9 +513,9 @@ export function ManageMembers({
       ) : null}
       <DeleteConfirmationModal
         open={Boolean(memberPendingDelete)}
-        title="Delete this entry?"
+        title="Remove this member?"
         description={memberPendingDelete ? `Permanently delete ${memberPendingDelete.name} from the mess database? This removes the member record and revokes login access.` : ""}
-        confirmLabel="Delete member"
+        confirmLabel="Remove member"
         busy={Boolean(memberPendingDelete && saving === `delete-${memberPendingDelete.id}`)}
         onConfirm={handleDeleteMember}
         onCancel={() => setMemberPendingDelete(null)}

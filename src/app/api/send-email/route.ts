@@ -1,10 +1,17 @@
-import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { getAdminAuth, getAdminFirestore } from "@/lib/firebase-admin";
+import { withIdempotency } from "@/lib/idempotency";
+import { apiResponse, withApiObservability } from "@/lib/observability";
+import { consumeRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const EMAIL_RATE_LIMIT = 10;
 const EMAIL_RATE_WINDOW_MS = 60 * 60 * 1000;
+const SMTP_FAILURE_THRESHOLD = 5;
+const SMTP_CIRCUIT_COOLDOWN_MS = 60 * 1000;
 const SAFE_EMAIL_TAGS = new Set(["p", "br", "strong", "b", "em", "i", "ul", "ol", "li"]);
+
+let consecutiveSmtpFailures = 0;
+let smtpCircuitOpenUntil = 0;
 
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -60,24 +67,64 @@ function normalizeRecipientEmails(value: unknown): string[] {
         .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+class SendEmailError extends Error {
+    constructor(message: string, readonly status: number, readonly step: string) {
+        super(message);
+        this.name = "SendEmailError";
+    }
+}
+
+function isInvalidIdTokenError(error: unknown): boolean {
+    if (!isRecord(error) || typeof error.code !== "string") return false;
+    return new Set([
+        "auth/argument-error",
+        "auth/id-token-expired",
+        "auth/id-token-revoked",
+        "auth/invalid-id-token",
+        "auth/user-disabled",
+        "auth/user-not-found",
+    ]).has(error.code);
+}
+
 async function authorizeRequest(
     request: Request
 ): Promise<{ allowedRecipients: Set<string>; uid: string }> {
     const authorization = request.headers.get("authorization") ?? "";
     const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
     if (!token) {
-        throw new Error("Missing Firebase ID token.");
+        throw new SendEmailError("Sign in before sending email notifications.", 401, "authorization");
     }
 
-    const decodedToken = await getAdminAuth().verifyIdToken(token);
+    let decodedToken: Awaited<ReturnType<ReturnType<typeof getAdminAuth>["verifyIdToken"]>>;
+    try {
+        decodedToken = await getAdminAuth().verifyIdToken(token);
+    } catch (error) {
+        const invalidToken = isInvalidIdTokenError(error);
+        throw new SendEmailError(
+            invalidToken
+                ? "The session is invalid or expired. Sign in again."
+                : "Could not verify your session right now. Try again.",
+            invalidToken ? 401 : 503,
+            "token-verification"
+        );
+    }
     if (decodedToken.email_verified !== true || !decodedToken.email) {
-        throw new Error("A verified system account is required.");
+        throw new SendEmailError("A verified system account is required.", 403, "account-validation");
     }
 
-    const membersSnapshot = await getAdminFirestore().doc("settings/members").get();
+    let membersSnapshot;
+    try {
+        membersSnapshot = await getAdminFirestore().doc("settings/members").get();
+    } catch {
+        throw new SendEmailError("The member directory is temporarily unavailable.", 503, "member-lookup");
+    }
     const members = membersSnapshot.data()?.members;
     if (!Array.isArray(members)) {
-        throw new Error("System member directory is unavailable.");
+        throw new SendEmailError("The member directory is temporarily unavailable.", 503, "member-lookup");
     }
 
     const allowedRecipients = new Set(
@@ -99,13 +146,15 @@ async function authorizeRequest(
     const superAdminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").trim().toLowerCase();
     const callerEmail = decodedToken.email.trim().toLowerCase();
     if (!allowedRecipients.has(callerEmail) && callerEmail !== superAdminEmail) {
-        throw new Error("The account is not an active system member.");
+        throw new SendEmailError("The account is not an active system member.", 403, "account-validation");
     }
 
     return { allowedRecipients, uid: decodedToken.uid };
 }
 
-async function consumeEmailRateLimit(uid: string): Promise<boolean> {
+async function consumeEmailRateLimit(
+    uid: string
+): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
     const firestore = getAdminFirestore();
     const rateLimitRef = firestore.doc(`rate_limits/email_${encodeURIComponent(uid)}`);
 
@@ -119,12 +168,20 @@ async function consumeEmailRateLimit(uid: string): Promise<boolean> {
 
         if (!snapshot.exists || now - windowStart >= EMAIL_RATE_WINDOW_MS || now < windowStart) {
             transaction.set(rateLimitRef, { windowStartedAt: now, count: 1 });
-            return true;
+            return { allowed: true, retryAfterSeconds: 0 };
         }
-        if (requestCount >= EMAIL_RATE_LIMIT) return false;
+        if (requestCount >= EMAIL_RATE_LIMIT) {
+            return {
+                allowed: false,
+                retryAfterSeconds: Math.max(
+                    1,
+                    Math.ceil((windowStart + EMAIL_RATE_WINDOW_MS - now) / 1000)
+                ),
+            };
+        }
 
         transaction.update(rateLimitRef, { count: requestCount + 1 });
-        return true;
+        return { allowed: true, retryAfterSeconds: 0 };
     });
 }
 
@@ -191,117 +248,181 @@ function buildModernHtmlTemplate({
     `;
 }
 
-export async function POST(request: Request) {
+function getSmtpCircuitRetryAfter(now = Date.now()): number {
+    if (smtpCircuitOpenUntil <= now) {
+        smtpCircuitOpenUntil = 0;
+        consecutiveSmtpFailures = 0;
+        return 0;
+    }
+    return Math.max(1, Math.ceil((smtpCircuitOpenUntil - now) / 1000));
+}
+
+function recordSmtpFailure(now = Date.now()) {
+    consecutiveSmtpFailures += 1;
+    if (consecutiveSmtpFailures >= SMTP_FAILURE_THRESHOLD) {
+        smtpCircuitOpenUntil = now + SMTP_CIRCUIT_COOLDOWN_MS;
+    }
+}
+
+function recordSmtpSuccess() {
+    consecutiveSmtpFailures = 0;
+    smtpCircuitOpenUntil = 0;
+}
+
+async function sendEmailAuthorized(
+    request: Request,
+    authorization: { allowedRecipients: Set<string>; uid: string }
+): Promise<Response> {
+    let parsedBody: unknown;
     try {
+        parsedBody = await request.json();
+    } catch {
+        return apiResponse(
+            { ok: false, error: "A valid JSON request body is required.", step: "body-parsing" },
+            400,
+            "body-parsing"
+        );
+    }
+    const body = isRecord(parsedBody) ? parsedBody : {};
+    const recipientEmails = normalizeRecipientEmails(
+        body.emails ?? body.email ?? body.recipientEmail
+    ).map((email) => email.toLowerCase());
+
+    if (recipientEmails.some((email) => !authorization.allowedRecipients.has(email))) {
+        return apiResponse(
+            { ok: false, error: "Recipients must be active members of the mess.", step: "recipient-validation" },
+            403,
+            "recipient-validation"
+        );
+    }
+    if (recipientEmails.length > 20) {
+        return apiResponse(
+            { ok: false, error: "Too many recipients.", step: "recipient-validation" },
+            400,
+            "recipient-validation"
+        );
+    }
+    if (recipientEmails.length === 0) {
+        return apiResponse({ ok: true, sent: 0, message: "No recipient emails provided." });
+    }
+    if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+        return apiResponse({
+            ok: true,
+            sent: 0,
+            skipped: true,
+            message: "Email service is not configured.",
+        });
+    }
+
+    const circuitRetryAfter = getSmtpCircuitRetryAfter();
+    if (circuitRetryAfter > 0) {
+        return apiResponse(
+            {
+                ok: false,
+                error: "Email delivery is temporarily unavailable. Try again shortly.",
+                step: "smtp-circuit-open",
+            },
+            503,
+            "smtp-circuit-open",
+            { "Retry-After": String(circuitRetryAfter) }
+        );
+    }
+
+    let emailLimit: { allowed: boolean; retryAfterSeconds: number };
+    try {
+        emailLimit = await consumeEmailRateLimit(authorization.uid);
+    } catch {
+        return apiResponse(
+            { ok: false, error: "Email service is temporarily unavailable. Try again later.", step: "email-rate-limit" },
+            503,
+            "email-rate-limit"
+        );
+    }
+    if (!emailLimit.allowed) {
+        return rateLimitResponse(
+            emailLimit.retryAfterSeconds,
+            "Email sending limit reached. Try again later."
+        );
+    }
+
+    const subject = typeof body.subject === "string" && body.subject.trim().length > 0
+        ? body.subject.trim().slice(0, 200)
+        : "Mess App Notification";
+    const html = typeof body.html === "string" && body.html.trim().length > 0
+        ? sanitizeEmailHtml(body.html)
+        : buildModernHtmlTemplate({
+            title: "Mess App Update",
+            summary: "Your latest mess update is ready.",
+            date: new Date().toLocaleDateString(),
+        });
+    const text = [
+        "Mess App Update",
+        "Your latest mess update is ready.",
+        `Date: ${new Date().toLocaleDateString()}`,
+    ].join("\n");
+
+    try {
+        const info = await transporter.sendMail({
+            from: `Mess App <${process.env.SMTP_EMAIL}>`,
+            to: recipientEmails,
+            subject,
+            text,
+            html,
+            headers: {
+                "X-Priority": "3",
+                "X-MSMail-Priority": "Normal",
+                Importance: "Normal",
+                "X-Mailer": "Nodemailer",
+            },
+        });
+        recordSmtpSuccess();
+        return apiResponse({
+            ok: true,
+            sent: recipientEmails.length,
+            messageId: info.messageId ?? null,
+        });
+    } catch {
+        recordSmtpFailure();
+        return apiResponse(
+            { ok: false, error: "Email delivery failed. The data change was saved, but its notification could not be sent.", step: "smtp-send" },
+            502,
+            "smtp-send"
+        );
+    }
+}
+
+export async function POST(request: Request) {
+    return withApiObservability(request, "/api/send-email", async () => {
         let authorization: { allowedRecipients: Set<string>; uid: string };
         try {
             authorization = await authorizeRequest(request);
-        } catch (authorizationError) {
-            return NextResponse.json(
-                { ok: false, error: authorizationError instanceof Error ? authorizationError.message : "Unauthorized" },
-                { status: 401 }
+        } catch (error) {
+            if (error instanceof SendEmailError) {
+                return apiResponse(
+                    { ok: false, error: error.message, step: error.step },
+                    error.status,
+                    error.step
+                );
+            }
+            return apiResponse(
+                { ok: false, error: "Email authorization is temporarily unavailable.", step: "authorization" },
+                503,
+                "authorization"
             );
         }
 
-        const body = (await request.json().catch(() => ({}))) ?? {};
-        const recipientEmails = normalizeRecipientEmails(body.emails ?? body.email ?? body.recipientEmail)
-            .map((email) => email.toLowerCase());
-        if (recipientEmails.some((email) => !authorization.allowedRecipients.has(email))) {
-            return NextResponse.json(
-                { ok: false, error: "Recipients must be active members of the mess." },
-                { status: 403 }
+        return withIdempotency(request, `send-email:${authorization.uid}`, async () => {
+            const localLimit = consumeRateLimit(
+                `send-email:${authorization.uid}`,
+                { limit: EMAIL_RATE_LIMIT, windowMs: EMAIL_RATE_WINDOW_MS }
             );
-        }
-
-        if (recipientEmails.length > 20) {
-            return NextResponse.json(
-                { ok: false, error: "Too many recipients." },
-                { status: 400 }
-            );
-        }
-
-        if (recipientEmails.length === 0) {
-            return NextResponse.json({ ok: true, sent: 0, message: "No recipient emails provided." });
-        }
-
-        if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-            console.warn("SMTP credentials are not set; skipping email send.");
-            return NextResponse.json({
-                ok: true,
-                sent: 0,
-                skipped: true,
-                message: "Email service is not configured.",
-            });
-        }
-
-        let withinRateLimit: boolean;
-        try {
-            withinRateLimit = await consumeEmailRateLimit(authorization.uid);
-        } catch (rateLimitError) {
-            console.error("Email rate limit check failed:", rateLimitError);
-            return NextResponse.json(
-                { ok: false, error: "Email service is temporarily unavailable. Try again later." },
-                { status: 503 }
-            );
-        }
-        if (!withinRateLimit) {
-            return NextResponse.json(
-                { ok: false, error: "Email sending limit reached. Try again in an hour." },
-                { status: 429 }
-            );
-        }
-
-        const subject = typeof body.subject === "string" && body.subject.trim().length > 0
-            ? body.subject.trim().slice(0, 200)
-            : "Mess App Notification";
-        const html = typeof body.html === "string" && body.html.trim().length > 0
-            ? sanitizeEmailHtml(body.html)
-            : buildModernHtmlTemplate({
-                title: "Mess App Update",
-                summary: "Your latest mess update is ready.",
-                date: new Date().toLocaleDateString(),
-            });
-        const text = [
-            `Mess App Update`,
-            `Your latest mess update is ready.`,
-            `Date: ${new Date().toLocaleDateString()}`,
-        ].join("\n");
-
-        try {
-            const info = await transporter.sendMail({
-                from: `Mess App <${process.env.SMTP_EMAIL}>`,
-                to: recipientEmails,
-                subject,
-                text,
-                html,
-                headers: {
-                    "X-Priority": "3",
-                    "X-MSMail-Priority": "Normal",
-                    Importance: "Normal",
-                    "X-Mailer": "Nodemailer",
-                },
-            });
-
-            return NextResponse.json({
-                ok: true,
-                sent: recipientEmails.length,
-                messageId: info.messageId ?? null,
-            });
-        } catch (sendError) {
-            console.error("SMTP send exception:", sendError);
-            return NextResponse.json(
-                {
-                    ok: false,
-                    error: sendError instanceof Error ? sendError.message : "Email delivery failed.",
-                },
-                { status: 500 }
-            );
-        }
-    } catch (error) {
-        console.error("send-email route failed:", error);
-        return NextResponse.json(
-            { ok: false, error: error instanceof Error ? error.message : "Unknown error" },
-            { status: 500 }
-        );
-    }
+            if (!localLimit.allowed) {
+                return rateLimitResponse(
+                    localLimit.retryAfterSeconds,
+                    "Email sending limit reached. Try again later."
+                );
+            }
+            return sendEmailAuthorized(request, authorization);
+        });
+    });
 }

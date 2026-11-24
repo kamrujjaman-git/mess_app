@@ -33,7 +33,7 @@ export default function RootLayout({
     >
       <body
         suppressHydrationWarning
-        className="min-h-full w-full max-w-full flex flex-col overflow-x-hidden bg-[#f0f3f8] font-sans text-slate-900 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100"
+        className="min-h-full w-full max-w-full flex flex-col overflow-x-hidden bg-canvas font-sans text-primary antialiased transition-colors duration-300"
       >
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>

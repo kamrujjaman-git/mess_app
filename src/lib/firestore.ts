@@ -14,6 +14,7 @@ import {
   Unsubscribe,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import { createIdempotencyKey } from "./idempotency";
 import {
   BazarEntry,
   DailyMealRecord,
@@ -321,6 +322,8 @@ export async function updateMember(updated: Member): Promise<void> {
   });
 }
 
+const memberDeletionRequests = new Map<string, Promise<void>>();
+
 export async function deleteMember(memberId: string): Promise<void> {
   assertSuperAdmin();
   const user = auth.currentUser;
@@ -328,21 +331,35 @@ export async function deleteMember(memberId: string): Promise<void> {
     throw new Error("An authenticated Super Admin is required to delete members.");
   }
 
-  const response = await fetch("/api/delete-member", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${await user.getIdToken()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ memberId }),
-  });
-  const result = await response.json() as { error?: unknown };
-  if (!response.ok) {
-    throw new Error(
-      typeof result.error === "string"
-        ? result.error
-        : "Member deletion failed. Refresh the dashboard and try again."
-    );
+  const existingRequest = memberDeletionRequests.get(memberId);
+  if (existingRequest) return existingRequest;
+
+  const deletionRequest = (async () => {
+    const response = await fetch("/api/delete-member", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${await user.getIdToken()}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": createIdempotencyKey(),
+      },
+      body: JSON.stringify({ memberId }),
+    });
+    const result = await response.json().catch(() => ({})) as { error?: unknown };
+    if (!response.ok) {
+      throw new Error(
+        typeof result.error === "string"
+          ? result.error
+          : "Member deletion failed. Refresh the dashboard and try again."
+      );
+    }
+  })();
+  memberDeletionRequests.set(memberId, deletionRequest);
+  try {
+    await deletionRequest;
+  } finally {
+    if (memberDeletionRequests.get(memberId) === deletionRequest) {
+      memberDeletionRequests.delete(memberId);
+    }
   }
 }
 

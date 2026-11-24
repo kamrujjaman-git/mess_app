@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { Loader2, Save, Plus } from "lucide-react";
+import { ChevronDown, Loader2, Save, Plus } from "lucide-react";
 import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
 import { getActiveMembers, getTodayDateString, isDateOnOrBeforeToday } from "@/lib/mess";
+import { AnimatedFormError } from "@/components/ui/AnimatedFormError";
 import { ManageMembers } from "./ManageMembers";
 import { inputClass } from "./InlineActions";
 import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
@@ -35,6 +36,21 @@ interface AdminPanelProps {
   onDeleteMember: (memberId: string) => Promise<void>;
 }
 
+type EntryFormKey = "meals" | "bazar" | "deposit";
+
+interface FormErrorState {
+  message: string;
+  attempt: number;
+}
+
+const DEPOSIT_QUICK_AMOUNTS = [500, 1000, 2000, 5000];
+const BAZAR_QUICK_PICKS = ["Vegetables", "Rice", "Cooking oil", "Groceries"];
+
+function getDefaultEntryDate(monthKey: string) {
+  const today = getTodayDateString();
+  return today.slice(0, 7) === monthKey ? today : `${monthKey}-01`;
+}
+
 export function AdminPanel({
   members,
   bills,
@@ -63,24 +79,60 @@ export function AdminPanel({
     }
   );
 
-  const [bazarDate, setBazarDate] = useState(`${selectedMonthKey}-01`);
+  const [bazarDate, setBazarDate] = useState(() => getDefaultEntryDate(selectedMonthKey));
   const [bazarAmount, setBazarAmount] = useState("");
   const [bazarDesc, setBazarDesc] = useState("");
+  const [bazarMoreOptionsOpen, setBazarMoreOptionsOpen] = useState(false);
   const [selectedBuyerIds, setSelectedBuyerIds] = useState<string[]>([]);
 
   const [depositMemberId, setDepositMemberId] = useState(
     activeMembers[0]?.id ?? ""
   );
   const [depositAmount, setDepositAmount] = useState("");
-  const [depositDate, setDepositDate] = useState(`${selectedMonthKey}-01`);
+  const [depositDate, setDepositDate] = useState(() => getDefaultEntryDate(selectedMonthKey));
   const [depositNote, setDepositNote] = useState("");
+  const [depositNoteOpen, setDepositNoteOpen] = useState(false);
 
   const [billDraft, setBillDraft] = useState<MonthBills | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Partial<Record<EntryFormKey, FormErrorState>>>({});
+  const inFlightSubmissionsRef = useRef(new Set<string>());
   const billInputs = billDraft ?? bills;
   const selectedDepositMemberId = activeMembers.some((member) => member.id === depositMemberId)
     ? depositMemberId
     : activeMembers[0]?.id ?? "";
+
+  function beginSubmission(key: string) {
+    if (inFlightSubmissionsRef.current.has(key)) return false;
+    inFlightSubmissionsRef.current.add(key);
+    setSaving(key);
+    return true;
+  }
+
+  function finishSubmission(key: string) {
+    inFlightSubmissionsRef.current.delete(key);
+    setSaving((current) => current === key ? null : current);
+  }
+
+  function showFormError(form: EntryFormKey, message: string) {
+    setFormErrors((previous) => ({
+      ...previous,
+      [form]: {
+        message,
+        attempt: (previous[form]?.attempt ?? 0) + 1,
+      },
+    }));
+    toast.error(message);
+  }
+
+  function clearFormError(form: EntryFormKey) {
+    setFormErrors((previous) => {
+      if (!previous[form]) return previous;
+      const next = { ...previous };
+      delete next[form];
+      return next;
+    });
+  }
 
   function updateMeal(
     memberId: string,
@@ -100,10 +152,11 @@ export function AdminPanel({
   async function handleSaveMeals() {
     if (!onSaveMeals) return;
     if (!isDateOnOrBeforeToday(mealDate)) {
-      toast.error("Meal entries can only be saved through today.");
+      showFormError("meals", "Meal entries can only be saved through today.");
       return;
     }
-    setSaving("meals");
+    clearFormError("meals");
+    if (!beginSubmission("meals")) return;
     try {
       await onSaveMeals(mealDate, mealInputs);
       toast.success("Daily meals saved successfully.");
@@ -111,11 +164,12 @@ export function AdminPanel({
       console.error("Save meals failed:", error);
       toast.error("Failed to save daily meals. Please try again.");
     } finally {
-      setSaving(null);
+      finishSubmission("meals");
     }
   }
 
   function toggleBuyerSelection(memberId: string) {
+    clearFormError("bazar");
     setSelectedBuyerIds((previous) =>
       previous.includes(memberId)
         ? previous.filter((id) => id !== memberId)
@@ -126,26 +180,32 @@ export function AdminPanel({
   async function handleAddBazar() {
     if (!onAddBazar) return;
     const amount = Math.round(parseFloat(bazarAmount));
-    if (!amount || amount <= 0 || !isDateOnOrBeforeToday(bazarDate)) {
-      toast.error("Please enter a valid bazar amount.");
+    if (!amount || amount <= 0) {
+      showFormError("bazar", "Enter a bazar amount greater than zero.");
+      return;
+    }
+    if (!isDateOnOrBeforeToday(bazarDate)) {
+      showFormError("bazar", "Choose a bazar date on or before today.");
       return;
     }
     if (selectedBuyerIds.length === 0) {
-      toast.error("Please select at least one buyer for this bazar entry.");
+      showFormError("bazar", "Select at least one buyer for this bazar entry.");
       return;
     }
-    setSaving("bazar");
+    clearFormError("bazar");
+    if (!beginSubmission("bazar")) return;
     try {
       await onAddBazar(bazarDate, amount, bazarDesc, selectedBuyerIds);
       setBazarAmount("");
       setBazarDesc("");
+      setBazarMoreOptionsOpen(false);
       setSelectedBuyerIds([]);
       toast.success("Bazar entry added successfully.");
     } catch (error) {
       console.error("Add bazar failed:", error);
       toast.error("Failed to add bazar entry. Please try again.");
     } finally {
-      setSaving(null);
+      finishSubmission("bazar");
     }
   }
 
@@ -153,11 +213,16 @@ export function AdminPanel({
     if (!onAddDeposit) return;
     const amount = Math.round(parseFloat(depositAmount));
     const member = members.find((m) => m.id === depositMemberId);
-    if (!amount || amount <= 0 || !member || !isDateOnOrBeforeToday(depositDate)) {
-      toast.error("Please enter a valid deposit amount and member.");
+    if (!amount || amount <= 0 || !member) {
+      showFormError("deposit", "Choose a member and enter a deposit amount greater than zero.");
       return;
     }
-    setSaving("deposit");
+    if (!isDateOnOrBeforeToday(depositDate)) {
+      showFormError("deposit", "Choose a deposit date on or before today.");
+      return;
+    }
+    clearFormError("deposit");
+    if (!beginSubmission("deposit")) return;
     try {
       await onAddDeposit(
         member.id,
@@ -168,18 +233,19 @@ export function AdminPanel({
       );
       setDepositAmount("");
       setDepositNote("");
+      setDepositNoteOpen(false);
       toast.success("Deposit added successfully.");
     } catch (error) {
       console.error("Add deposit failed:", error);
       toast.error("Failed to add deposit. Please try again.");
     } finally {
-      setSaving(null);
+      finishSubmission("deposit");
     }
   }
 
   async function handleSaveBills() {
     if (!onUpdateBills) return;
-    setSaving("bills");
+    if (!beginSubmission("bills")) return;
     try {
       await onUpdateBills(billInputs);
       setBillDraft(null);
@@ -188,7 +254,7 @@ export function AdminPanel({
       console.error("Save bills failed:", error);
       toast.error("Failed to save bills. Please try again.");
     } finally {
-      setSaving(null);
+      finishSubmission("bills");
     }
   }
 
@@ -228,13 +294,21 @@ export function AdminPanel({
           {selectedSection === "daily-meals" ? (
             <div id="admin-daily-meals" className="glass-card rounded-2xl p-4 sm:p-6">
             <div className="mb-4">
-              <PremiumDatePicker value={mealDate} onChange={setMealDate} label="Date" maxDate={getTodayDateString()} />
+              <PremiumDatePicker
+                value={mealDate}
+                onChange={(date) => {
+                  setMealDate(date);
+                  clearFormError("meals");
+                }}
+                label="Date"
+                maxDate={getTodayDateString()}
+              />
             </div>
             {activeMembers.length === 0 ? (
-              <p className="text-sm text-slate-500">No active members.</p>
+              <p className="text-sm text-muted">No active members.</p>
             ) : (
               <div className="space-y-3">
-                <div className="grid grid-cols-[1fr_repeat(3,64px)] items-end gap-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:grid-cols-[1fr_repeat(3,80px)]">
+                <div className="grid grid-cols-[1fr_repeat(3,64px)] items-end gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted sm:grid-cols-[1fr_repeat(3,80px)]">
                   <span>Member</span>
                   <span className="text-center">Breakfast</span>
                   <span className="text-center">Lunch</span>
@@ -261,7 +335,7 @@ export function AdminPanel({
                           onChange={(e) =>
                             updateMeal(member.id, field, e.target.value)
                           }
-                          className={inputClass}
+                          className={`${inputClass} tabular-nums`}
                         />
                       )
                     )}
@@ -273,7 +347,7 @@ export function AdminPanel({
               type="button"
               onClick={handleSaveMeals}
               disabled={saving === "meals" || activeMembers.length === 0}
-              className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              className="tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-fill text-sm font-semibold text-brand-on-fill transition hover:bg-brand-fill-hover disabled:opacity-60"
             >
               {saving === "meals" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -284,6 +358,11 @@ export function AdminPanel({
                 </>
               )}
             </button>
+            <AnimatedFormError
+              message={formErrors.meals?.message ?? ""}
+              attempt={formErrors.meals?.attempt ?? 0}
+              className="mt-3"
+            />
             </div>
           ) : null}
 
@@ -291,32 +370,82 @@ export function AdminPanel({
             {selectedSection === "add-bazar" ? (
               <div id="admin-add-bazar" className="glass-card rounded-2xl p-4 sm:p-6">
               <div className="space-y-3">
-                <PremiumDatePicker value={bazarDate} onChange={setBazarDate} label="Date" maxDate={getTodayDateString()} />
+                <PremiumDatePicker
+                  value={bazarDate}
+                  onChange={(date) => {
+                    setBazarDate(date);
+                    clearFormError("bazar");
+                  }}
+                  label="Date"
+                  maxDate={getTodayDateString()}
+                />
                 <label className="block space-y-1">
-                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Amount (৳)</span>
+                  <span className="block text-xs font-medium text-secondary dark:text-secondary">Amount (৳)</span>
                   <input
                     type="number"
                     value={bazarAmount}
-                    onChange={(e) => setBazarAmount(e.target.value)}
-                    className={inputClass}
-                  />
-                </label>
-                <label className="block space-y-1">
-                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Description (optional)</span>
-                  <input
-                    type="text"
-                    value={bazarDesc}
-                    onChange={(e) => setBazarDesc(e.target.value)}
-                    className={inputClass}
+                    onChange={(e) => {
+                      setBazarAmount(e.target.value);
+                      clearFormError("bazar");
+                    }}
+                    className={`${inputClass} tabular-nums`}
                   />
                 </label>
                 <div className="space-y-2">
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                  <span className="block text-xs font-medium text-secondary">Quick item</span>
+                  <div className="flex flex-wrap gap-2">
+                    {BAZAR_QUICK_PICKS.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        aria-pressed={bazarDesc === item}
+                        onClick={() => {
+                          setBazarDesc(item);
+                          setBazarMoreOptionsOpen(true);
+                        }}
+                        className={`tactile-toggle rounded-full border px-3 py-1.5 text-xs font-medium ${
+                          bazarDesc === item
+                            ? "border-brand-fill bg-brand-fill text-brand-on-fill"
+                            : "border-subtle bg-surface text-secondary hover:bg-container"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-expanded={bazarMoreOptionsOpen}
+                  aria-controls="bazar-more-options"
+                  onClick={() => setBazarMoreOptionsOpen((open) => !open)}
+                  className="tactile-press inline-flex min-h-9 items-center gap-1 text-sm font-medium text-brand hover:text-brand-hover"
+                >
+                  {bazarMoreOptionsOpen ? "Hide options" : "More options"}
+                  <span className={`transition-transform duration-150 ${bazarMoreOptionsOpen ? "rotate-180" : ""}`}>
+                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                </button>
+                {bazarMoreOptionsOpen ? (
+                  <div id="bazar-more-options" className="optional-fields-reveal">
+                    <label className="block space-y-1">
+                      <span className="block text-xs font-medium text-secondary">Description (optional)</span>
+                      <input
+                        type="text"
+                        value={bazarDesc}
+                        onChange={(e) => setBazarDesc(e.target.value)}
+                        className={inputClass}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  <label className="mb-1 block text-xs font-medium text-muted">
                     Buyers
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {activeMembers.length === 0 ? (
-                      <p className="text-sm text-slate-500">No active members available.</p>
+                      <p className="text-sm text-muted">No active members available.</p>
                     ) : (
                       activeMembers.map((member) => {
                         const isSelected = selectedBuyerIds.includes(member.id);
@@ -325,9 +454,9 @@ export function AdminPanel({
                             key={member.id}
                             type="button"
                             onClick={() => toggleBuyerSelection(member.id)}
-                            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${isSelected
-                              ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-600/60 dark:hover:bg-slate-700"
+                            className={`tactile-toggle rounded-full border px-3 py-1.5 text-xs font-medium transition ${isSelected
+                              ? "border-brand-fill bg-brand-fill text-brand-on-fill shadow-sm"
+                              : "border-subtle bg-surface text-secondary hover:border-brand hover:bg-success-surface dark:border-subtle dark:bg-elevated dark:text-secondary"
                               }`}
                           >
                             {member.name}
@@ -338,11 +467,16 @@ export function AdminPanel({
                   </div>
                 </div>
               </div>
+              <AnimatedFormError
+                message={formErrors.bazar?.message ?? ""}
+                attempt={formErrors.bazar?.attempt ?? 0}
+                className="mt-3"
+              />
               <button
                 type="button"
                 onClick={handleAddBazar}
                 disabled={saving === "bazar"}
-                className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                className="tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-fill text-sm font-semibold text-brand-on-fill transition hover:bg-brand-fill-hover disabled:opacity-60"
               >
                 {saving === "bazar" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -360,10 +494,13 @@ export function AdminPanel({
               <div id="admin-add-deposit" className="glass-card rounded-2xl p-4 sm:p-6">
               <div className="space-y-3">
                 <label className="block space-y-1">
-                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Member</span>
+                  <span className="block text-xs font-medium text-secondary dark:text-secondary">Member</span>
                   <select
                     value={selectedDepositMemberId}
-                    onChange={(e) => setDepositMemberId(e.target.value)}
+                    onChange={(e) => {
+                      setDepositMemberId(e.target.value);
+                      clearFormError("deposit");
+                    }}
                     className={inputClass}
                   >
                     {members.map((m) => (
@@ -375,30 +512,80 @@ export function AdminPanel({
                   </select>
                 </label>
                 <label className="block space-y-1">
-                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Amount (৳)</span>
+                  <span className="block text-xs font-medium text-secondary dark:text-secondary">Amount (৳)</span>
                   <input
                     type="number"
                     value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                    className={inputClass}
+                    onChange={(e) => {
+                      setDepositAmount(e.target.value);
+                      clearFormError("deposit");
+                    }}
+                    className={`${inputClass} tabular-nums`}
                   />
                 </label>
-                <PremiumDatePicker value={depositDate} onChange={setDepositDate} label="Date" maxDate={getTodayDateString()} />
-                <label className="block space-y-1">
-                  <span className="block text-xs font-medium text-slate-600 dark:text-slate-300">Note (optional)</span>
-                  <input
-                    type="text"
-                    value={depositNote}
-                    onChange={(e) => setDepositNote(e.target.value)}
-                    className={inputClass}
-                  />
-                </label>
+                <div className="-mt-1 flex flex-wrap gap-2" role="group" aria-label="Common deposit amounts">
+                  {DEPOSIT_QUICK_AMOUNTS.map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      aria-pressed={depositAmount === String(amount)}
+                      onClick={() => {
+                        setDepositAmount(String(amount));
+                        clearFormError("deposit");
+                      }}
+                      className={`tactile-toggle rounded-full border px-3 py-1.5 text-xs font-semibold tabular-nums ${
+                        depositAmount === String(amount)
+                          ? "border-brand-fill bg-brand-fill text-brand-on-fill"
+                          : "border-subtle bg-surface text-secondary hover:bg-container"
+                      }`}
+                    >
+                      ৳{amount.toLocaleString("en-BD")}
+                    </button>
+                  ))}
+                </div>
+                <PremiumDatePicker
+                  value={depositDate}
+                  onChange={(date) => {
+                    setDepositDate(date);
+                    clearFormError("deposit");
+                  }}
+                  label="Date"
+                  maxDate={getTodayDateString()}
+                />
+                <button
+                  type="button"
+                  aria-expanded={depositNoteOpen}
+                  aria-controls="deposit-note-field"
+                  onClick={() => setDepositNoteOpen((open) => !open)}
+                  className="tactile-press inline-flex min-h-9 items-center gap-1 text-sm font-medium text-brand hover:text-brand-hover"
+                >
+                  {depositNoteOpen ? "Hide note" : "Add note"}
+                  <span className={`transition-transform duration-150 ${depositNoteOpen ? "rotate-180" : ""}`}>
+                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                </button>
+                {depositNoteOpen ? (
+                  <label id="deposit-note-field" className="optional-fields-reveal block space-y-1">
+                    <span className="block text-xs font-medium text-secondary">Note (optional)</span>
+                    <input
+                      type="text"
+                      value={depositNote}
+                      onChange={(e) => setDepositNote(e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                ) : null}
               </div>
+              <AnimatedFormError
+                message={formErrors.deposit?.message ?? ""}
+                attempt={formErrors.deposit?.attempt ?? 0}
+                className="mt-3"
+              />
               <button
                 type="button"
                 onClick={handleAddDeposit}
                 disabled={saving === "deposit"}
-                className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-violet-600 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:opacity-60"
+                className="tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-fill text-sm font-semibold text-brand-on-fill transition hover:bg-brand-fill-hover disabled:opacity-60"
               >
                 {saving === "deposit" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -417,7 +604,7 @@ export function AdminPanel({
             <div id="admin-fixed-bills" className="glass-card rounded-2xl p-4 sm:p-6">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
+                <label className="mb-1 block text-xs font-medium text-muted">
                   House Rent (৳)
                 </label>
                 <input
@@ -429,11 +616,11 @@ export function AdminPanel({
                       houseRent: Math.round(parseFloat(e.target.value) || 0),
                     }))
                   }
-                  className={inputClass}
+                  className={`${inputClass} tabular-nums`}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
+                <label className="mb-1 block text-xs font-medium text-muted">
                   Bua Bill (৳)
                 </label>
                 <input
@@ -445,11 +632,11 @@ export function AdminPanel({
                       buaBill: Math.round(parseFloat(e.target.value) || 0),
                     }))
                   }
-                  className={inputClass}
+                  className={`${inputClass} tabular-nums`}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
+                <label className="mb-1 block text-xs font-medium text-muted">
                   Other Bills Description/Title
                 </label>
                 <input
@@ -466,7 +653,7 @@ export function AdminPanel({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
+                <label className="mb-1 block text-xs font-medium text-muted">
                   Other Bills (৳)
                 </label>
                 <input
@@ -478,7 +665,7 @@ export function AdminPanel({
                       otherBills: Math.round(parseFloat(e.target.value) || 0),
                     }))
                   }
-                  className={inputClass}
+                  className={`${inputClass} tabular-nums`}
                 />
               </div>
             </div>
@@ -486,7 +673,7 @@ export function AdminPanel({
               type="button"
               onClick={handleSaveBills}
               disabled={saving === "bills"}
-              className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-orange-600 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:opacity-60 sm:w-auto sm:px-8"
+              className="tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-fill text-sm font-semibold text-brand-on-fill transition hover:bg-brand-fill-hover disabled:opacity-60 sm:w-auto sm:px-8"
             >
               {saving === "bills" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

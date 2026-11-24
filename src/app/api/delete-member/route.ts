@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminFirestore } from "@/lib/firebase-admin";
+import { withIdempotency } from "@/lib/idempotency";
+import { apiResponse, withApiObservability } from "@/lib/observability";
+import { consumeRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 const MAX_TRANSACTION_WRITES = 500;
+const DELETE_MEMBER_RATE_LIMIT = 10;
+const DELETE_MEMBER_RATE_WINDOW_MS = 60 * 60 * 1000;
 
 class MemberDeletionError extends Error {
   constructor(message: string, readonly status: number) {
@@ -22,6 +26,18 @@ function normalizeEmail(value: unknown): string {
 
 function getMemberEmail(member: Record<string, unknown>): string {
   return normalizeEmail(member.email);
+}
+
+function isInvalidIdTokenError(error: unknown): boolean {
+  if (!isRecord(error) || typeof error.code !== "string") return false;
+  return new Set([
+    "auth/argument-error",
+    "auth/id-token-expired",
+    "auth/id-token-revoked",
+    "auth/invalid-id-token",
+    "auth/user-disabled",
+    "auth/user-not-found",
+  ]).has(error.code);
 }
 
 async function deleteMemberData(memberId: string, performedBy: string) {
@@ -211,57 +227,117 @@ async function deleteMemberData(memberId: string, performedBy: string) {
 }
 
 export async function POST(request: Request) {
-  const authorization = request.headers.get("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ")
-    ? authorization.slice(7).trim()
-    : "";
-  if (!token) {
-    return NextResponse.json({ error: "A verified Super Admin session is required." }, { status: 401 });
-  }
-
-  let decodedToken;
-  try {
-    decodedToken = await getAdminAuth().verifyIdToken(token, true);
-  } catch (error) {
-    console.error("Member deletion token verification failed:", error);
-    return NextResponse.json({ error: "The session is invalid or expired. Sign in again." }, { status: 401 });
-  }
-
-  const configuredAdminEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL);
-  const callerEmail = normalizeEmail(decodedToken.email);
-  if (
-    decodedToken.email_verified !== true ||
-    !configuredAdminEmail ||
-    callerEmail !== configuredAdminEmail
-  ) {
-    return NextResponse.json({ error: "Only the configured Super Admin can delete members." }, { status: 403 });
-  }
-
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "A valid JSON request body is required." }, { status: 400 });
-  }
-
-  const memberId = isRecord(body) && typeof body.memberId === "string"
-    ? body.memberId.trim()
-    : "";
-  if (!memberId || memberId.length > 128 || memberId.includes("/")) {
-    return NextResponse.json({ error: "A valid member ID is required." }, { status: 400 });
-  }
-
-  try {
-    const cleanup = await deleteMemberData(memberId, decodedToken.email ?? callerEmail);
-    return NextResponse.json({ ok: true, cleanup });
-  } catch (error) {
-    if (error instanceof MemberDeletionError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+  return withApiObservability(request, "/api/delete-member", async () => {
+    const authorization = request.headers.get("authorization") ?? "";
+    const token = authorization.startsWith("Bearer ")
+      ? authorization.slice(7).trim()
+      : "";
+    if (!token) {
+      return apiResponse(
+        { ok: false, error: "A verified Super Admin session is required.", step: "authorization" },
+        401,
+        "authorization"
+      );
     }
-    console.error("Member deletion transaction failed:", error);
-    return NextResponse.json(
-      { error: "Member deletion could not be completed. Refresh the dashboard before retrying." },
-      { status: 500 }
-    );
-  }
+
+    let adminAuth: ReturnType<typeof getAdminAuth>;
+    try {
+      adminAuth = getAdminAuth();
+    } catch {
+      return apiResponse(
+        { ok: false, error: "Authentication is temporarily unavailable. Try again later.", step: "auth-initialization" },
+        503,
+        "auth-initialization"
+      );
+    }
+
+    let decodedToken: Awaited<ReturnType<typeof adminAuth.verifyIdToken>>;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token, true);
+    } catch (error) {
+      const invalidToken = isInvalidIdTokenError(error);
+      return apiResponse(
+        {
+          ok: false,
+          error: invalidToken
+            ? "The session is invalid or expired. Sign in again."
+            : "Could not verify your session right now. Try again.",
+          step: "token-verification",
+        },
+        invalidToken ? 401 : 503,
+        "token-verification"
+      );
+    }
+
+    const configuredAdminEmail = normalizeEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL);
+    const callerEmail = normalizeEmail(decodedToken.email);
+    if (
+      decodedToken.email_verified !== true ||
+      !configuredAdminEmail ||
+      callerEmail !== configuredAdminEmail
+    ) {
+      return apiResponse(
+        { ok: false, error: "Only the configured Super Admin can delete members.", step: "authorization" },
+        403,
+        "authorization"
+      );
+    }
+
+    return withIdempotency(request, `delete-member:${decodedToken.uid}`, async () => {
+      const limit = consumeRateLimit(
+        `delete-member:${decodedToken.uid}`,
+        { limit: DELETE_MEMBER_RATE_LIMIT, windowMs: DELETE_MEMBER_RATE_WINDOW_MS }
+      );
+      if (!limit.allowed) {
+        return rateLimitResponse(
+          limit.retryAfterSeconds,
+          "Member deletion is temporarily limited. Try again later."
+        );
+      }
+
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return apiResponse(
+          { ok: false, error: "A valid JSON request body is required.", step: "body-parsing" },
+          400,
+          "body-parsing"
+        );
+      }
+
+      const memberId = isRecord(body) && typeof body.memberId === "string"
+        ? body.memberId.trim()
+        : "";
+      if (!memberId || memberId.length > 128 || memberId.includes("/")) {
+        return apiResponse(
+          { ok: false, error: "A valid member ID is required.", step: "input-validation" },
+          400,
+          "input-validation"
+        );
+      }
+
+      try {
+        const cleanup = await deleteMemberData(memberId, decodedToken.email ?? callerEmail);
+        return apiResponse({ ok: true, cleanup }, 200, "complete");
+      } catch (error) {
+        if (error instanceof MemberDeletionError) {
+          return apiResponse(
+            { ok: false, error: error.message, step: "deletion-validation" },
+            error.status,
+            "deletion-validation"
+          );
+        }
+        return apiResponse(
+          {
+            ok: false,
+            error: "Member deletion could not be completed. Refresh the dashboard before retrying.",
+            step: "deletion-transaction",
+          },
+          500,
+          "deletion-transaction"
+        );
+      }
+    });
+  });
 }

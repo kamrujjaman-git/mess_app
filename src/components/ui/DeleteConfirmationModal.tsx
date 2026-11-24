@@ -17,9 +17,9 @@ interface DeleteConfirmationModalProps {
 
 export function DeleteConfirmationModal({
     open,
-    title = "Delete this entry?",
+    title = "Delete this item?",
     description = "Deleting this item will permanently remove it from your records.",
-    confirmLabel = "Delete",
+    confirmLabel = "Yes, delete item",
     busy = false,
     onConfirm,
     onCancel,
@@ -72,7 +72,7 @@ export function DeleteConfirmationModal({
             <AnimatePresence>
                 {open ? (
                     <motion.div
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -90,7 +90,7 @@ export function DeleteConfirmationModal({
                             role="dialog"
                             aria-modal="true"
                             aria-labelledby="delete-confirmation-title"
-                            className="relative mx-auto w-full max-w-xs rounded-3xl border border-slate-200/80 bg-white p-6 text-center text-slate-900 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:max-w-sm"
+                            className="relative mx-auto w-full max-w-xs rounded-3xl border border-subtle/80 bg-surface p-6 text-center text-primary shadow-2xl sm:max-w-sm"
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
@@ -101,13 +101,13 @@ export function DeleteConfirmationModal({
                             }
                         >
                             <div className="text-center">
-                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-danger-surface text-danger-on-surface">
                                     <AlertTriangle className="h-6 w-6" />
                                 </div>
                                 <h2 id="delete-confirmation-title" className="mt-4 text-lg font-bold">
                                     {title}
                                 </h2>
-                                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                                <p className="mt-2 text-sm leading-relaxed text-secondary">
                                     {description}
                                 </p>
                             </div>
@@ -115,7 +115,7 @@ export function DeleteConfirmationModal({
                                 type="button"
                                 onClick={onCancel}
                                 disabled={busy}
-                                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                                className="tactile-press absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors duration-150 hover:bg-container disabled:opacity-50"
                                 aria-label="Close delete confirmation"
                             >
                                 <X className="h-4 w-4" />
@@ -126,7 +126,7 @@ export function DeleteConfirmationModal({
                                     onClick={onCancel}
                                     disabled={busy}
                                     ref={cancelButtonRef}
-                                    className="w-full cursor-pointer rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-colors duration-150 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400/60 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus:ring-slate-500/60 disabled:opacity-50"
+                                    className="tactile-press w-full cursor-pointer rounded-xl bg-container px-4 py-2.5 text-sm font-bold text-secondary outline-none transition-colors duration-150 hover:bg-elevated focus:outline-none focus:ring-2 focus:ring-subtle disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
@@ -136,7 +136,7 @@ export function DeleteConfirmationModal({
                                     disabled={busy}
                                     ref={deleteButtonRef}
                                     autoFocus
-                                    className="w-full cursor-pointer rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-rose-500/20 outline-none transition-colors duration-150 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500/60 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 disabled:cursor-wait disabled:opacity-60"
+                                    className="tactile-press w-full cursor-pointer rounded-xl bg-danger-fill px-4 py-2.5 text-sm font-bold text-danger-on-fill shadow-md shadow-danger/20 outline-none transition-colors duration-150 hover:bg-danger-fill-hover focus:outline-none focus:ring-2 focus:ring-danger/60 focus:ring-offset-2 focus:ring-offset-surface disabled:cursor-wait disabled:opacity-60"
                                 >
                                     {busy ? "Deleting..." : confirmLabel}
                                 </button>

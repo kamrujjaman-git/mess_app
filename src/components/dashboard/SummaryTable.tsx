@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
@@ -18,20 +18,20 @@ interface SummaryTableProps {
 function BalanceBadge({ amount }: { amount: number }) {
   if (amount === 0) {
     return (
-      <span className="summary-balance-badge summary-balance-settled inline-flex max-w-full items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold tabular-nums text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+      <span className="summary-balance-badge summary-balance-settled inline-flex max-w-full items-center rounded-full border border-subtle bg-container px-3 py-1 text-xs font-semibold tabular-nums text-secondary">
         ৳0.00 SETTLED
       </span>
     );
   }
   if (amount > 0) {
     return (
-      <span className="summary-balance-badge summary-balance-refund inline-flex max-w-full items-center rounded-full border border-emerald-200/60 bg-emerald-50 px-3 py-1 text-xs font-semibold tabular-nums text-emerald-600 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-400">
+      <span className="summary-balance-badge summary-balance-refund inline-flex max-w-full items-center rounded-full border border-success-border bg-success-surface px-3 py-1 text-xs font-semibold tabular-nums text-success-on-surface">
         +৳{formatCurrency(amount)} REFUND
       </span>
     );
   }
   return (
-    <span className="summary-balance-badge summary-balance-due inline-flex max-w-full items-center rounded-full border border-rose-200/60 bg-rose-50 px-3 py-1 text-xs font-semibold tabular-nums text-rose-600 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-400">
+    <span className="summary-balance-badge summary-balance-due inline-flex max-w-full items-center rounded-full border border-danger-border bg-danger-surface px-3 py-1 text-xs font-semibold tabular-nums text-danger-on-surface">
       -৳{formatCurrency(Math.abs(amount))} DUE
     </span>
   );
@@ -68,6 +68,7 @@ export const SummaryTable = memo(function SummaryTable({
     () => isAdmin ? members : members.filter((member) => member.status === "active"),
     [isAdmin, members]
   );
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
 
   function renderMemberIdentity(member: MemberSummary) {
     const photoURL = photoURLById.get(member.id);
@@ -83,11 +84,11 @@ export const SummaryTable = memo(function SummaryTable({
             className="h-8 w-8 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-container text-xs font-semibold text-secondary dark:bg-container dark:text-secondary">
             {(member.name.trim().charAt(0) || "M").toUpperCase()}
           </span>
         )}
-        <span className="min-w-0 flex-1 break-words">{member.name}</span>
+        <span className="min-w-0 flex-1 truncate" title={member.name}>{member.name}</span>
       </span>
     );
   }
@@ -95,8 +96,8 @@ export const SummaryTable = memo(function SummaryTable({
   function renderMemberRow(member: MemberSummary) {
     const inactive = member.status !== "active";
     const cellClass = inactive
-      ? "border-b border-slate-200/80 bg-slate-50/70 px-6 py-4 text-slate-500 transition-colors group-hover:bg-slate-100/70 dark:border-slate-800 dark:bg-slate-950/30 dark:text-slate-400 dark:group-hover:bg-slate-900/50"
-      : "border-b border-slate-100/80 px-6 py-4 transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50";
+      ? "border-b border-subtle/80 bg-elevated/70 px-6 py-4 text-muted transition-colors group-hover:bg-container/70"
+      : "border-b border-subtle/80 px-6 py-4 transition-colors group-hover:bg-elevated/80 dark:border-subtle dark:group-hover:bg-elevated/50";
 
     return (
       <tr key={member.id} className={`group ${inactive ? "print:hidden" : ""}`}>
@@ -104,7 +105,7 @@ export const SummaryTable = memo(function SummaryTable({
           <div className="flex items-center gap-2">
             {renderMemberIdentity(member)}
             {inactive && (
-              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+              <span className="rounded-full bg-container px-1.5 py-0.5 text-[10px] font-semibold uppercase text-secondary dark:bg-container dark:text-secondary">
                 INACTIVE
               </span>
             )}
@@ -113,7 +114,7 @@ export const SummaryTable = memo(function SummaryTable({
                 href={buildWhatsAppLink({ name: member.name, whatsAppNumber: member.whatsAppNumber }, member.finalBalance)}
                 target="_blank"
                 rel="noreferrer"
-                className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-full border border-success-border bg-success-surface text-success transition hover:bg-success-border"
                 aria-label={`Open WhatsApp for ${member.name}`}
                 title={`Open WhatsApp for ${member.name}`}
               >
@@ -163,9 +164,9 @@ export const SummaryTable = memo(function SummaryTable({
   return (
     <div
       id="summary-report"
-      className="summary-report-sheet w-full overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-8"
+      className="summary-responsive-container summary-report-sheet w-full overflow-hidden rounded-3xl border border-subtle/80 bg-surface p-4 shadow-xl dark:border-subtle dark:bg-surface sm:p-8"
     >
-      <div className="summary-print-header hidden border-b border-slate-200/60 px-4 py-4 dark:border-slate-700/60 sm:px-6">
+      <div className="summary-print-header hidden border-b border-subtle/60 px-4 py-4 dark:border-subtle/60 sm:px-6">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <Image
@@ -178,12 +179,12 @@ export const SummaryTable = memo(function SummaryTable({
               className="summary-print-logo h-12 w-12 shrink-0 rounded-xl object-cover"
             />
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              <h2 className="text-balance text-xl font-bold text-primary">
                 Mess App
               </h2>
             </div>
           </div>
-          <div className="text-right text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-right text-xs text-muted dark:text-muted">
             <p>Export Date: {exportDate}</p>
           </div>
         </div>
@@ -192,12 +193,12 @@ export const SummaryTable = memo(function SummaryTable({
       <DashboardSectionHeader
         title="Summary Table"
         description={`Member meals, deposits, costs, and final balances for ${reportMonthLabel}.`}
-        className="summary-report-heading border-b border-slate-200/60 py-3 dark:border-slate-700/60"
+        className="summary-report-heading border-b border-subtle/60 py-3 dark:border-subtle/60"
         action={
           <button
             type="button"
             onClick={handleDownloadPdf}
-            className="summary-print-button print:hidden inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:bg-emerald-800"
+            className="summary-print-button print:hidden inline-flex items-center justify-center gap-2 rounded-xl bg-brand-fill px-4 py-2 text-sm font-semibold text-brand-on-fill shadow-sm transition-colors hover:bg-brand-fill-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
             <Download className="h-4 w-4" />
             Print / Save as PDF
@@ -205,10 +206,10 @@ export const SummaryTable = memo(function SummaryTable({
         }
       />
 
-      <div className="summary-print-table hidden overflow-x-auto overflow-y-hidden md:block">
+      <div className="summary-print-table summary-desktop-table overflow-x-auto overflow-y-hidden">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-200/60 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700/60 dark:text-slate-400">
+            <tr className="border-b border-subtle/60 text-left text-xs uppercase tracking-wide text-muted dark:border-subtle/60 dark:text-muted">
               <th className="px-6 py-4 font-medium">Member</th>
               <th className="px-6 py-4 font-medium">Meals</th>
               <th className="px-6 py-4 font-medium">Deposited</th>
@@ -220,58 +221,88 @@ export const SummaryTable = memo(function SummaryTable({
         </table>
       </div>
 
-      <div className="summary-mobile-cards relative space-y-3 pt-4 md:hidden">
-        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-slate-100/80 to-transparent dark:from-slate-900/70" />
+      <div className="summary-mobile-cards space-y-2 pt-4">
         {visibleMembers.map((member) => {
           const inactive = member.status !== "active";
+          const expanded = expandedMemberId === member.id;
+          const detailsId = `summary-member-details-${member.id}`;
           return (
             <div
               key={member.id}
-              className={`rounded-xl border p-4 transition-colors ${
+              className={`summary-mobile-member rounded-xl border p-3 transition-colors ${
                 inactive
-                  ? "border-slate-200 bg-slate-100/70 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-400 dark:hover:bg-slate-900/50"
-                  : "border-slate-200/60 bg-white/50 hover:bg-slate-50/80 dark:border-slate-700/60 dark:bg-slate-800/40 dark:hover:bg-slate-800/50"
+                  ? "border-subtle bg-container/70 text-secondary hover:bg-container"
+                  : "border-subtle/60 bg-surface/50 hover:bg-elevated/80 dark:border-subtle/60 dark:bg-elevated/40 dark:hover:bg-elevated/50"
               }`}
             >
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 items-center font-semibold">
-                  {renderMemberIdentity(member)}
-                </div>
-                <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
-                  {inactive && (
-                    <span className="rounded-full bg-slate-200 px-2 py-1 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                      INACTIVE
+              <button
+                type="button"
+                aria-expanded={expanded}
+                aria-controls={expanded ? detailsId : undefined}
+                onClick={() => setExpandedMemberId(expanded ? null : member.id)}
+                className="summary-mobile-row-toggle flex min-h-[72px] w-full items-center justify-between gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
+                  <span className="flex min-w-0 w-full items-center font-semibold">
+                    {renderMemberIdentity(member)}
+                  </span>
+                  <span className="flex items-center gap-2 text-xs">
+                    <span className="tabular-nums text-secondary">Meals: {member.totalMeals}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                      inactive
+                        ? "bg-container text-secondary"
+                        : "bg-success-surface text-success-on-surface"
+                    }`}>
+                      {inactive ? "Inactive" : "Active"}
                     </span>
-                  )}
+                  </span>
+                </span>
+                <span className="flex w-36 shrink-0 justify-end text-right">
+                  <BalanceBadge amount={member.finalBalance} />
+                </span>
+              </button>
+              {expanded ? (
+                <div id={detailsId} className="row-detail-reveal mt-3 border-t border-subtle/70 pt-3">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+                    <div>
+                      <dt className="text-xs text-muted">Total meals</dt>
+                      <dd className="font-medium tabular-nums">{member.totalMeals}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-muted">Deposited</dt>
+                      <dd className="font-medium tabular-nums">৳{formatCurrency(member.totalDeposited)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-muted">Meal cost</dt>
+                      <dd className="font-medium tabular-nums">৳{formatCurrency(member.mealCost)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-muted">Fixed-cost share</dt>
+                      <dd className="font-medium tabular-nums">৳{formatCurrency(member.fixedCostShare)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-muted">Meal balance</dt>
+                      <dd className="font-medium tabular-nums">৳{formatCurrency(member.mealBalance)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-muted">Final balance</dt>
+                      <dd className="font-medium tabular-nums"><BalanceBadge amount={member.finalBalance} /></dd>
+                    </div>
+                  </dl>
                   {isAdmin && member.whatsAppNumber && (
                     <a
                       href={buildWhatsAppLink({ name: member.name, whatsAppNumber: member.whatsAppNumber }, member.finalBalance)}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                      className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-success-border bg-success-surface px-3 text-sm font-medium text-success transition hover:bg-success-border"
                       aria-label={`Open WhatsApp for ${member.name}`}
-                      title={`Open WhatsApp for ${member.name}`}
                     >
                       <WhatsAppActionIcon />
+                      Contact member
                     </a>
                   )}
-                  <BalanceBadge amount={member.finalBalance} />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-slate-500">Meals</span>
-                  <p className="font-medium tabular-nums">{member.totalMeals}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Deposited</span>
-                  <p className="truncate font-medium tabular-nums">৳{formatCurrency(member.totalDeposited)}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Meal Cost</span>
-                  <p className="truncate font-medium tabular-nums">৳{formatCurrency(member.mealCost)}</p>
-                </div>
-              </div>
+              ) : null}
             </div>
           );
         })}

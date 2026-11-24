@@ -238,26 +238,34 @@ export function Sidebar({
                         });
                       }
                     }}
-                    className={`group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold transition-colors duration-150 ease-out ${
+                    className={`group relative isolate flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold transition-colors duration-150 ease-out ${
                       groupIsActive
-                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                        : "text-slate-600 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/80"
+                        ? "text-brand"
+                        : "text-secondary hover:bg-container/80 dark:text-secondary dark:hover:bg-elevated/80"
                     } ${canShowLabels ? "" : "justify-center px-0"}`}
                   >
+                    {groupIsActive ? (
+                      <motion.span
+                        layoutId={`sidebar-group-active-${isMobile ? "mobile" : "desktop"}`}
+                        transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
+                        className="pointer-events-none absolute inset-0 rounded-xl bg-success-surface"
+                        aria-hidden="true"
+                      />
+                    ) : null}
                     <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                      className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                         groupIsActive
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
-                          : "text-slate-500 dark:text-slate-400"
+                          ? "text-brand"
+                          : "text-muted dark:text-muted"
                       }`}
                     >
                       <GroupIcon className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                     </span>
                     {canShowLabels ? (
                       <>
-                        <span className="min-w-0 flex-1">{group.label}</span>
+                        <span className="relative z-10 min-w-0 flex-1">{group.label}</span>
                         <ChevronDown
-                          className={`h-4 w-4 shrink-0 transition-transform duration-150 ease-out ${
+                          className={`relative z-10 h-4 w-4 shrink-0 transition-transform duration-150 ease-out ${
                             groupIsOpen ? "rotate-180" : ""
                           }`}
                           strokeWidth={1.8}
@@ -269,7 +277,7 @@ export function Sidebar({
 
                   {canShowLabels && groupIsOpen ? (
                     <div id={contentId} className="mt-1">
-                      <div className="ml-6 space-y-0.5 border-l border-slate-200/70 pl-3 dark:border-slate-700/70">
+                      <div className="ml-6 space-y-0.5 border-l border-subtle/70 pl-3 dark:border-subtle/70">
                         {group.items
                           .filter((item) => !item.adminOnly || isAdmin)
                           .map((item) => {
@@ -286,16 +294,24 @@ export function Sidebar({
                                   type="button"
                                   onClick={() => navigate(item)}
                                   aria-current={active ? "page" : undefined}
-                                  className={`flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium leading-4 transition-colors duration-150 ${
+                                  className={`relative isolate flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium leading-4 transition-colors duration-150 ${
                                     active
-                                      ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200"
-                                      : "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white"
+                                      ? "text-brand"
+                                      : "text-secondary hover:bg-container/70 hover:text-primary dark:hover:bg-elevated/60"
                                   }`}
                                 >
-                                  <ItemIcon className="h-4 w-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
-                                  <span className="min-w-0 flex-1 whitespace-normal">{item.label}</span>
                                   {active ? (
-                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
+                                    <motion.span
+                                      layoutId={`sidebar-item-active-${isMobile ? "mobile" : "desktop"}`}
+                                      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
+                                      className="pointer-events-none absolute inset-0 rounded-md bg-success-surface"
+                                      aria-hidden="true"
+                                    />
+                                  ) : null}
+                                  <ItemIcon className="relative z-10 h-4 w-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                                  <span className="relative z-10 min-w-0 flex-1 whitespace-normal">{item.label}</span>
+                                  {active ? (
+                                    <span className="relative z-10 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
                                   ) : null}
                                 </button>
                               );
@@ -315,7 +331,7 @@ export function Sidebar({
     <>
       <aside
         aria-label="Primary navigation"
-        className={`sidebar-shell fixed inset-y-0 left-0 z-50 hidden flex-col overflow-visible border-r border-slate-200/80 bg-white/80 pt-2 backdrop-blur-xl transition-[width] duration-150 ease-out transform-gpu motion-reduce:transition-none dark:border-slate-800 dark:bg-slate-900/80 md:flex ${
+        className={`sidebar-shell fixed inset-y-0 left-0 z-50 hidden flex-col overflow-visible border-r border-subtle/80 bg-surface/80 pt-2 backdrop-blur-xl transition-[width] duration-150 ease-out transform-gpu motion-reduce:transition-none dark:border-subtle dark:bg-surface/80 md:flex ${
           expanded ? "w-64" : "w-[72px]"
         }`}
       >
@@ -324,7 +340,7 @@ export function Sidebar({
             type="button"
             onClick={onToggleExpanded}
             aria-label={expanded ? "Close sidebar" : "Open sidebar"}
-            className={`group relative flex h-9 shrink-0 items-center rounded-lg text-slate-600 transition-colors duration-150 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-slate-300 dark:hover:bg-slate-800 ${
+            className={`group relative flex h-9 shrink-0 items-center rounded-lg text-secondary transition-colors duration-150 hover:bg-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
               expanded ? "w-full justify-start gap-2 px-1" : "w-9 justify-center"
             }`}
           >
@@ -351,13 +367,13 @@ export function Sidebar({
               )}
             </span>
             {expanded ? (
-              <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-800 dark:text-slate-100">
+              <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-primary">
                 Mess App
               </span>
             ) : null}
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-lg border border-slate-200 bg-white/95 px-2.5 py-1.5 text-xs font-medium text-slate-800 opacity-0 shadow-lg shadow-slate-900/10 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-100"
+              className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-lg border border-subtle bg-surface/95 px-2.5 py-1.5 text-xs font-medium text-primary opacity-0 shadow-lg shadow-slate-900/10 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
             >
               {expanded ? "Close sidebar" : "Open sidebar"}
             </span>
@@ -386,7 +402,7 @@ export function Sidebar({
               role="dialog"
               aria-modal="true"
               aria-label="Dashboard navigation"
-              className="sidebar-shell absolute inset-y-0 left-0 flex w-[min(20rem,88vw)] transform-gpu flex-col border-r border-slate-200/80 bg-white/95 pt-3 shadow-2xl backdrop-blur-xl will-change-transform dark:border-slate-800 dark:bg-slate-900/95"
+              className="sidebar-shell absolute inset-y-0 left-0 flex w-[min(20rem,88vw)] transform-gpu flex-col border-r border-subtle/80 bg-surface/95 pt-3 shadow-2xl backdrop-blur-xl will-change-transform dark:border-subtle dark:bg-surface/95"
               initial={reduceMotion ? false : { x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -404,14 +420,14 @@ export function Sidebar({
                   height={36}
                   className="h-9 w-9 shrink-0 rounded-xl object-cover"
                 />
-                <span className="min-w-0 flex-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <span className="min-w-0 flex-1 text-sm font-semibold text-primary">
                   Mess App
                 </span>
                 <button
                   type="button"
                   onClick={onCloseMobile}
                   aria-label="Close navigation menu"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-container dark:text-secondary dark:hover:bg-elevated"
                 >
                   <X className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                 </button>

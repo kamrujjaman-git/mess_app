@@ -1,21 +1,25 @@
 import { randomUUID } from "node:crypto";
-import { NextResponse } from "next/server";
 import {
   getAdminAuth,
   getAdminFirestore,
   getAdminStorageBuckets,
 } from "@/lib/firebase-admin";
-import type { ProfileUpdateResponse } from "@/lib/profile";
+import { withIdempotency } from "@/lib/idempotency";
+import { apiResponse, type ApiRequestContext, withApiObservability } from "@/lib/observability";
+import { consumeRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 const MAX_INLINE_AVATAR_SIZE = 80 * 1024;
 const MAX_MEMBERS_DOCUMENT_BYTES = 850 * 1024;
+const PROFILE_RATE_LIMIT = 20;
+const PROFILE_RATE_WINDOW_MS = 60 * 60 * 1000;
 
 interface AvatarUploadResult {
   photoURL: string;
   isDataURL: boolean;
+  usedFallback: boolean;
 }
 
 class ProfileUpdateError extends Error {
@@ -23,6 +27,15 @@ class ProfileUpdateError extends Error {
     super(message);
     this.name = "ProfileUpdateError";
   }
+}
+
+type AdminAuth = ReturnType<typeof getAdminAuth>;
+type DecodedProfileToken = Awaited<ReturnType<AdminAuth["verifyIdToken"]>>;
+
+interface ProfileAuthorization {
+  adminAuth: AdminAuth;
+  decodedToken: DecodedProfileToken;
+  callerEmail: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -45,11 +58,11 @@ function isInvalidIdTokenError(error: unknown): boolean {
   ]).has(error.code);
 }
 
-function profileErrorResponse(error: string, status: number, step: string, cause?: unknown) {
-  console.error(`[api/profile] step=${step} error=${error}`, cause);
-  return NextResponse.json<ProfileUpdateResponse>(
+function profileErrorResponse(error: string, status: number, step: string) {
+  return apiResponse(
     { ok: false, error, step },
-    { status }
+    status,
+    step
   );
 }
 
@@ -70,6 +83,21 @@ function isStorageConfigurationError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return /(?:Firebase )?Storage bucket (?:is not configured|configuration is invalid)|Use a Firebase Storage bucket/i
     .test(error.message);
+}
+
+function isTransientStorageError(error: unknown): boolean {
+  if (!isRecord(error)) return false;
+  const status = Number(error.statusCode ?? error.status ?? error.code);
+  if ([408, 429, 500, 502, 503, 504].includes(status)) return true;
+  const code = typeof error.code === "string" ? error.code.toLowerCase() : "";
+  return [
+    "econnreset",
+    "econnrefused",
+    "etimedout",
+    "eai_again",
+    "storage/retry-limit-exceeded",
+    "storage/unknown",
+  ].includes(code);
 }
 
 function isDataImageURL(value: unknown): value is string {
@@ -109,6 +137,7 @@ function createInlineAvatar(bytes: Buffer, imageType: string): AvatarUploadResul
   return {
     photoURL: `data:${imageType};base64,${bytes.toString("base64")}`,
     isDataURL: true,
+    usedFallback: true,
   };
 }
 
@@ -154,32 +183,32 @@ async function uploadAvatar(file: File, uid: string): Promise<AvatarUploadResult
   };
   let lastError: unknown;
 
-  for (const [index, bucket] of buckets.entries()) {
+  for (const bucket of buckets) {
     try {
       await bucket.file(objectPath).save(bytes, metadata);
       return {
         photoURL: `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${downloadToken}`,
         isDataURL: false,
+        usedFallback: false,
       };
     } catch (error) {
       lastError = error;
+      if (isTransientStorageError(error)) {
+        return createInlineAvatar(bytes, imageType);
+      }
       if (!isStorageBucketNotFound(error)) {
         throw error;
-      }
-      if (index < buckets.length - 1) {
-        console.warn("[api/profile] step=storage-upload bucket-not-found; trying fallback bucket", error);
       }
     }
   }
 
-  if (lastError && !isStorageBucketNotFound(lastError)) {
-    throw lastError;
-  }
-  console.warn("[api/profile] step=storage-upload bucket-not-found; using Firestore data URL", lastError);
+  if (lastError && !isStorageBucketNotFound(lastError)) throw lastError;
   return createInlineAvatar(bytes, imageType);
 }
 
-async function updateProfile(request: Request) {
+async function authorizeProfileRequest(
+  request: Request
+): Promise<ProfileAuthorization | Response> {
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) {
@@ -190,21 +219,18 @@ async function updateProfile(request: Request) {
     );
   }
 
-  let adminAuth: ReturnType<typeof getAdminAuth>;
+  let adminAuth: AdminAuth;
   try {
     adminAuth = getAdminAuth();
-  } catch (error) {
+  } catch {
     return profileErrorResponse(
       "Firebase Admin credentials are missing or invalid. Contact an administrator.",
       503,
-      "firebase-admin-initialization",
-      error
+      "firebase-admin-initialization"
     );
   }
 
-  let decodedToken: Awaited<
-    ReturnType<ReturnType<typeof getAdminAuth>["verifyIdToken"]>
-  >;
+  let decodedToken: DecodedProfileToken;
   try {
     decodedToken = await adminAuth.verifyIdToken(token, true);
   } catch (error) {
@@ -212,14 +238,12 @@ async function updateProfile(request: Request) {
       ? profileErrorResponse(
         "The session is invalid or expired. Sign in again.",
         401,
-        "token-verification",
-        error
+        "token-verification"
       )
       : profileErrorResponse(
         "Could not verify your session right now. Try again.",
         503,
-        "token-verification",
-        error
+        "token-verification"
       );
   }
 
@@ -232,15 +256,22 @@ async function updateProfile(request: Request) {
     );
   }
 
+  return { adminAuth, decodedToken, callerEmail };
+}
+
+async function updateProfile(
+  request: Request,
+  { adminAuth, decodedToken, callerEmail }: ProfileAuthorization,
+  context: ApiRequestContext
+) {
   let formData: FormData;
   try {
     formData = await request.formData();
-  } catch (error) {
+  } catch {
     return profileErrorResponse(
       "A valid profile update is required.",
       400,
-      "body-parsing",
-      error
+      "body-parsing"
     );
   }
 
@@ -265,12 +296,11 @@ async function updateProfile(request: Request) {
   let firestore: ReturnType<typeof getAdminFirestore>;
   try {
     firestore = getAdminFirestore();
-  } catch (error) {
+  } catch {
     return profileErrorResponse(
       "Could not initialize the profile database. Try again or contact an administrator.",
       503,
-      "firestore-initialization",
-      error
+      "firestore-initialization"
     );
   }
   const userRef = firestore.doc(`users/${decodedToken.uid}`);
@@ -308,32 +338,32 @@ async function updateProfile(request: Request) {
         }
       }
     }
-  } catch (error) {
+  } catch {
     return profileErrorResponse(
       "Could not look up your profile records. Try again or contact an administrator.",
       503,
-      "profile-lookup",
-      error
+      "profile-lookup"
     );
   }
 
   let photoURL: string | undefined;
   let photoURLIsDataURL = false;
+  let usedStorageFallback = false;
   try {
     if (rawAvatar instanceof File) {
       const uploadResult = await uploadAvatar(rawAvatar, decodedToken.uid);
       photoURL = uploadResult.photoURL;
       photoURLIsDataURL = uploadResult.isDataURL;
+      usedStorageFallback = uploadResult.usedFallback;
     }
   } catch (error) {
     if (error instanceof ProfileUpdateError) {
-      return profileErrorResponse(error.message, error.status, error.step, error);
+      return profileErrorResponse(error.message, error.status, error.step);
     }
     return profileErrorResponse(
       "Could not upload your profile picture. Check storage configuration and try again.",
       503,
-      "storage-upload",
-      error
+      "storage-upload"
     );
   }
 
@@ -345,12 +375,11 @@ async function updateProfile(request: Request) {
       ? { displayName: name, photoURL }
       : { displayName: name };
     updatedUser = await adminAuth.updateUser(decodedToken.uid, authUpdates);
-  } catch (error) {
+  } catch {
     return profileErrorResponse(
       "Could not update your sign-in profile. Try again or contact an administrator.",
       503,
-      "auth-profile-update",
-      error
+      "auth-profile-update"
     );
   }
 
@@ -487,33 +516,54 @@ async function updateProfile(request: Request) {
       }
     });
 
-    return NextResponse.json<ProfileUpdateResponse>({
-      ok: true,
-      name,
-      photoURL: nextPhotoURL,
-    });
+    const successResponse = apiResponse(
+      { ok: true, name, photoURL: nextPhotoURL },
+      200,
+      usedStorageFallback ? "storage-fallback" : "complete"
+    );
+    if (usedStorageFallback) context.setStep("storage-fallback");
+    return successResponse;
   } catch (error) {
     if (error instanceof ProfileUpdateError) {
-      return profileErrorResponse(error.message, error.status, error.step, error);
+      return profileErrorResponse(error.message, error.status, error.step);
     }
     return profileErrorResponse(
       "Your sign-in profile may have updated, but the member record could not be synced. Save again or contact an administrator.",
       503,
-      "firestore-sync",
-      error
+      "firestore-sync"
     );
   }
 }
 
 export async function POST(request: Request) {
-  try {
-    return await updateProfile(request);
-  } catch (error) {
-    return profileErrorResponse(
-      "Could not update your profile because of a server error. Try again or contact an administrator.",
-      500,
-      "unexpected",
-      error
-    );
-  }
+  return withApiObservability(request, "/api/profile", async (context) => {
+    try {
+      const authorization = await authorizeProfileRequest(request);
+      if (authorization instanceof Response) return authorization;
+
+      return withIdempotency(
+        request,
+        `profile:${authorization.decodedToken.uid}`,
+        async () => {
+          const limit = consumeRateLimit(
+            `profile:${authorization.decodedToken.uid}`,
+            { limit: PROFILE_RATE_LIMIT, windowMs: PROFILE_RATE_WINDOW_MS }
+          );
+          if (!limit.allowed) {
+            return rateLimitResponse(
+              limit.retryAfterSeconds,
+              "Profile updates are temporarily limited. Try again later."
+            );
+          }
+          return updateProfile(request, authorization, context);
+        }
+      );
+    } catch {
+      return profileErrorResponse(
+        "Could not update your profile because of a server error. Try again or contact an administrator.",
+        500,
+        "unexpected"
+      );
+    }
+  });
 }
