@@ -171,30 +171,31 @@ export function DailyMealsSheet({
         </div>
       )}
 
-      <div className="custom-scrollbar hidden max-h-[70vh] overflow-auto overscroll-contain scroll-smooth rounded-b-2xl lg:block">
-        <table className="w-full min-w-max table-fixed text-sm">
+      <div className="custom-scrollbar hidden max-h-[70vh] overflow-auto overscroll-contain rounded-b-2xl lg:block">
+        <table className="w-full min-w-max table-fixed border-separate border-spacing-0 text-sm">
           <thead>
             <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-800 dark:text-slate-100">
-              <th className="sticky left-0 top-0 z-30 h-12 w-28 whitespace-nowrap border-b-2 border-slate-300 bg-slate-100 px-4 py-3 font-bold sm:px-6 dark:border-slate-600 dark:bg-slate-800">
+              <th className="sticky left-0 top-0 z-30 h-12 w-28 border-b-2 border-slate-300 bg-slate-100 px-4 py-0 font-bold leading-none sm:px-6 dark:border-slate-600 dark:bg-slate-800">
                 DATE
               </th>
               {activeMembers.map((member) => (
                 <th
                   key={member.id}
                   colSpan={3}
-                  className="sticky top-0 z-20 h-12 min-w-[10.5rem] whitespace-nowrap border-b-2 border-slate-300 bg-slate-100 px-2 py-3 text-center font-bold dark:border-slate-600 dark:bg-slate-800"
+                  title={member.name}
+                  className="sticky top-0 z-20 h-12 min-w-[10.5rem] overflow-hidden border-b-2 border-slate-300 bg-slate-100 px-2 py-0 text-center font-bold leading-none dark:border-slate-600 dark:bg-slate-800"
                 >
-                  {member.name}
+                  <span className="block truncate">{member.name}</span>
                 </th>
               ))}
             </tr>
             <tr className="text-left text-[10px] font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">
-              <th className="sticky left-0 top-12 z-30 h-10 w-28 border-b border-slate-300 bg-slate-50 px-4 py-2 sm:px-6 dark:border-slate-600 dark:bg-slate-800" />
+              <th className="sticky left-0 top-12 z-30 h-10 w-28 border-b border-slate-300 bg-slate-50 px-4 py-0 leading-none sm:px-6 dark:border-slate-600 dark:bg-slate-800" />
               {activeMembers.map((member) => (
                 <Fragment key={member.id}>
-                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-2 text-center font-bold dark:border-slate-600 dark:bg-slate-800">B</th>
-                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-2 text-center font-bold dark:border-slate-600 dark:bg-slate-800">L</th>
-                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-2 text-center font-bold dark:border-slate-600 dark:bg-slate-800">D</th>
+                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-0 text-center font-bold leading-none dark:border-slate-600 dark:bg-slate-800">B</th>
+                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-0 text-center font-bold leading-none dark:border-slate-600 dark:bg-slate-800">L</th>
+                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-slate-300 bg-slate-50 px-1 py-0 text-center font-bold leading-none dark:border-slate-600 dark:bg-slate-800">D</th>
                 </Fragment>
               ))}
             </tr>
@@ -207,7 +208,7 @@ export function DailyMealsSheet({
               const isTodayRow = row.label === "Today";
               return (
                 <tr key={row.date} className={`border-b border-slate-100 last:border-0 dark:border-slate-800 ${isTodayRow ? "bg-emerald-50/70 dark:bg-emerald-950/20" : isFuture ? "bg-slate-50/60 text-slate-400 dark:bg-slate-950/30 dark:text-slate-500" : ""}`}>
-                  <td className={`sticky left-0 w-28 whitespace-nowrap px-4 py-2.5 font-medium backdrop-blur sm:px-6 ${isTodayRow ? "bg-emerald-50/95 dark:bg-emerald-950/90" : isFuture ? "bg-slate-50/95 dark:bg-slate-950/90" : "bg-white/95 dark:bg-slate-900/95"}`}>
+                  <td className={`sticky left-0 z-10 w-28 whitespace-nowrap px-4 py-2.5 font-medium sm:px-6 ${isTodayRow ? "bg-emerald-50 dark:bg-emerald-950" : isFuture ? "bg-slate-50 dark:bg-slate-950" : "bg-white dark:bg-slate-900"}`}>
                     <div className="flex flex-col">
                       <span>{row.label}</span>
                       {!isPast && row.label !== "Today" && (

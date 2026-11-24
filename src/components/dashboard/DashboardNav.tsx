@@ -76,8 +76,6 @@ export function DashboardNav({
     name: string;
     photoURL: string | null;
   } | null>(null);
-  const [isCompact, setIsCompact] = useState(false);
-  const compactStateRef = useRef(false);
   const [lastSeenTimestamp, setLastSeenTimestamp] = useState<string | null>(() =>
     typeof window === "undefined" ? null : window.localStorage.getItem("mess_activity_last_seen")
   );
@@ -117,18 +115,6 @@ export function DashboardNav({
     document.addEventListener("pointerdown", handleOutsidePointerDown);
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
   }, [profileOpen]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const nextCompact = window.scrollY > 36;
-      if (compactStateRef.current === nextCompact) return;
-      compactStateRef.current = nextCompact;
-      setIsCompact(nextCompact);
-    };
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -218,8 +204,8 @@ export function DashboardNav({
 
   return (
     <>
-      <header className={`relative sticky top-0 z-40 w-full max-w-full overflow-visible border-b border-slate-200/50 bg-white/80 backdrop-blur-lg transition-[margin,width] duration-200 ease-in-out motion-reduce:transition-none dark:border-slate-800/50 dark:bg-slate-900/80 ${sidebarExpanded ? "md:ml-64 md:w-[calc(100%-16rem)]" : "md:ml-[72px] md:w-[calc(100%-72px)]"} ${isCompact ? "shadow-md shadow-slate-900/5" : ""}`}>
-      <div className={`mx-auto grid w-full max-w-7xl grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2 px-3 transition-[padding] duration-200 sm:px-4 md:flex md:flex-nowrap md:justify-between md:gap-3 lg:px-8 ${isCompact ? "py-2" : "py-3 sm:py-4"}`}>
+      <header className={`relative sticky top-0 z-40 w-full max-w-full overflow-visible border-b border-slate-200/50 bg-white/80 shadow-md shadow-slate-900/5 backdrop-blur-lg transition-[margin,width] duration-150 ease-out motion-reduce:transition-none dark:border-slate-800/50 dark:bg-slate-900/80 ${sidebarExpanded ? "md:ml-64 md:w-[calc(100%-16rem)]" : "md:ml-[72px] md:w-[calc(100%-72px)]"}`}>
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2 px-3 py-3 sm:px-4 sm:py-4 md:flex md:flex-nowrap md:justify-between md:gap-3 lg:px-8">
         <button
           type="button"
           onClick={onOpenMobileNav}
@@ -231,7 +217,7 @@ export function DashboardNav({
         </button>
 
         <div className="col-span-2 row-start-2 flex w-full justify-center md:col-span-1 md:row-start-auto md:w-auto md:shrink-0 md:justify-start">
-          <div className={`flex shrink-0 items-center justify-center gap-0.5 rounded-full border border-slate-200/90 bg-slate-50/70 px-2.5 shadow-sm transition-colors dark:border-slate-800/80 dark:bg-slate-900/80 sm:gap-1 sm:px-3 ${isCompact ? "py-1 text-[11px] sm:text-xs" : "py-1.5 text-xs sm:text-sm"}`}>
+          <div className="flex shrink-0 items-center justify-center gap-0.5 rounded-full border border-slate-200/90 bg-slate-50/70 px-2.5 py-1.5 text-xs shadow-sm transition-colors dark:border-slate-800/80 dark:bg-slate-900/80 sm:gap-1 sm:px-3 sm:text-sm">
             <button
               type="button"
               onClick={onPrevMonth}

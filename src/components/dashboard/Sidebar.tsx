@@ -238,9 +238,9 @@ export function Sidebar({
                         });
                       }
                     }}
-                    className={`group flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold transition-colors ${
+                    className={`group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold transition-colors duration-150 ease-out ${
                       groupIsActive
-                        ? "text-emerald-700 dark:text-emerald-300"
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
                         : "text-slate-600 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/80"
                     } ${canShowLabels ? "" : "justify-center px-0"}`}
                   >
@@ -257,7 +257,7 @@ export function Sidebar({
                       <>
                         <span className="min-w-0 flex-1">{group.label}</span>
                         <ChevronDown
-                          className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+                          className={`h-4 w-4 shrink-0 transition-transform duration-150 ease-out ${
                             groupIsOpen ? "rotate-180" : ""
                           }`}
                           strokeWidth={1.8}
@@ -267,26 +267,12 @@ export function Sidebar({
                     ) : null}
                   </button>
 
-                  {canShowLabels ? (
-                    <AnimatePresence initial={false}>
-                      {groupIsOpen ? (
-                        <motion.div
-                          id={contentId}
-                          key="items"
-                          initial={reduceMotion ? false : { height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={
-                            reduceMotion
-                              ? { duration: 0 }
-                              : { type: "spring", stiffness: 300, damping: 28 }
-                          }
-                          className="overflow-hidden"
-                        >
-                          <div className="ml-6 mt-1 space-y-0.5 border-l border-slate-200/70 pl-3 dark:border-slate-700/70">
-                            {group.items
-                              .filter((item) => !item.adminOnly || isAdmin)
-                              .map((item) => {
+                  {canShowLabels && groupIsOpen ? (
+                    <div id={contentId} className="mt-1">
+                      <div className="ml-6 space-y-0.5 border-l border-slate-200/70 pl-3 dark:border-slate-700/70">
+                        {group.items
+                          .filter((item) => !item.adminOnly || isAdmin)
+                          .map((item) => {
                               const ItemIcon = item.icon;
                               const active = isItemActive(
                                 item,
@@ -300,7 +286,7 @@ export function Sidebar({
                                   type="button"
                                   onClick={() => navigate(item)}
                                   aria-current={active ? "page" : undefined}
-                                  className={`flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium leading-4 transition-colors ${
+                                  className={`flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium leading-4 transition-colors duration-150 ${
                                     active
                                       ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200"
                                       : "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white"
@@ -313,11 +299,9 @@ export function Sidebar({
                                   ) : null}
                                 </button>
                               );
-                              })}
-                          </div>
-                        </motion.div>
-                      ) : null}
-                    </AnimatePresence>
+                          })}
+                      </div>
+                    </div>
                   ) : null}
                 </div>
               );
@@ -331,39 +315,52 @@ export function Sidebar({
     <>
       <aside
         aria-label="Primary navigation"
-        className={`sidebar-shell fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-slate-200/80 bg-white/80 pt-2 backdrop-blur-xl transition-[width] duration-200 ease-in-out motion-reduce:transition-none dark:border-slate-800 dark:bg-slate-900/80 md:flex ${
+        className={`sidebar-shell fixed inset-y-0 left-0 z-50 hidden flex-col overflow-visible border-r border-slate-200/80 bg-white/80 pt-2 backdrop-blur-xl transition-[width] duration-150 ease-out transform-gpu motion-reduce:transition-none dark:border-slate-800 dark:bg-slate-900/80 md:flex ${
           expanded ? "w-64" : "w-[72px]"
         }`}
       >
-        <div className={`flex h-12 shrink-0 items-center ${expanded ? "justify-between gap-2 px-3" : "justify-between gap-1 px-1"}`}>
-          <div className="flex min-w-0 items-center gap-2">
-            <Image
-              src="/logo-512.png"
-              alt={expanded ? "" : "Mess App"}
-              width={36}
-              height={36}
-              className={`shrink-0 rounded-xl object-cover ${expanded ? "h-9 w-9" : "h-7 w-7"}`}
-            />
-            {expanded ? (
-              <span className="whitespace-nowrap text-sm font-semibold text-slate-800 dark:text-slate-100">
-                Mess App
-              </span>
-            ) : null}
-          </div>
+        <div className={`flex h-12 shrink-0 items-center ${expanded ? "justify-start px-3" : "justify-center px-0"}`}>
           <button
             type="button"
             onClick={onToggleExpanded}
-            aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
-            title={expanded ? "Collapse sidebar" : "Expand sidebar"}
-            className={`flex shrink-0 items-center justify-center gap-2 rounded-md text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 ${
-              expanded ? "h-9 px-2" : "h-7 w-7"
+            aria-label={expanded ? "Close sidebar" : "Open sidebar"}
+            className={`group relative flex h-9 shrink-0 items-center rounded-lg text-slate-600 transition-colors duration-150 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-slate-300 dark:hover:bg-slate-800 ${
+              expanded ? "w-full justify-start gap-2 px-1" : "w-9 justify-center"
             }`}
           >
+            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+              <Image
+                src="/logo-512.png"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-xl object-cover transition-opacity duration-150 group-hover:opacity-0 group-focus-visible:opacity-0"
+              />
+              {expanded ? (
+                <PanelLeftClose
+                  className="absolute h-4 w-4 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+                  strokeWidth={1.8}
+                  aria-hidden="true"
+                />
+              ) : (
+                <PanelLeftOpen
+                  className="absolute h-4 w-4 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+                  strokeWidth={1.8}
+                  aria-hidden="true"
+                />
+              )}
+            </span>
             {expanded ? (
-              <PanelLeftClose className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
-            ) : (
-              <PanelLeftOpen className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
-            )}
+              <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-800 dark:text-slate-100">
+                Mess App
+              </span>
+            ) : null}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-lg border border-slate-200 bg-white/95 px-2.5 py-1.5 text-xs font-medium text-slate-800 opacity-0 shadow-lg shadow-slate-900/10 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-100"
+            >
+              {expanded ? "Close sidebar" : "Open sidebar"}
+            </span>
           </button>
         </div>
         {renderNavigation(false)}

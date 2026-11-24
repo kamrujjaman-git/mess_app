@@ -562,7 +562,7 @@ function DashboardContent() {
       />
 
       <main
-        className={`w-full min-w-0 flex-1 px-4 py-6 transition-[margin,width] duration-200 ease-in-out motion-reduce:transition-none sm:px-6 lg:px-8 ${
+        className={`w-full min-w-0 flex-1 px-4 py-6 transition-[margin,width] duration-150 ease-out motion-reduce:transition-none sm:px-6 lg:px-8 ${
           sidebarExpanded
             ? "md:ml-64 md:w-[calc(100%-16rem)]"
             : "md:ml-[72px] md:w-[calc(100%-72px)]"
