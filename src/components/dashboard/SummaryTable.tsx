@@ -4,12 +4,13 @@ import { memo, useMemo } from "react";
 import { Download } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
-import type { MemberSummary } from "@/lib/mess";
+import type { Member, MemberSummary } from "@/lib/mess";
 import { buildWhatsAppLink, formatCurrency, formatMonthLabel } from "@/lib/mess";
 import { DashboardSectionHeader } from "./DashboardSectionHeader";
 
 interface SummaryTableProps {
   members: MemberSummary[];
+  memberProfiles: Pick<Member, "id" | "photoURL">[];
   monthKey?: string;
   isAdmin?: boolean;
 }
@@ -55,13 +56,41 @@ function WhatsAppActionIcon() {
 
 export const SummaryTable = memo(function SummaryTable({
   members,
+  memberProfiles,
   monthKey,
   isAdmin = false,
 }: SummaryTableProps) {
+  const photoURLById = useMemo(
+    () => new Map(memberProfiles.map((member) => [member.id, member.photoURL])),
+    [memberProfiles]
+  );
   const visibleMembers = useMemo(
     () => isAdmin ? members : members.filter((member) => member.status === "active"),
     [isAdmin, members]
   );
+
+  function renderMemberIdentity(member: MemberSummary) {
+    const photoURL = photoURLById.get(member.id);
+    return (
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        {photoURL ? (
+          <Image
+            src={photoURL}
+            alt=""
+            width={32}
+            height={32}
+            unoptimized
+            className="h-8 w-8 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+            {(member.name.trim().charAt(0) || "M").toUpperCase()}
+          </span>
+        )}
+        <span className="min-w-0 flex-1 break-words">{member.name}</span>
+      </span>
+    );
+  }
 
   function renderMemberRow(member: MemberSummary) {
     const inactive = member.status !== "active";
@@ -73,7 +102,7 @@ export const SummaryTable = memo(function SummaryTable({
       <tr key={member.id} className={`group ${inactive ? "print:hidden" : ""}`}>
         <td className={`${cellClass} break-words font-medium`}>
           <div className="flex items-center gap-2">
-            <span className="min-w-0 flex-1 break-words">{member.name}</span>
+            {renderMemberIdentity(member)}
             {inactive && (
               <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                 INACTIVE
@@ -205,7 +234,9 @@ export const SummaryTable = memo(function SummaryTable({
               }`}
             >
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <span className="min-w-0 break-words font-semibold">{member.name}</span>
+                <div className="flex min-w-0 flex-1 items-center font-semibold">
+                  {renderMemberIdentity(member)}
+                </div>
                 <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
                   {inactive && (
                     <span className="rounded-full bg-slate-200 px-2 py-1 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">

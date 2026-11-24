@@ -59,7 +59,12 @@ export function DashboardNav({
   sidebarExpanded,
   onOpenMobileNav,
 }: DashboardNavProps) {
-  const { isAdmin: authIsAdmin, isSuperAdmin, canDeleteNotifications } = useAuth();
+  const {
+    isAdmin: authIsAdmin,
+    isSuperAdmin,
+    canDeleteNotifications,
+    refreshUserProfile,
+  } = useAuth();
   const reduceMotion = useReducedMotion();
   const { undo, error } = useToast();
   const [imageFailed, setImageFailed] = useState(false);
@@ -404,9 +409,25 @@ export function DashboardNav({
                   }
                   className="absolute right-0 top-full z-50 mt-2 w-52 transform-gpu rounded-2xl border border-slate-200/70 bg-white/95 p-2 text-left shadow-xl backdrop-blur-lg will-change-transform dark:border-slate-700/70 dark:bg-slate-900/95 sm:right-0"
                 >
-                <div className="border-b border-slate-200/70 px-3 pb-2 dark:border-slate-700/70">
-                  <p className="truncate text-sm font-semibold">{displayName}</p>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">{roleLabel}</p>
+                <div className="flex items-center gap-2 border-b border-slate-200/70 px-3 pb-2 dark:border-slate-700/70">
+                  {avatarURL && !imageFailed ? (
+                    <Image
+                      src={avatarURL}
+                      alt=""
+                      width={36}
+                      height={36}
+                      unoptimized
+                      className="h-9 w-9 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white">
+                      {avatarInitial}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{displayName}</p>
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">{roleLabel}</p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -459,6 +480,9 @@ export function DashboardNav({
             onSaved={(name, photoURL) => {
               setProfileOverride({ name, photoURL });
               setImageFailed(false);
+              void refreshUserProfile().catch((error) => {
+                console.error("Could not refresh the signed-in profile:", error);
+              });
             }}
           />
         ) : null}

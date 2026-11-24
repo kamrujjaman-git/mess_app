@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { toast } from "react-hot-toast";
 import {
   Loader2,
@@ -318,7 +319,22 @@ export function ManageMembers({
                   </div>
                 ) : (
                   <div className="mt-2 flex flex-col gap-2 sm:mt-0 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      {member.photoURL ? (
+                        <Image
+                          src={member.photoURL}
+                          alt=""
+                          width={40}
+                          height={40}
+                          unoptimized
+                          className="h-10 w-10 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                          {(member.name.trim().charAt(0) || "M").toUpperCase()}
+                        </span>
+                      )}
+                      <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate font-medium">{member.name}</p>
                         <span
@@ -361,6 +377,7 @@ export function ManageMembers({
                           WhatsApp: {member.whatsAppNumber}
                         </p>
                       )}
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-start gap-2 sm:flex-nowrap sm:gap-3">

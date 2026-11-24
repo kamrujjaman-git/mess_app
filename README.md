@@ -79,6 +79,8 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_ADMIN_EMAIL=your-email-id@gmail.com
+FIREBASE_CLIENT_EMAIL=your-service-account-email
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 3. Run Development Server:
 npm run dev
 4. Open in Browser:
@@ -90,6 +92,7 @@ Profile pictures use the configured Firebase Storage bucket. Make sure the Fireb
 firebase deploy --only storage
 ```
 The bucket must be set in `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`. The profile API also requires the Firebase Admin credentials already used by the server-side API routes.
+Set `FIREBASE_PROJECT_ID` if it differs from `NEXT_PUBLIC_FIREBASE_PROJECT_ID`; `FIREBASE_STORAGE_BUCKET` can optionally override `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`. Keep Admin credentials server-only and encode private-key line breaks as `\n` when the deployment provider requires a single-line value.
 
 🔒 Firestore Security Rules Setup
 Deploy the repository rules with `firebase deploy --only firestore:rules` after connecting the Firebase CLI to the correct project.

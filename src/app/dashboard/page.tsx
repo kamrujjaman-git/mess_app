@@ -601,7 +601,12 @@ function DashboardContent() {
             ) : null}
 
             {currentTab === "summary" && (
-              <SummaryTable members={stats.members} monthKey={monthKey} isAdmin={isAdmin} />
+              <SummaryTable
+                members={stats.members}
+                memberProfiles={monthData.members}
+                monthKey={monthKey}
+                isAdmin={isAdmin}
+              />
             )}
 
             {currentTab === "meals" && (

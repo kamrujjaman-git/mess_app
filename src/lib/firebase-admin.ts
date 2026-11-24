@@ -5,19 +5,85 @@ import { getStorage, type Storage } from "firebase-admin/storage";
 
 let adminApp: App | undefined;
 
+function normalizeConfigValue(value: string | undefined): string {
+    const trimmed = value?.trim() ?? "";
+    if (trimmed.length >= 2 && (
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    )) {
+        return trimmed.slice(1, -1).trim();
+    }
+    return trimmed;
+}
+
+function normalizeStorageBucketName(value: string): string {
+    let bucketName = normalizeConfigValue(value);
+
+    if (/^gs:\/\//i.test(bucketName)) {
+        bucketName = bucketName.slice(5);
+    } else if (/^https?:\/\//i.test(bucketName)) {
+        let url: URL;
+        try {
+            url = new URL(bucketName);
+        } catch {
+            throw new Error("Firebase Storage bucket configuration is invalid.");
+        }
+
+        const firebasePath = url.pathname.match(/^\/v0\/b\/([^/]+)(?:\/|$)/);
+        if (url.hostname === "firebasestorage.googleapis.com" && firebasePath) {
+            bucketName = decodeURIComponent(firebasePath[1]);
+        } else if (url.hostname === "storage.googleapis.com") {
+            bucketName = url.pathname.split("/").filter(Boolean)[0] ?? "";
+        } else {
+            throw new Error("Use a Firebase Storage bucket name or gs:// bucket URL.");
+        }
+    }
+
+    bucketName = bucketName.replace(/\/+$/, "");
+    if (!bucketName || /[/?#]/.test(bucketName)) {
+        throw new Error("Firebase Storage bucket configuration is invalid.");
+    }
+    return bucketName;
+}
+
+function configuredStorageBucket(): string | undefined {
+    const value = normalizeConfigValue(process.env.FIREBASE_STORAGE_BUCKET) ||
+        normalizeConfigValue(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    if (!value) return undefined;
+
+    try {
+        return normalizeStorageBucketName(value);
+    } catch {
+        return undefined;
+    }
+}
+
 function getAdminApp(): App {
     if (adminApp) return adminApp;
 
-    const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+    const projectId = normalizeConfigValue(process.env.FIREBASE_PROJECT_ID) ||
+        normalizeConfigValue(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+    const clientEmail = normalizeConfigValue(process.env.FIREBASE_CLIENT_EMAIL);
+    const rawPrivateKey = normalizeConfigValue(process.env.FIREBASE_PRIVATE_KEY);
+    const privateKey = rawPrivateKey
+        .replace(/\\\\n/g, "\n")
+        .replace(/\\r?\\n/g, "\n")
+        .replace(/\r\n/g, "\n");
 
     if (!projectId || !clientEmail || !privateKey) {
-        throw new Error("Firebase Admin credentials are not configured.");
+        throw new Error("Firebase Admin project ID, client email, and private key are required.");
     }
 
-    adminApp = getApps()[0] ?? initializeApp({
+    const defaultApp = getApps().find((app) => app.name === "[DEFAULT]");
+    if (defaultApp) {
+        adminApp = defaultApp;
+        return adminApp;
+    }
+
+    const storageBucket = configuredStorageBucket();
+    adminApp = initializeApp({
         credential: cert({ projectId, clientEmail, privateKey }),
+        ...(storageBucket ? { storageBucket } : {}),
     });
 
     return adminApp;
@@ -33,4 +99,16 @@ export function getAdminFirestore(): Firestore {
 
 export function getAdminStorage(): Storage {
     return getStorage(getAdminApp());
+}
+
+export function getAdminStorageBucket() {
+    const app = getAdminApp();
+    const configuredBucket = normalizeConfigValue(process.env.FIREBASE_STORAGE_BUCKET) ||
+        normalizeConfigValue(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    const bucketValue = configuredBucket || app.options.storageBucket;
+    if (!bucketValue) {
+        throw new Error("Firebase Storage bucket is not configured.");
+    }
+
+    return getStorage(app).bucket(normalizeStorageBucketName(bucketValue));
 }

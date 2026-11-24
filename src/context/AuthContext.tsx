@@ -32,7 +32,9 @@ interface AuthContextValue {
   hasAccess: boolean;
   accessDeniedReason: AccessDeniedReason;
   members: Member[];
+  profileVersion: number;
   signInWithGoogle: () => Promise<void>;
+  refreshUserProfile: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -43,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
   const [membersReady, setMembersReady] = useState(false);
+  const [profileVersion, setProfileVersion] = useState(0);
 
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
   const normalizedAdminEmail = adminEmail.trim().toLowerCase();
@@ -132,6 +135,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithPopup(auth, provider);
   }, []);
 
+  const refreshUserProfile = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error("The signed-in user is no longer available.");
+    }
+
+    await currentUser.reload();
+    setProfileVersion((version) => version + 1);
+  }, []);
+
   const logout = useCallback(async () => {
     setUser(null);
     setLoading(false);
@@ -158,7 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasAccess,
         accessDeniedReason,
         members,
+        profileVersion,
         signInWithGoogle,
+        refreshUserProfile,
         logout,
       }}
     >
