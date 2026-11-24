@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState, type MouseEvent } from "react";
+import { Fragment, memo, useMemo, useRef, useState, type MouseEvent } from "react";
 import { toast } from "react-hot-toast";
 import { ShieldAlert } from "lucide-react";
 import type { DailyMealRecord, Member, MemberMeals } from "@/lib/mess";
@@ -16,7 +16,14 @@ interface DailyMealsSheetProps {
   onOptimisticToggle?: (date: string, memberId: string, mealType: keyof MemberMeals, nextStatus: boolean) => void;
 }
 
-export function DailyMealsSheet({
+function getDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export const DailyMealsSheet = memo(function DailyMealsSheet({
   records,
   members,
   selectedMonthKey,
@@ -24,7 +31,7 @@ export function DailyMealsSheet({
   onEdit,
   onOptimisticToggle,
 }: DailyMealsSheetProps) {
-  const activeMembers = getActiveMembers(members);
+  const activeMembers = useMemo(() => getActiveMembers(members), [members]);
   const recordsByDate = useMemo(() => {
     const recordsByDate = new Map<string, DailyMealRecord>();
     for (const record of records) {
@@ -37,15 +44,7 @@ export function DailyMealsSheet({
   const [draftMeals, setDraftMeals] = useState<Record<string, Record<string, MemberMeals>>>({});
   const [saving, setSaving] = useState(false);
   const togglingMealCells = useRef<Record<string, boolean>>({});
-  const now = new Date();
-  function getDateKey(date: Date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-
-  const todayKey = getDateKey(now);
+  const todayKey = getDateKey(new Date());
   function canEditRecord(recordDate: string) {
     return isAdmin && recordDate.startsWith(selectedMonthKey) && recordDate <= todayKey;
   }
@@ -58,7 +57,7 @@ export function DailyMealsSheet({
     ? "Meal entries are read-only for members."
     : "Future dates are locked. Only today and past dates can be edited.";
 
-  function buildDisplayRows() {
+  const displayRows = useMemo(() => {
     const [year, month] = selectedMonthKey.split("-").map(Number);
     const daysInSelectedMonth = new Date(year, month, 0).getDate();
     const rows: Array<{ date: string; label: string }> = [];
@@ -70,9 +69,7 @@ export function DailyMealsSheet({
     }
 
     return rows;
-  }
-
-  const displayRows = buildDisplayRows();
+  }, [selectedMonthKey, todayKey]);
 
   function getRecordForDate(date: string): DailyMealRecord {
     return recordsByDate.get(date) ?? { date, meals: {} };
@@ -314,4 +311,4 @@ export function DailyMealsSheet({
       </div>
     </div>
   );
-}
+});

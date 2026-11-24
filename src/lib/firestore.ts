@@ -120,6 +120,7 @@ function parseMembers(data: Record<string, unknown> | undefined): Member[] {
       isBlocked: Boolean(member.isBlocked),
       isRemoved: Boolean(member.isRemoved) || member.status === "removed",
       whatsAppNumber: String(member.whatsAppNumber ?? "").trim(),
+      photoURL: typeof member.photoURL === "string" ? member.photoURL : null,
     }));
   }
 
@@ -169,6 +170,7 @@ export async function getUserByUid(uid: string): Promise<Member | null> {
     isBlocked: Boolean(data.isBlocked),
     isRemoved: Boolean(data.isRemoved) || status === "removed",
     whatsAppNumber: String(data.whatsAppNumber ?? "").trim(),
+    photoURL: typeof data.photoURL === "string" ? data.photoURL : null,
   };
 }
 
@@ -194,6 +196,7 @@ export async function getUserByEmail(email: string): Promise<Member | null> {
     isBlocked: Boolean(data.isBlocked),
     isRemoved: Boolean(data.isRemoved) || status === "removed",
     whatsAppNumber: String(data.whatsAppNumber ?? "").trim(),
+    photoURL: typeof data.photoURL === "string" ? data.photoURL : null,
   };
 }
 

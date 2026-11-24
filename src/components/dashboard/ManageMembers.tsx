@@ -260,7 +260,11 @@ export function ManageMembers({
               {members.map((member) => (
               <li
                 key={member.id}
-                className="px-4 py-4 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40 sm:px-6"
+                className={`px-4 py-4 transition-colors sm:px-6 ${
+                  member.status === "active"
+                    ? "hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                    : "bg-slate-100/70 text-slate-600 hover:bg-slate-100 dark:bg-slate-950/30 dark:text-slate-400 dark:hover:bg-slate-900/50"
+                }`}
               >
                 {editingId === member.id ? (
                   <div className="space-y-3">
@@ -320,10 +324,10 @@ export function ManageMembers({
                         <span
                           className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${member.status === "active"
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                            : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
+                            : "border border-slate-300/70 bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                             }`}
                         >
-                          {member.status === "active" ? "Active" : "Inactive"}
+                          {member.status === "active" ? "Active" : "INACTIVE"}
                         </span>
                         {primaryAdminEmail && member.email?.trim().toLowerCase() === primaryAdminEmail ? (
                           <span className="flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">

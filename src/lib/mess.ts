@@ -23,6 +23,7 @@ export interface Member {
   isBlocked?: boolean;
   isRemoved?: boolean;
   whatsAppNumber?: string;
+  photoURL?: string | null;
 }
 
 export interface MemberMeals {

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminFirestore, getAdminStorage } from "@/lib/firebase-admin";
+import type { ProfileUpdateResponse } from "@/lib/profile";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function normalizeEmail(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function profileErrorResponse(error: string, status: number) {
+  return NextResponse.json<ProfileUpdateResponse>({ ok: false, error }, { status });
 }
 
 function detectedImageType(bytes: Buffer): string | null {
@@ -73,7 +78,7 @@ export async function POST(request: Request) {
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!token) {
-    return NextResponse.json({ error: "Sign in again before updating your profile." }, { status: 401 });
+    return profileErrorResponse("Sign in again before updating your profile.", 401);
   }
 
   let decodedToken;
@@ -81,53 +86,56 @@ export async function POST(request: Request) {
     decodedToken = await getAdminAuth().verifyIdToken(token, true);
   } catch (error) {
     console.error("Profile update token verification failed:", error);
-    return NextResponse.json({ error: "The session is invalid or expired. Sign in again." }, { status: 401 });
+    return profileErrorResponse("The session is invalid or expired. Sign in again.", 401);
   }
 
   const callerEmail = normalizeEmail(decodedToken.email);
   if (decodedToken.email_verified !== true || !callerEmail) {
-    return NextResponse.json({ error: "A verified account is required to update your profile." }, { status: 403 });
+    return profileErrorResponse("A verified account is required to update your profile.", 403);
   }
 
   let formData: FormData;
   try {
     formData = await request.formData();
   } catch {
-    return NextResponse.json({ error: "A valid profile update is required." }, { status: 400 });
+    return profileErrorResponse("A valid profile update is required.", 400);
   }
 
   const rawName = formData.get("name");
   if (typeof rawName !== "string") {
-    return NextResponse.json({ error: "Enter a valid profile name." }, { status: 400 });
+    return profileErrorResponse("Enter a valid profile name.", 400);
   }
   const name = rawName.trim();
   if (!name || name.length > 80) {
-    return NextResponse.json({ error: "Names must be between 1 and 80 characters." }, { status: 400 });
+    return profileErrorResponse("Names must be between 1 and 80 characters.", 400);
   }
 
   const rawAvatar = formData.get("avatar");
   if (rawAvatar !== null && (typeof File === "undefined" || !(rawAvatar instanceof File))) {
-    return NextResponse.json({ error: "Choose a valid image file." }, { status: 400 });
+    return profileErrorResponse("Choose a valid image file.", 400);
   }
 
-  const firestore = getAdminFirestore();
+  let firestore: ReturnType<typeof getAdminFirestore>;
+  try {
+    firestore = getAdminFirestore();
+  } catch (error) {
+    console.error("Could not initialize the profile database:", error);
+    return profileErrorResponse("Profile service is temporarily unavailable. Try again.", 503);
+  }
   const userRef = firestore.doc(`users/${decodedToken.uid}`);
   const membersRef = firestore.doc("settings/members");
   try {
     const existingUser = await userRef.get();
     const storedEmail = normalizeEmail(existingUser.data()?.email);
     if (storedEmail && storedEmail !== callerEmail) {
-      return NextResponse.json(
-        { error: "Your account record does not match your sign-in email. Contact an administrator." },
-        { status: 403 }
+      return profileErrorResponse(
+        "Your account record does not match your sign-in email. Contact an administrator.",
+        403
       );
     }
   } catch (error) {
     console.error("Could not verify the profile record:", error);
-    return NextResponse.json(
-      { error: "Could not verify your profile record. Try again." },
-      { status: 503 }
-    );
+    return profileErrorResponse("Could not verify your profile record. Try again.", 503);
   }
 
   let photoURL: string | undefined;
@@ -142,10 +150,7 @@ export async function POST(request: Request) {
       message.startsWith("Choose a valid") ||
       message.startsWith("Profile picture storage");
     if (!isValidationError) console.error("Profile picture upload failed:", error);
-    return NextResponse.json(
-      { error: message },
-      { status: isValidationError ? 400 : 503 }
-    );
+    return profileErrorResponse(message, isValidationError ? 400 : 503);
   }
 
   try {
@@ -197,7 +202,7 @@ export async function POST(request: Request) {
         const updatedMembers = members.map((member) => {
           if (!isRecord(member) || normalizeEmail(member.email) !== callerEmail) return member;
           changed = true;
-          return { ...member, name };
+          return { ...member, name, photoURL: nextPhotoURL };
         });
         if (changed) {
           const activeMembers = updatedMembers.filter((member) =>
@@ -221,18 +226,16 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json({
+    return NextResponse.json<ProfileUpdateResponse>({
       ok: true,
       name,
       photoURL: nextPhotoURL,
     });
   } catch (error) {
     console.error("Profile record synchronization failed:", error);
-    return NextResponse.json(
-      {
-        error: "Your sign-in profile may have updated, but the member record could not be synced. Save again or contact an administrator.",
-      },
-      { status: 503 }
+    return profileErrorResponse(
+      "Your sign-in profile may have updated, but the member record could not be synced. Save again or contact an administrator.",
+      503
     );
   }
 }

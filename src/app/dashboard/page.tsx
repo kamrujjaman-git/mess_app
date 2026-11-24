@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -503,15 +503,18 @@ function DashboardContent() {
 
   const memberDisplayName = currentMember?.name?.trim() || user?.displayName?.trim() || "Member";
 
-  const stats = monthData
-    ? calculateMessStats(
-      monthData.dailyMeals,
-      monthData.bazar,
-      monthData.deposits,
-      monthData.bills,
-      monthData.members
-    )
-    : null;
+  const stats = useMemo(
+    () => monthData
+      ? calculateMessStats(
+        monthData.dailyMeals,
+        monthData.bazar,
+        monthData.deposits,
+        monthData.bills,
+        monthData.members
+      )
+      : null,
+    [monthData]
+  );
 
   const currentDataReady = monthLoadedKey === monthKey;
   const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);

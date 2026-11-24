@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Loader2, Save, X } from "lucide-react";
 import {
@@ -50,7 +50,7 @@ interface BazarDepositLogProps {
   activeSection?: DashboardLogSection | null;
 }
 
-export function BazarDepositLog({
+export const BazarDepositLog = memo(function BazarDepositLog({
   bazar,
   deposits,
   bills,
@@ -67,7 +67,7 @@ export function BazarDepositLog({
   activeSection,
 }: BazarDepositLogProps) {
   const { undo, error } = useToast();
-  const activeMembers = getActiveMembers(members);
+  const activeMembers = useMemo(() => getActiveMembers(members), [members]);
   const selectedSection = activeSection === "bills" && !isAdmin
     ? "bazar"
     : activeSection ?? "bazar";
@@ -95,8 +95,14 @@ export function BazarDepositLog({
   const [pendingEntryDelete, setPendingEntryDelete] = useState<{ type: "bazar" | "deposit"; id: string } | null>(null);
   const pendingDeletes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  const visibleBazar = bazar.filter((entry) => !hiddenBazarIds.includes(entry.id));
-  const visibleDeposits = deposits.filter((entry) => !hiddenDepositIds.includes(entry.id));
+  const visibleBazar = useMemo(
+    () => bazar.filter((entry) => !hiddenBazarIds.includes(entry.id)),
+    [bazar, hiddenBazarIds]
+  );
+  const visibleDeposits = useMemo(
+    () => deposits.filter((entry) => !hiddenDepositIds.includes(entry.id)),
+    [deposits, hiddenDepositIds]
+  );
 
   useEffect(() => () => {
     pendingDeletes.current.forEach((timer) => clearTimeout(timer));
@@ -654,4 +660,4 @@ export function BazarDepositLog({
       />
     </div>
   );
-}
+});

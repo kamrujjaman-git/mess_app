@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-import { ShoppingCart, Users, Wallet2 } from "lucide-react";
 
 interface EmptyStateProps {
     icon: LucideIcon;
@@ -49,41 +48,5 @@ export function EmptyState({
                 </button>
             ) : null}
         </motion.div>
-    );
-}
-
-export function NoDepositsEmptyState({ onAction }: { onAction?: () => void }) {
-    return (
-        <EmptyState
-            icon={Wallet2}
-            title="No deposits yet"
-            description="Once members add their deposits, you’ll see them listed here with amounts and dates."
-            actionButtonLabel={onAction ? "Add deposit" : undefined}
-            onAction={onAction}
-        />
-    );
-}
-
-export function NoBazarExpensesEmptyState({ onAction }: { onAction?: () => void }) {
-    return (
-        <EmptyState
-            icon={ShoppingCart}
-            title="No bazar expenses logged"
-            description="Track bazar spending by adding your first expense entry for this month."
-            actionButtonLabel={onAction ? "Add expense" : undefined}
-            onAction={onAction}
-        />
-    );
-}
-
-export function NoActiveMembersEmptyState({ onAction }: { onAction?: () => void }) {
-    return (
-        <EmptyState
-            icon={Users}
-            title="No active members found"
-            description="Invite or activate members to start sharing meals, deposits, and bazar expenses."
-            actionButtonLabel={onAction ? "Manage members" : undefined}
-            onAction={onAction}
-        />
     );
 }

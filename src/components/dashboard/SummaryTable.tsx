@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { Download } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
@@ -52,7 +53,56 @@ function WhatsAppActionIcon() {
   );
 }
 
-export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTableProps) {
+export const SummaryTable = memo(function SummaryTable({
+  members,
+  monthKey,
+  isAdmin = false,
+}: SummaryTableProps) {
+  const visibleMembers = useMemo(
+    () => isAdmin ? members : members.filter((member) => member.status === "active"),
+    [isAdmin, members]
+  );
+
+  function renderMemberRow(member: MemberSummary) {
+    const inactive = member.status !== "active";
+    const cellClass = inactive
+      ? "border-b border-slate-200/80 bg-slate-50/70 px-6 py-4 text-slate-500 transition-colors group-hover:bg-slate-100/70 dark:border-slate-800 dark:bg-slate-950/30 dark:text-slate-400 dark:group-hover:bg-slate-900/50"
+      : "border-b border-slate-100/80 px-6 py-4 transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50";
+
+    return (
+      <tr key={member.id} className={`group ${inactive ? "print:hidden" : ""}`}>
+        <td className={`${cellClass} break-words font-medium`}>
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 break-words">{member.name}</span>
+            {inactive && (
+              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                INACTIVE
+              </span>
+            )}
+            {isAdmin && member.whatsAppNumber && (
+              <a
+                href={buildWhatsAppLink({ name: member.name, whatsAppNumber: member.whatsAppNumber }, member.finalBalance)}
+                target="_blank"
+                rel="noreferrer"
+                className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                aria-label={`Open WhatsApp for ${member.name}`}
+                title={`Open WhatsApp for ${member.name}`}
+              >
+                <WhatsAppActionIcon />
+              </a>
+            )}
+          </div>
+        </td>
+        <td className={`${cellClass} tabular-nums`}>{member.totalMeals}</td>
+        <td className={`${cellClass} tabular-nums`}>৳{formatCurrency(member.totalDeposited)}</td>
+        <td className={`${cellClass} tabular-nums`}>৳{formatCurrency(member.mealCost)}</td>
+        <td className={`${cellClass} text-right`}>
+          <BalanceBadge amount={member.finalBalance} />
+        </td>
+      </tr>
+    );
+  }
+
   function handleDownloadPdf() {
     if (typeof window === "undefined") {
       return;
@@ -137,101 +187,64 @@ export function SummaryTable({ members, monthKey, isAdmin = false }: SummaryTabl
               <th className="px-6 py-4 text-right font-medium">Final Balance</th>
             </tr>
           </thead>
-          <tbody>
-            {members.map((m) => (
-              <tr
-                key={m.id}
-                className="group"
-              >
-                <td className="break-words border-b border-slate-100/80 px-6 py-4 font-medium transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 break-words">{m.name}</span>
-                    {m.status === "inactive" && (
-                      <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-500 dark:bg-slate-700">
-                        Inactive
-                      </span>
-                    )}
-                    {isAdmin && m.whatsAppNumber && (
-                      <a
-                        href={buildWhatsAppLink({ name: m.name, whatsAppNumber: m.whatsAppNumber }, m.finalBalance)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
-                        aria-label={`Open WhatsApp for ${m.name}`}
-                        title={`Open WhatsApp for ${m.name}`}
-                      >
-                        <WhatsAppActionIcon />
-                      </a>
-                    )}
-                  </div>
-                </td>
-                <td className="border-b border-slate-100/80 px-6 py-4 tabular-nums transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
-                  {m.totalMeals}
-                </td>
-                <td className="border-b border-slate-100/80 px-6 py-4 tabular-nums transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
-                  ৳{formatCurrency(m.totalDeposited)}
-                </td>
-                <td className="border-b border-slate-100/80 px-6 py-4 tabular-nums transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
-                  ৳{formatCurrency(m.mealCost)}
-                </td>
-                <td className="border-b border-slate-100/80 px-6 py-4 text-right transition-colors group-hover:bg-slate-50/80 dark:border-slate-800 dark:group-hover:bg-slate-800/50">
-                  <BalanceBadge amount={m.finalBalance} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <tbody>{visibleMembers.map(renderMemberRow)}</tbody>
         </table>
       </div>
 
       <div className="summary-mobile-cards relative space-y-3 pt-4 md:hidden">
         <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-slate-100/80 to-transparent dark:from-slate-900/70" />
-        {members.map((m) => (
-          <div
-            key={m.id}
-            className="rounded-xl border border-slate-200/60 bg-white/50 p-4 transition-colors hover:bg-slate-50/80 dark:border-slate-700/60 dark:bg-slate-800/40 dark:hover:bg-slate-800/50"
-          >
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="min-w-0 break-words font-semibold">
-                {m.name}
-                {m.status === "inactive" && (
-                  <span className="ml-2 text-xs font-normal text-slate-500">
-                    (Inactive)
-                  </span>
-                )}
-              </span>
-              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
-                {isAdmin && m.whatsAppNumber && (
-                  <a
-                    href={buildWhatsAppLink({ name: m.name, whatsAppNumber: m.whatsAppNumber }, m.finalBalance)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
-                    aria-label={`Open WhatsApp for ${m.name}`}
-                    title={`Open WhatsApp for ${m.name}`}
-                  >
-                    <WhatsAppActionIcon />
-                  </a>
-                )}
-                <BalanceBadge amount={m.finalBalance} />
+        {visibleMembers.map((member) => {
+          const inactive = member.status !== "active";
+          return (
+            <div
+              key={member.id}
+              className={`rounded-xl border p-4 transition-colors ${
+                inactive
+                  ? "border-slate-200 bg-slate-100/70 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-400 dark:hover:bg-slate-900/50"
+                  : "border-slate-200/60 bg-white/50 hover:bg-slate-50/80 dark:border-slate-700/60 dark:bg-slate-800/40 dark:hover:bg-slate-800/50"
+              }`}
+            >
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 break-words font-semibold">{member.name}</span>
+                <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+                  {inactive && (
+                    <span className="rounded-full bg-slate-200 px-2 py-1 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                      INACTIVE
+                    </span>
+                  )}
+                  {isAdmin && member.whatsAppNumber && (
+                    <a
+                      href={buildWhatsAppLink({ name: member.name, whatsAppNumber: member.whatsAppNumber }, member.finalBalance)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                      aria-label={`Open WhatsApp for ${member.name}`}
+                      title={`Open WhatsApp for ${member.name}`}
+                    >
+                      <WhatsAppActionIcon />
+                    </a>
+                  )}
+                  <BalanceBadge amount={member.finalBalance} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-slate-500">Meals</span>
+                  <p className="font-medium tabular-nums">{member.totalMeals}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Deposited</span>
+                  <p className="truncate font-medium tabular-nums">৳{formatCurrency(member.totalDeposited)}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Meal Cost</span>
+                  <p className="truncate font-medium tabular-nums">৳{formatCurrency(member.mealCost)}</p>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="text-slate-500">Meals</span>
-                <p className="font-medium tabular-nums">{m.totalMeals}</p>
-              </div>
-              <div>
-                <span className="text-slate-500">Deposited</span>
-                <p className="truncate font-medium tabular-nums">৳{formatCurrency(m.totalDeposited)}</p>
-              </div>
-              <div>
-                <span className="text-slate-500">Meal Cost</span>
-                <p className="truncate font-medium tabular-nums">৳{formatCurrency(m.mealCost)}</p>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
-}
+});
