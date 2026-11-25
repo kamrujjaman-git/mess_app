@@ -175,12 +175,12 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
               <th className="sticky left-0 top-0 z-30 h-12 w-28 border-b-2 border-subtle bg-container px-4 py-0 font-bold leading-none sm:px-6 dark:border-subtle dark:bg-elevated">
                 DATE
               </th>
-              {activeMembers.map((member) => (
+              {activeMembers.map((member, memberIndex) => (
                 <th
                   key={member.id}
                   colSpan={3}
                   title={member.name}
-                  className="sticky top-0 z-20 h-12 min-w-[10.5rem] overflow-hidden border-b-2 border-subtle bg-container px-2 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated"
+                  className={`sticky top-0 z-20 h-12 min-w-[10.5rem] overflow-hidden border-b-2 border-subtle bg-container px-2 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated ${memberIndex === activeMembers.length - 1 ? "pr-4" : ""}`}
                 >
                   <span className="block truncate">{member.name}</span>
                 </th>
@@ -188,11 +188,11 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
             </tr>
             <tr className="text-left text-[10px] font-bold uppercase tracking-wide text-secondary dark:text-secondary">
               <th className="sticky left-0 top-12 z-30 h-10 w-28 border-b border-subtle bg-elevated px-4 py-0 leading-none sm:px-6 dark:border-subtle dark:bg-elevated" />
-              {activeMembers.map((member) => (
+              {activeMembers.map((member, memberIndex) => (
                 <Fragment key={member.id}>
                   <th className="sticky top-12 z-20 h-10 w-14 border-b border-subtle bg-elevated px-1 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated">B</th>
                   <th className="sticky top-12 z-20 h-10 w-14 border-b border-subtle bg-elevated px-1 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated">L</th>
-                  <th className="sticky top-12 z-20 h-10 w-14 border-b border-subtle bg-elevated px-1 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated">D</th>
+                  <th className={`sticky top-12 z-20 h-10 w-14 border-b border-subtle bg-elevated px-1 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated ${memberIndex === activeMembers.length - 1 ? "pr-4" : ""}`}>D</th>
                 </Fragment>
               ))}
             </tr>
@@ -216,13 +216,13 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                       )}
                     </div>
                   </td>
-                  {activeMembers.map((member) => (
+                  {activeMembers.map((member, memberIndex) => (
                     <Fragment key={member.id}>
                       {(["breakfast", "lunch", "dinner"] as const).map((field) => {
                         const isEditable = canEditCell(record.date);
                         const isActive = (getDraftMealValue(record, member.id, field) ?? 0) > 0;
                         return (
-                          <td key={field} className="w-14 px-1 py-2.5 text-center">
+                          <td key={field} className={`w-14 px-1 py-2.5 text-center ${field === "dinner" && memberIndex === activeMembers.length - 1 ? "pr-4" : ""}`}>
                             {isEditable ? (
                               <button
                                 type="button"

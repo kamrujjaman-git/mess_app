@@ -251,7 +251,7 @@ export function ManageMembers({
             description="Review member details, status, and access."
             action={
               <span className="text-xs font-medium text-secondary dark:text-secondary">
-                <span className="tabular-nums">{members.length}</span> members
+                <span className="tabular-nums">{members.length} {members.length === 1 ? "member" : "members"}</span>
               </span>
             }
           />
@@ -266,7 +266,7 @@ export function ManageMembers({
                 className={`px-4 py-4 transition-colors sm:px-6 ${
                   member.status === "active"
                     ? "hover:bg-elevated/80 dark:hover:bg-elevated/40"
-                    : "bg-container/70 text-secondary hover:bg-container"
+                    : "border-l-4 border-l-amber-400/80 bg-slate-100/85 text-secondary dark:bg-slate-800/45"
                 }`}
               >
                 {editingId === member.id ? (
@@ -329,20 +329,24 @@ export function ManageMembers({
                           width={40}
                           height={40}
                           unoptimized
-                          className="h-10 w-10 shrink-0 rounded-full object-cover"
+                          className={`h-10 w-10 shrink-0 rounded-full object-cover ${
+                            member.status !== "active" ? "grayscale opacity-60" : ""
+                          }`}
                         />
                       ) : (
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-container text-sm font-semibold text-secondary dark:bg-container dark:text-secondary">
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-container text-sm font-semibold text-secondary dark:bg-container dark:text-secondary ${
+                          member.status !== "active" ? "grayscale opacity-60" : ""
+                        }`}>
                           {(member.name.trim().charAt(0) || "M").toUpperCase()}
                         </span>
                       )}
                       <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-medium">{member.name}</p>
+                        <p className={`truncate font-medium ${member.status !== "active" ? "text-slate-500 dark:text-slate-400 line-through decoration-slate-400/60" : ""}`}>{member.name}</p>
                         <span
                           className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${member.status === "active"
                             ? "bg-success-surface text-success-on-surface"
-                            : "border border-subtle/70 bg-container text-secondary dark:border-subtle dark:bg-elevated dark:text-secondary"
+                            : "border border-amber-300/80 bg-amber-100 text-amber-900 dark:border-amber-700/80 dark:bg-amber-950 dark:text-amber-200"
                             }`}
                         >
                           {member.status === "active" ? "Active" : "INACTIVE"}

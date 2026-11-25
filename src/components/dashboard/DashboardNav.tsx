@@ -256,9 +256,9 @@ export function DashboardNav({
 
         <div className="col-start-2 row-start-1 ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:gap-1.5 md:ml-0">
           {typeof totalBalance === "number" && (
-            <div className="flex shrink-0 max-w-[5rem] items-center gap-1 rounded-full border border-success-border bg-success-surface px-1.5 py-1 text-[10px] font-semibold text-success-on-surface sm:max-w-none sm:gap-1.5 sm:px-2.5 sm:text-xs" title="Current meal balance">
+            <div className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-success-border bg-success-surface px-1.5 py-1 text-[10px] font-semibold text-success-on-surface sm:gap-1.5 sm:px-2.5 sm:text-xs" title="Current meal balance">
               <Wallet className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate tabular-nums">৳{formatCurrency(Math.abs(totalBalance))}</span>
+              <span className="whitespace-nowrap shrink-0 tabular-nums">৳{formatCurrency(Math.abs(totalBalance))}</span>
             </div>
           )}
           <div ref={notificationContainerRef} className="relative inline-block shrink-0">

@@ -67,7 +67,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --bg-canvas: #f1f5f9;
+  --bg-canvas: #eef3f7;
   --bg-surface: #ffffff;
   --bg-elevated: #f8fafc;
   --bg-container: #e2e8f0;
@@ -75,11 +75,11 @@
   --text-secondary: #475569;
   --text-muted: #475569;
   --border-subtle: #cbd5e1;
-  --brand-primary: #065f46;
+  --brand-primary: #059669;
   --brand-hover: #064e3b;
   --brand-on-primary: #ffffff;
-  --brand-fill: #047857;
-  --brand-fill-hover: #065f46;
+  --brand-fill: #059669;
+  --brand-fill-hover: #047857;
   --brand-on-fill: #ffffff;
   --status-danger: #b91c1c;
   --status-danger-surface: #fef2f2;
@@ -359,7 +359,7 @@ body {
 
 .dark {
   --bg-canvas: #020617;
-  --bg-surface: #0f172a;
+  --bg-surface: #111827;
   --bg-elevated: #1e293b;
   --bg-container: #334155;
   --text-primary: #f8fafc;

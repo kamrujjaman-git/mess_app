@@ -56,55 +56,64 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
   const remainingBalance = stats.remainingBalance;
   const balanceCard = {
     label: "Meal Balance",
-    value: `৳${formatCurrency(Math.abs(remainingBalance))}`,
+    value: formatCurrency(Math.abs(remainingBalance)),
     sub: remainingBalance >= 0 ? "in mess cash" : "negative balance / due",
     icon: Wallet,
-    color: remainingBalance >= 0 ? "bg-brand-fill" : "bg-danger-fill",
+    color: remainingBalance >= 0
+      ? "bg-violet-100 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300"
+      : "bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300",
+    currency: "৳",
   };
 
   const cards = [
     {
       label: "Meal Rate",
-      value: `৳${formatCurrency(stats.mealRate)}`,
+      value: formatCurrency(stats.mealRate),
       sub: "per meal",
       icon: TrendingUp,
-      color: "bg-brand-fill",
+      color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300",
+      currency: "৳",
     },
     {
       label: "Total Bazar",
-      value: `৳${formatCurrency(stats.totalBazar)}`,
+      value: formatCurrency(stats.totalBazar),
       sub: "this month",
       icon: ShoppingCart,
-      color: "bg-brand-fill",
+      color: "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300",
+      currency: "৳",
     },
     {
       label: "Total Meals",
       value: formatCurrency(stats.totalMeals),
       sub: "all members",
       icon: Utensils,
-      color: "bg-brand-fill",
+      color: "bg-sky-100 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300",
+      currency: undefined,
     },
     {
       label: "Total Deposits",
-      value: `৳${formatCurrency(stats.totalDeposits)}`,
+      value: formatCurrency(stats.totalDeposits),
       sub: "given this month",
       icon: Wallet,
-      color: "bg-brand-fill",
+      color: "bg-teal-100 text-teal-700 dark:bg-teal-950/70 dark:text-teal-300",
+      currency: "৳",
     },
     balanceCard,
     {
       label: "Rent + Bua",
-      value: `৳${formatCurrency(bills.houseRent + bills.buaBill)}`,
-      sub: "informational fixed costs",
+      value: formatCurrency(bills.houseRent + bills.buaBill),
+      sub: "Monthly fixed costs",
       icon: Home,
-      color: "bg-brand-fill",
+      color: "bg-slate-200 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300",
+      currency: "৳",
     },
     {
       label: bills.otherBillsDescription || "Other Bills",
-      value: `৳${formatCurrency(bills.otherBills)}`,
-      sub: "informational fixed cost",
+      value: formatCurrency(bills.otherBills),
+      sub: "Additional fixed costs",
       icon: Home,
-      color: "bg-brand-fill",
+      color: "bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300",
+      currency: "৳",
     },
   ];
 
@@ -116,21 +125,24 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
         title="Overview"
         description="Monthly totals and shared costs at a glance."
       />
-      <div className={`overview-cards-strip -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 scrollbar-hide sm:mx-0 sm:grid sm:snap-none sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 ${isAdmin ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-6"}`}>
+      <div className={`overview-cards-strip -mx-4 flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-pl-4 overscroll-x-contain px-4 pb-2 scrollbar-hide sm:mx-0 sm:grid sm:snap-none sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 ${isAdmin ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-6"}`}>
         {visibleCards.map((card) => (
           <div
             key={card.label}
-            className="w-[72%] shrink-0 snap-start rounded-2xl border border-subtle/90 bg-surface p-3.5 shadow-sm transition-colors duration-150 dark:border-subtle/80 dark:bg-surface sm:w-auto sm:p-5"
+            className="min-w-[78%] max-w-[78%] shrink-0 snap-start rounded-2xl border border-subtle/90 bg-surface p-3.5 shadow-sm transition-colors duration-150 dark:border-subtle/80 dark:bg-surface sm:min-w-0 sm:max-w-none sm:w-auto sm:p-5"
           >
             <div className="mb-3 flex items-center justify-between gap-2">
               <span className="min-w-0 truncate text-xs font-medium text-muted dark:text-muted sm:text-sm">
                 {card.label}
               </span>
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${card.color}`}>
-                <card.icon className="h-4.5 w-4.5 text-white" />
+                <card.icon className="h-4.5 w-4.5" />
               </div>
             </div>
-            <p className="min-w-0 truncate overflow-hidden text-ellipsis whitespace-nowrap text-xl font-bold tabular-nums tracking-tight text-primary sm:text-2xl">
+            <p className="flex min-w-0 items-baseline gap-1 leading-tight text-xl font-bold tabular-nums tracking-tight text-primary sm:text-2xl">
+              {card.currency && (
+                <span aria-hidden="true" className="shrink-0 font-bold">{card.currency}</span>
+              )}
               <RollingNumber value={card.value} reduceMotion={reduceMotion} />
             </p>
             <p className="mt-1 text-xs text-muted dark:text-muted">

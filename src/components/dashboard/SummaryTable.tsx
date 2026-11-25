@@ -72,6 +72,7 @@ export const SummaryTable = memo(function SummaryTable({
 
   function renderMemberIdentity(member: MemberSummary) {
     const photoURL = photoURLById.get(member.id);
+    const inactive = member.status !== "active";
     return (
       <span className="flex min-w-0 flex-1 items-center gap-2">
         {photoURL ? (
@@ -81,14 +82,14 @@ export const SummaryTable = memo(function SummaryTable({
             width={32}
             height={32}
             unoptimized
-            className="h-8 w-8 shrink-0 rounded-full object-cover"
+            className={`h-8 w-8 shrink-0 rounded-full object-cover ${inactive ? "grayscale opacity-60" : ""}`}
           />
         ) : (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-container text-xs font-semibold text-secondary dark:bg-container dark:text-secondary">
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-container text-xs font-semibold text-secondary dark:bg-container dark:text-secondary ${inactive ? "grayscale opacity-60" : ""}`}>
             {(member.name.trim().charAt(0) || "M").toUpperCase()}
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate" title={member.name}>{member.name}</span>
+        <span className={`min-w-0 flex-1 truncate ${inactive ? "text-slate-500 line-through decoration-slate-400/60 dark:text-slate-400" : ""}`} title={member.name}>{member.name}</span>
       </span>
     );
   }
@@ -96,16 +97,16 @@ export const SummaryTable = memo(function SummaryTable({
   function renderMemberRow(member: MemberSummary) {
     const inactive = member.status !== "active";
     const cellClass = inactive
-      ? "border-b border-subtle/80 bg-elevated/70 px-6 py-4 text-muted transition-colors group-hover:bg-container/70"
+      ? "border-b border-subtle/80 bg-slate-100/85 px-6 py-4 text-slate-500 transition-colors group-hover:bg-slate-100 dark:bg-slate-800/45 dark:text-slate-400 dark:group-hover:bg-slate-800/60"
       : "border-b border-subtle/80 px-6 py-4 transition-colors group-hover:bg-elevated/80 dark:border-subtle dark:group-hover:bg-elevated/50";
 
     return (
-      <tr key={member.id} className={`group ${inactive ? "print:hidden" : ""}`}>
-        <td className={`${cellClass} break-words font-medium`}>
+      <tr key={member.id} className={`group ${inactive ? "border-l-4 border-l-amber-400/80 bg-slate-100/85 dark:bg-slate-800/45 print:hidden" : ""}`}>
+        <td className={`${cellClass} break-words font-medium ${inactive ? "border-l-4 border-l-amber-400/80" : ""}`}>
           <div className="flex items-center gap-2">
             {renderMemberIdentity(member)}
             {inactive && (
-              <span className="rounded-full bg-container px-1.5 py-0.5 text-[10px] font-semibold uppercase text-secondary dark:bg-container dark:text-secondary">
+              <span className="rounded-full border border-amber-300/80 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-900 dark:border-amber-700/80 dark:bg-amber-950 dark:text-amber-200">
                 INACTIVE
               </span>
             )}
@@ -231,7 +232,7 @@ export const SummaryTable = memo(function SummaryTable({
               key={member.id}
               className={`summary-mobile-member rounded-xl border p-3 transition-colors ${
                 inactive
-                  ? "border-subtle bg-container/70 text-secondary hover:bg-container"
+                  ? "border-l-4 border-l-amber-400/80 border-y-subtle border-r-subtle bg-slate-100/85 text-slate-500 dark:border-subtle dark:bg-slate-800/45 dark:text-slate-400"
                   : "border-subtle/60 bg-surface/50 hover:bg-elevated/80 dark:border-subtle/60 dark:bg-elevated/40 dark:hover:bg-elevated/50"
               }`}
             >
