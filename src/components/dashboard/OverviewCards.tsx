@@ -19,8 +19,8 @@ interface OverviewCardsProps {
 
 function RollingNumber({ value, reduceMotion }: { value: string; reduceMotion: boolean }) {
   return (
-    <span aria-label={value} className="tabular-nums">
-      <span aria-hidden="true" className="inline-flex items-baseline tabular-nums">
+    <span aria-label={value} className="tabular-nums leading-normal">
+      <span aria-hidden="true" className="inline-flex items-center tabular-nums leading-normal">
         {Array.from(value).map((character, index) => {
           if (!/\d/.test(character)) {
             return <span key={`static-${index}-${character}`}>{character}</span>;
@@ -29,7 +29,7 @@ function RollingNumber({ value, reduceMotion }: { value: string; reduceMotion: b
           return (
             <span
               key={`digit-${index}`}
-              className="relative inline-flex h-[1.2em] min-w-[0.58em] items-center justify-center overflow-hidden align-middle"
+              className="relative inline-flex h-[1.5em] min-w-[0.62em] items-center justify-center overflow-hidden align-middle leading-normal"
             >
               <AnimatePresence initial={false} mode="popLayout">
                 <motion.span
@@ -125,11 +125,11 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
         title="Overview"
         description="Monthly totals and shared costs at a glance."
       />
-      <div className={`overview-cards-strip -mx-4 flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-pl-4 overscroll-x-contain px-4 pb-2 scrollbar-hide sm:mx-0 sm:grid sm:snap-none sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 ${isAdmin ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-6"}`}>
+      <div className={`overview-cards-strip -mx-4 grid grid-cols-1 gap-3 px-4 sm:mx-0 sm:gap-4 sm:px-0 min-[420px]:grid-cols-2 lg:grid-cols-3 ${isAdmin ? "xl:grid-cols-4" : "xl:grid-cols-6"}`}>
         {visibleCards.map((card) => (
           <div
             key={card.label}
-            className="min-w-[78%] max-w-[78%] shrink-0 snap-start rounded-2xl border border-subtle/90 bg-surface p-3.5 shadow-sm transition-colors duration-150 dark:border-subtle/80 dark:bg-surface sm:min-w-0 sm:max-w-none sm:w-auto sm:p-5"
+            className="w-full rounded-2xl border border-subtle/90 bg-surface p-3.5 shadow-sm transition-colors duration-150 dark:border-subtle/80 dark:bg-surface sm:p-5"
           >
             <div className="mb-3 flex items-center justify-between gap-2">
               <span className="min-w-0 truncate text-xs font-medium text-muted dark:text-muted sm:text-sm">
@@ -139,9 +139,9 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
                 <card.icon className="h-4.5 w-4.5" />
               </div>
             </div>
-            <p className="flex min-w-0 items-baseline gap-1 leading-tight text-xl font-bold tabular-nums tracking-tight text-primary sm:text-2xl">
+            <p className="flex min-w-0 items-center gap-1 py-1 leading-normal text-xl font-bold tabular-nums tracking-normal text-primary sm:text-2xl">
               {card.currency && (
-                <span aria-hidden="true" className="shrink-0 font-bold">{card.currency}</span>
+                <span aria-hidden="true" className="shrink-0 text-[0.85em] font-bold leading-normal">{card.currency}</span>
               )}
               <RollingNumber value={card.value} reduceMotion={reduceMotion} />
             </p>
