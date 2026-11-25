@@ -7,9 +7,9 @@ import { useAuth } from "@/context/AuthContext";
 import { AccessDeniedScreen } from "@/components/AccessDeniedScreen";
 import {
   Loader2,
-  Sparkles,
-  Shield,
-  TrendingUp,
+  Utensils,
+  Calculator,
+  CircleCheck,
 } from "lucide-react";
 
 function GoogleIcon() {
@@ -80,16 +80,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex flex-1 min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-8 sm:px-6">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-brand/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-brand/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/10 blur-3xl" />
-      </div>
+    <div
+      className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden px-4 py-8 sm:px-6"
+      style={{
+        backgroundImage:
+      "radial-gradient(circle at 18% 18%, rgba(16, 185, 129, 0.16), transparent 28%), radial-gradient(circle at 82% 78%, rgba(20, 184, 166, 0.14), transparent 26%), linear-gradient(rgba(148, 163, 184, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.09) 1px, transparent 1px)",
+        backgroundSize: "auto, auto, 32px 32px, 32px 32px",
+      }}
+    >
+      <div className="pointer-events-none absolute inset-0 dark:bg-slate-950/35" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-300/10 blur-3xl dark:bg-emerald-500/10" />
 
       <main className="relative z-10 w-full max-w-md sm:max-w-lg">
-        <div className="glass-card rounded-3xl p-6 sm:p-10">
-          <div className="mb-8 flex flex-col items-center text-center">
+        <div className="glass-card rounded-3xl border border-subtle/90 p-5 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.32)] dark:border-slate-700/80 dark:shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] sm:p-10">
+      <div className="mb-7 flex justify-center">
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/90 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-emerald-800 shadow-sm dark:border-emerald-800/80 dark:bg-emerald-950/70 dark:text-emerald-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]" />
+          Mess Management &amp; Smart Split
+        </span>
+      </div>
+      <div className="mb-7 flex flex-col items-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-container shadow-lg shadow-brand/20">
               <Image
                 src="/logo-512.png"
@@ -107,18 +117,24 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-xl bg-surface/50 p-3 dark:bg-elevated/40">
-              <Sparkles className="h-5 w-5 shrink-0 text-brand" />
-              <span className="text-xs font-medium sm:text-sm">Live Stats</span>
+          <div className="mb-7 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            <div className="flex items-center gap-2.5 rounded-xl border border-sky-200/80 bg-sky-50/80 p-3 shadow-sm dark:border-sky-800/70 dark:bg-sky-950/40">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">
+                <Utensils className="h-4 w-4" />
+              </span>
+              <span className="text-xs font-semibold sm:text-sm">Live Meal Sheet</span>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-surface/50 p-3 dark:bg-elevated/40">
-              <TrendingUp className="h-5 w-5 shrink-0 text-brand" />
-              <span className="text-xs font-medium sm:text-sm">Smart Calc</span>
+            <div className="flex items-center gap-2.5 rounded-xl border border-amber-200/80 bg-amber-50/80 p-3 shadow-sm dark:border-amber-800/70 dark:bg-amber-950/40">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                <Calculator className="h-4 w-4" />
+              </span>
+              <span className="text-xs font-semibold sm:text-sm">Auto Rate &amp; Bazar</span>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-surface/50 p-3 dark:bg-elevated/40">
-              <Shield className="h-5 w-5 shrink-0 text-brand" />
-              <span className="text-xs font-medium sm:text-sm">Secure Auth</span>
+            <div className="flex items-center gap-2.5 rounded-xl border border-violet-200/80 bg-violet-50/80 p-3 shadow-sm dark:border-violet-800/70 dark:bg-violet-950/40">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300">
+                <CircleCheck className="h-4 w-4" />
+              </span>
+              <span className="text-xs font-semibold sm:text-sm">Instant Settlement</span>
             </div>
           </div>
 
@@ -132,7 +148,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleSignIn}
             disabled={signingIn}
-            className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-surface text-base font-semibold text-primary shadow-md transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-60"
+            className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white text-base font-semibold text-slate-900 shadow-[0_8px_24px_-10px_rgba(15,23,42,0.38)] transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-10px_rgba(15,23,42,0.45)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900 dark:hover:border-slate-400"
           >
             {signingIn ? (
               <Loader2 className="h-5 w-5 animate-spin" />

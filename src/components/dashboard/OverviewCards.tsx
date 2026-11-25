@@ -139,9 +139,14 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
                 <card.icon className="h-4.5 w-4.5" />
               </div>
             </div>
-            <p className="flex min-w-0 items-center gap-1 py-1 leading-normal text-xl font-bold tabular-nums tracking-normal text-primary sm:text-2xl">
+            <p className="inline-flex min-w-0 items-center gap-1 py-1 leading-none text-xl font-bold tabular-nums tracking-normal text-primary sm:text-2xl">
               {card.currency && (
-                <span aria-hidden="true" className="shrink-0 text-[0.85em] font-bold leading-normal">{card.currency}</span>
+                <span
+                  aria-hidden="true"
+                  className="-translate-y-[1.5px] inline-flex shrink-0 items-center text-xl font-bold leading-none sm:text-2xl"
+                >
+                  {card.currency}
+                </span>
               )}
               <RollingNumber value={card.value} reduceMotion={reduceMotion} />
             </p>
