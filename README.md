@@ -96,7 +96,7 @@ Set `FIREBASE_PROJECT_ID` if it differs from `NEXT_PUBLIC_FIREBASE_PROJECT_ID`; 
 Use Node.js 22.x for local runs and the Vercel project runtime; `firebase-admin` 14 requires Node.js 22 or newer.
 
 🔒 Firestore Security Rules Setup
-Before deploying, connect the Firebase CLI to the correct project and check the `settings/members` document in Firestore Console/Admin SDK. Ensure `activeEmails` contains the normalized lowercase email of each member whose status is not `inactive` or `removed`, `active` is not `false`, and `isBlocked` / `isRemoved` are not `true`. Ensure `adminEmails` is the active subset whose `isAdmin` is `true`. The app maintains both arrays after deployment; the rules also accept active Firebase custom claims during migration.
+Before deploying, connect the Firebase CLI to the correct project and confirm `settings/members` has a valid member roster. On the first successful `/api/auth/session` or `/api/auth/claims` sync, the server reconciles `activeEmails` and `adminEmails` from that roster using normalized lowercase emails. A member can trigger the initial backfill by signing in; no manual array edit is needed. The rules also accept active Firebase custom claims during migration.
 
 Deploy the backfilled rules with:
 ```bash

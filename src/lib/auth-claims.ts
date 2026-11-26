@@ -15,6 +15,7 @@ type ClaimsMember = Pick<
 
 export interface MemberDirectory {
   members: ClaimsMember[];
+  activeEmails: Set<string>;
   adminEmails: Set<string>;
 }
 
@@ -26,40 +27,111 @@ export function normalizeEmail(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
-function parseMember(value: unknown): ClaimsMember | null {
+function parseMember(value: unknown, fallbackId = "", fallbackEmail = ""): ClaimsMember | null {
   if (!isRecord(value)) return null;
 
-  const status: Member["status"] = value.status === "removed"
+  const isRemoved = value.isRemoved === true || value.status === "removed";
+  const isBlocked = value.isBlocked === true;
+  const status: Member["status"] = isRemoved
     ? "removed"
-    : value.status === "inactive" || value.active === false
+    : value.status === "inactive" || value.active === false || isBlocked
       ? "inactive"
       : "active";
+  const role = typeof value.role === "string" ? value.role.trim().toLowerCase() : "";
 
   return {
-    id: typeof value.id === "string" ? value.id : "",
+    id: typeof value.id === "string" ? value.id : fallbackId,
     name: typeof value.name === "string" ? value.name : "",
-    email: typeof value.email === "string" ? value.email.trim() : "",
+    email: typeof value.email === "string" ? value.email.trim() : fallbackEmail,
     status,
     active: value.active === false ? false : status !== "inactive" && status !== "removed",
-    isAdmin: value.isAdmin === true,
-    isBlocked: value.isBlocked === true,
-    isRemoved: value.isRemoved === true || status === "removed",
+    isAdmin: value.isAdmin === true || role === "admin" || role === "super_admin",
+    isBlocked,
+    isRemoved,
   };
 }
 
-export async function readMemberDirectory(): Promise<MemberDirectory> {
-  const snapshot = await getAdminFirestore().doc("settings/members").get();
-  const settings = snapshot.data();
-  const members = Array.isArray(settings?.members)
-    ? settings.members.map(parseMember).filter((member): member is ClaimsMember => member !== null)
-    : [];
-  const adminEmails = new Set(
-    Array.isArray(settings?.adminEmails)
-      ? settings.adminEmails.map(normalizeEmail).filter(Boolean)
-      : []
-  );
+function parseMembers(value: unknown): ClaimsMember[] {
+  const records = Array.isArray(value)
+    ? value.map((member, index) => [`member-${index + 1}`, member] as const)
+    : isRecord(value)
+      ? Object.entries(value)
+      : [];
 
-  return { members, adminEmails };
+  return records
+    .map(([key, member]) => parseMember(
+      member,
+      key,
+      key.includes("@") ? key : ""
+    ))
+    .filter((member): member is ClaimsMember => member !== null);
+}
+
+function normalizeEmailList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(normalizeEmail).filter(Boolean))].sort();
+}
+
+function memberEmails(
+  members: ClaimsMember[],
+  predicate: (member: ClaimsMember) => boolean
+): string[] {
+  return [...new Set(
+    members
+      .filter((member) => predicate(member) && normalizeEmail(member.email))
+      .map((member) => normalizeEmail(member.email))
+  )].sort();
+}
+
+function matchesCanonicalEmailList(value: unknown, expected: string[]): boolean {
+  return Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((email, index) => email === expected[index]);
+}
+
+export async function readMemberDirectory(): Promise<MemberDirectory> {
+  const firestore = getAdminFirestore();
+  const membersRef = firestore.doc("settings/members");
+
+  return firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(membersRef);
+    const settings = snapshot.data();
+    const members = parseMembers(settings?.members);
+    const hasRoster = Array.isArray(settings?.members) || isRecord(settings?.members);
+    const rawRosterSize = Array.isArray(settings?.members)
+      ? settings.members.length
+      : isRecord(settings?.members)
+        ? Object.keys(settings.members).length
+        : 0;
+    const storedActiveEmails = normalizeEmailList(settings?.activeEmails);
+    const storedAdminEmails = normalizeEmailList(settings?.adminEmails);
+    const rosterHasEmail = (members.length === 0 && rawRosterSize === 0) ||
+      members.some((member) => Boolean(normalizeEmail(member.email)));
+
+    let activeEmails = storedActiveEmails;
+    let adminEmails = storedAdminEmails;
+
+    if (snapshot.exists && hasRoster && rosterHasEmail) {
+      activeEmails = memberEmails(members, isMemberActive);
+      adminEmails = memberEmails(
+        members,
+        (member) => isMemberActive(member) && member.isAdmin === true
+      );
+
+      if (
+        !matchesCanonicalEmailList(settings?.activeEmails, activeEmails) ||
+        !matchesCanonicalEmailList(settings?.adminEmails, adminEmails)
+      ) {
+        transaction.set(membersRef, { activeEmails, adminEmails }, { merge: true });
+      }
+    }
+
+    return {
+      members,
+      activeEmails: new Set(activeEmails),
+      adminEmails: new Set(adminEmails),
+    };
+  });
 }
 
 export function resolveUserClaims(

@@ -123,26 +123,38 @@ function memberAccessFields(members: Member[]) {
 function parseMembers(data: Record<string, unknown> | undefined): Member[] {
   if (!data) return createDefaultMembers();
 
-  if (Array.isArray(data.members)) {
-    return (data.members as Partial<Member>[]).map((member, index) => ({
-      id: member.id ?? `member-${index + 1}`,
-      name: String(member.name ?? `Member ${index + 1}`),
-      email: String(member.email ?? ""),
-      status: member.status === "removed"
-        ? "removed"
-        : member.status === "inactive" || member.active === false
-          ? "inactive"
-          : "active",
-      active:
-        member.active === false
-          ? false
-          : member.status !== "inactive" && member.status !== "removed",
-      isAdmin: Boolean(member.isAdmin),
-      isBlocked: Boolean(member.isBlocked),
-      isRemoved: Boolean(member.isRemoved) || member.status === "removed",
-      whatsAppNumber: String(member.whatsAppNumber ?? "").trim(),
-      photoURL: typeof member.photoURL === "string" ? member.photoURL : null,
-    }));
+  const memberRecords = Array.isArray(data.members)
+    ? data.members.map((member, index) => [`member-${index + 1}`, member] as const)
+    : data.members && typeof data.members === "object"
+      ? Object.entries(data.members as Record<string, unknown>)
+      : null;
+
+  if (memberRecords) {
+    return memberRecords.map(([key, value], index) => {
+      const member = value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+      const role = typeof member.role === "string" ? member.role.trim().toLowerCase() : "";
+      return {
+        id: typeof member.id === "string" ? member.id : key,
+        name: String(member.name ?? `Member ${index + 1}`),
+        email: String(member.email ?? (key.includes("@") ? key : "")),
+        status: member.status === "removed"
+          ? "removed"
+          : member.status === "inactive" || member.active === false
+            ? "inactive"
+            : "active",
+        active:
+          member.active === false
+            ? false
+            : member.status !== "inactive" && member.status !== "removed",
+        isAdmin: member.isAdmin === true || role === "admin" || role === "super_admin",
+        isBlocked: member.isBlocked === true,
+        isRemoved: member.isRemoved === true || member.status === "removed",
+        whatsAppNumber: String(member.whatsAppNumber ?? "").trim(),
+        photoURL: typeof member.photoURL === "string" ? member.photoURL : null,
+      };
+    });
   }
 
   if (Array.isArray(data.names)) {

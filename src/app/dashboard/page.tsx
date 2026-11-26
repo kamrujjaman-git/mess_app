@@ -145,6 +145,7 @@ function DashboardContent() {
   const {
     user,
     loading,
+    sessionLoading,
     accessLoading,
     isAdmin,
     isSuperAdmin,
@@ -197,7 +198,7 @@ function DashboardContent() {
     activeAdminSection
   );
   useEffect(() => {
-    if (!user || !hasAccess) return;
+    if (!user || !hasAccess || sessionLoading) return;
     const unsub = subscribeToMonthData(
       monthKey,
       (data) => {
@@ -206,7 +207,10 @@ function DashboardContent() {
         setDataLoading(false);
       },
       (error) => {
-        console.error("Failed to load month data:", error);
+        const code = "code" in error && typeof error.code === "string"
+          ? error.code
+          : "unknown";
+        console.error("Failed to load month data:", { code });
         setDataLoading(false);
         setDataError({
           monthKey,
@@ -216,7 +220,7 @@ function DashboardContent() {
       }
     );
     return unsub;
-  }, [monthKey, user, hasAccess]);
+  }, [monthKey, user, hasAccess, sessionLoading]);
 
   const currentDataError = dataError?.monthKey === monthKey ? dataError.message : null;
 
@@ -556,7 +560,7 @@ function DashboardContent() {
     [setMobileNavOpen]
   );
 
-  if (loading || accessLoading || !user) {
+  if (loading || sessionLoading || accessLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-brand" />

@@ -20,12 +20,80 @@ service cloud.firestore {
       request.auth.token.role == role;
   }
 
+  function memberDirectory() {
+    return exists(/databases/$(database)/documents/settings/members)
+      ? get(/databases/$(database)/documents/settings/members).data
+      : {};
+  }
+
+  function directoryMembers() {
+    return memberDirectory().get("members", null);
+  }
+
+  function containsDirectoryEmail(field) {
+    let emails = memberDirectory().get(field, []);
+    let email = request.auth.token.email;
+    return email != null &&
+      emails is list &&
+      emails.hasAny([email, email.lower()]);
+  }
+
+  function isActiveDirectoryRecord(member) {
+    return member is map &&
+      member.get("status", "active") != "inactive" &&
+      member.get("status", "active") != "removed" &&
+      member.get("active", true) != false &&
+      member.get("isBlocked", false) != true &&
+      member.get("isRemoved", false) != true;
+  }
+
+  function isAdminDirectoryRecord(member) {
+    return isActiveDirectoryRecord(member) &&
+      (
+        member.get("isAdmin", false) == true ||
+        member.get("role", "") in ["admin", "super_admin"]
+      );
+  }
+
+  function isDirectoryRosterActiveMember() {
+    let members = directoryMembers();
+    let email = request.auth.token.email;
+    return verifiedSignedIn() &&
+      email != null &&
+      (
+        (
+          members is map &&
+          (
+            (email.lower() in members && isActiveDirectoryRecord(members.get(email.lower(), {}))) ||
+            (email in members && isActiveDirectoryRecord(members.get(email, {})))
+          )
+        ) ||
+        (members is list && members.hasAny([email, email.lower()]))
+      );
+  }
+
+  function isDirectoryRosterAdmin() {
+    let members = directoryMembers();
+    let email = request.auth.token.email;
+    return verifiedSignedIn() &&
+      email != null &&
+      members is map &&
+      (
+        (email.lower() in members && isAdminDirectoryRecord(members.get(email.lower(), {}))) ||
+        (email in members && isAdminDirectoryRecord(members.get(email, {})))
+      );
+  }
+
   function isSuperAdmin() {
     // Keep this deployed email synchronized with NEXT_PUBLIC_ADMIN_EMAIL.
     // Firestore rules cannot read Next.js environment variables at runtime.
-    return verifiedSignedIn() &&
+    return signedIn() &&
       (
-        (hasRoleClaim("super_admin") && hasActiveClaim()) ||
+        (
+          verifiedSignedIn() &&
+          hasRoleClaim("super_admin") &&
+          hasActiveClaim()
+        ) ||
         (
           request.auth.token.email != null &&
           request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower()
@@ -36,34 +104,39 @@ service cloud.firestore {
   function isDirectoryActiveMember() {
     return verifiedSignedIn() &&
       request.auth.token.email != null &&
-      exists(/databases/$(database)/documents/settings/members) &&
-      get(/databases/$(database)/documents/settings/members).data.activeEmails is list &&
-      get(/databases/$(database)/documents/settings/members).data.activeEmails.hasAny([
-        request.auth.token.email.lower()
-      ]);
+      (
+        containsDirectoryEmail("activeEmails") ||
+        isDirectoryRosterActiveMember()
+      );
   }
 
   function isActiveMember() {
-    return verifiedSignedIn() &&
-      request.auth.token.email != null &&
-      (hasActiveClaim() || isDirectoryActiveMember());
+    return isSuperAdmin() ||
+      (
+        verifiedSignedIn() &&
+        request.auth.token.email != null &&
+        (hasActiveClaim() || isDirectoryActiveMember())
+      );
   }
 
   function isAdmin() {
-    return verifiedSignedIn() && (
-      isSuperAdmin() ||
+    return isSuperAdmin() ||
       (
-        hasRoleClaim("admin") &&
-        hasActiveClaim()
-      ) ||
-      (
-        isDirectoryActiveMember() &&
-        get(/databases/$(database)/documents/settings/members).data.adminEmails is list &&
-        get(/databases/$(database)/documents/settings/members).data.adminEmails.hasAny([
-          request.auth.token.email.lower()
-        ])
-      )
-    );
+        verifiedSignedIn() &&
+        (
+          (
+            (hasRoleClaim("admin") || hasRoleClaim("super_admin")) &&
+            hasActiveClaim()
+          ) ||
+          (
+            isDirectoryActiveMember() &&
+            (
+              containsDirectoryEmail("adminEmails") ||
+              isDirectoryRosterAdmin()
+            )
+          )
+        )
+      );
   }
 
   function validAuditLog(data) {
@@ -180,7 +253,7 @@ service cloud.firestore {
   }
 
   match /settings/members {
-    allow read: if isActiveMember() || isSuperAdmin();
+    allow read: if verifiedSignedIn() || isSuperAdmin();
     allow create: if isSuperAdmin();
     allow update: if isSuperAdmin() ||
       (isAdmin() && memberDirectoryUpdateIsSafe());
