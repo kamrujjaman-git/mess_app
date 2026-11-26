@@ -40,6 +40,7 @@ interface DashboardNavProps {
   user: User;
   isAdmin: boolean;
   memberName?: string | null;
+  breadcrumbLabel: string;
   totalBalance?: number | null;
   onLogout: () => void;
   sidebarExpanded: boolean;
@@ -54,6 +55,7 @@ export function DashboardNav({
   user,
   isAdmin,
   memberName,
+  breadcrumbLabel,
   totalBalance,
   onLogout,
   sidebarExpanded,
@@ -218,24 +220,36 @@ export function DashboardNav({
 
   return (
     <>
-      <header className={`relative sticky top-0 z-40 w-full max-w-full overflow-visible border-b border-subtle/50 bg-surface/80 shadow-md shadow-slate-900/5 backdrop-blur-lg transition-[margin,width] duration-150 ease-out motion-reduce:transition-none dark:border-subtle/50 dark:bg-surface/80 ${sidebarExpanded ? "md:ml-64 md:w-[calc(100%-16rem)]" : "md:ml-[72px] md:w-[calc(100%-72px)]"}`}>
+      <header className={`glass-bar relative sticky top-0 z-40 w-full max-w-full overflow-visible transition-[margin,width] duration-150 ease-out motion-reduce:transition-none ${sidebarExpanded ? "md:ml-64 md:w-[calc(100%-16rem)]" : "md:ml-[72px] md:w-[calc(100%-72px)]"}`}>
       <div className="mx-auto grid w-full max-w-7xl grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2 px-3 py-3 sm:px-4 sm:py-4 md:flex md:flex-nowrap md:justify-between md:gap-3 lg:px-8">
-        <button
-          type="button"
-          onClick={onOpenMobileNav}
-          className="tactile-press col-start-1 row-start-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-secondary transition-colors hover:bg-container dark:text-secondary dark:hover:bg-elevated md:hidden"
-          aria-label="Open navigation menu"
-          aria-haspopup="dialog"
-        >
-          <Menu className="h-5 w-5" aria-hidden="true" />
-        </button>
+        <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-1 md:hidden">
+          <button
+            type="button"
+            onClick={onOpenMobileNav}
+            className="tactile-press flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-container"
+            aria-label="Open navigation menu"
+            aria-haspopup="dialog"
+          >
+            <Menu className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-[10px] font-medium text-secondary sm:text-xs">
+            <span className="shrink-0">Dashboard</span>
+            <ChevronRight className="h-3 w-3 shrink-0 text-muted" aria-hidden="true" />
+            <span className="truncate text-primary">{breadcrumbLabel}</span>
+          </nav>
+        </div>
 
-        <div className="col-span-2 row-start-2 flex w-full justify-center md:col-span-1 md:row-start-auto md:w-auto md:shrink-0 md:justify-start">
-          <div className="flex shrink-0 items-center justify-center gap-0.5 rounded-full border border-subtle/90 bg-elevated/70 px-2.5 py-1.5 text-xs shadow-sm transition-colors dark:border-subtle/80 dark:bg-surface/80 sm:gap-1 sm:px-3 sm:text-sm">
+        <div className="col-span-2 row-start-2 flex w-full items-center justify-center gap-3 md:col-span-1 md:row-start-auto md:w-auto md:shrink-0 md:justify-start">
+          <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-1.5 whitespace-nowrap text-sm font-medium text-secondary md:flex">
+            <span>Dashboard</span>
+            <ChevronRight className="h-3.5 w-3.5 text-muted" aria-hidden="true" />
+            <span className="text-primary">{breadcrumbLabel}</span>
+          </nav>
+          <div className="clay-pill flex shrink-0 items-center justify-center gap-0.5 border border-subtle/90 bg-elevated/70 px-2.5 py-1.5 text-xs transition-colors sm:gap-1 sm:px-3 sm:text-sm">
             <button
               type="button"
               onClick={onPrevMonth}
-              className="tactile-press flex shrink-0 items-center justify-center rounded-full p-1 text-secondary transition-colors hover:bg-container/60 dark:text-secondary dark:hover:bg-elevated"
+              className="tactile-press flex shrink-0 items-center justify-center rounded-full p-1 text-secondary transition-colors hover:bg-container/60"
               aria-label="Previous month"
             >
               <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -246,7 +260,7 @@ export function DashboardNav({
             <button
               type="button"
               onClick={onNextMonth}
-              className="tactile-press flex shrink-0 items-center justify-center rounded-full p-1 text-secondary transition-colors hover:bg-container/60 dark:text-secondary dark:hover:bg-elevated"
+              className="tactile-press flex shrink-0 items-center justify-center rounded-full p-1 text-secondary transition-colors hover:bg-container/60"
               aria-label="Next month"
             >
               <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -256,7 +270,7 @@ export function DashboardNav({
 
         <div className="col-start-2 row-start-1 ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:gap-1.5 md:ml-0">
           {typeof totalBalance === "number" && (
-            <div className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-success-border bg-success-surface px-1.5 py-1 text-[10px] font-semibold text-success-on-surface sm:gap-1.5 sm:px-2.5 sm:text-xs" title="Current meal balance">
+            <div className="clay-pill flex shrink-0 items-center gap-1 whitespace-nowrap border border-brand-secondary/30 bg-kpi-sage px-1.5 py-1 text-[10px] font-semibold text-brand-secondary sm:gap-1.5 sm:px-2.5 sm:text-xs" title="Current meal balance">
               <Wallet className="h-3.5 w-3.5 shrink-0" />
               <span className="whitespace-nowrap shrink-0 tabular-nums">৳{formatCurrency(Math.abs(totalBalance))}</span>
             </div>
@@ -287,7 +301,7 @@ export function DashboardNav({
                       ? { duration: 0 }
                       : { type: "spring", stiffness: 300, damping: 28 }
                   }
-                  className="fixed right-3 top-28 z-50 flex w-[calc(100vw-1.5rem)] max-w-sm origin-top-right transform-gpu flex-col overflow-hidden rounded-2xl border border-subtle bg-surface shadow-2xl will-change-transform dark:border-subtle dark:bg-surface sm:right-6 sm:top-20 sm:w-96"
+                  className="clay-card fixed right-3 top-28 z-50 flex w-[calc(100vw-1.5rem)] max-w-sm origin-top-right transform-gpu flex-col overflow-hidden will-change-transform sm:right-6 sm:top-20 sm:w-96"
                 >
                 <div className="flex items-center justify-between border-b border-subtle/80 px-4 py-3 dark:border-subtle/80">
                   <div>
@@ -311,7 +325,7 @@ export function DashboardNav({
                   className="custom-scrollbar flex-1 max-h-[70vh] min-h-[300px] space-y-1.5 overflow-y-auto p-3"
                 >
                   {visibleActivityLogs.length === 0 ? (
-                    <div className="rounded-xl border border-subtle/80 bg-surface/95 p-4 text-sm text-secondary shadow-lg shadow-slate-200/50 dark:border-subtle/80 dark:bg-surface/95 dark:text-secondary dark:shadow-black/40">
+                    <div className="clay-card p-4 text-sm text-secondary">
                       No notifications for this month yet.
                     </div>
                   ) : (
@@ -393,7 +407,7 @@ export function DashboardNav({
                   {avatarInitial}
                 </div>
               )}
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-success" aria-label="Online" />
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-brand-secondary" aria-label="Online" />
             </button>
 
             <div className="hidden min-w-0 flex-col xl:flex">
@@ -416,7 +430,7 @@ export function DashboardNav({
                       ? { duration: 0 }
                       : { type: "spring", stiffness: 300, damping: 28 }
                   }
-                  className="absolute right-0 top-full z-50 mt-2 w-52 origin-top-right transform-gpu rounded-2xl border border-subtle/70 bg-surface/95 p-2 text-left shadow-xl backdrop-blur-lg will-change-transform dark:border-subtle/70 dark:bg-surface/95 sm:right-0"
+                  className="clay-card absolute right-0 top-full z-50 mt-2 w-52 origin-top-right transform-gpu p-2 text-left will-change-transform sm:right-0"
                 >
                 <div className="flex items-center gap-2 border-b border-subtle/70 px-3 pb-2 dark:border-subtle/70">
                   {avatarURL && !imageFailed ? (

@@ -6,6 +6,7 @@ import {
   Utensils,
   Home,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { formatCurrency, type MessStats, type MonthBills } from "@/lib/mess";
@@ -15,6 +16,16 @@ interface OverviewCardsProps {
   stats: MessStats;
   bills: MonthBills;
   isAdmin?: boolean;
+}
+
+interface OverviewCard {
+  label: string;
+  value: string;
+  sub: string;
+  icon: LucideIcon;
+  tint: "sand" | "terracotta" | "blush" | "sage";
+  iconTone?: "sage" | "danger";
+  currency?: string;
 }
 
 function RollingNumber({ value, reduceMotion }: { value: string; reduceMotion: boolean }) {
@@ -54,24 +65,23 @@ function RollingNumber({ value, reduceMotion }: { value: string; reduceMotion: b
 export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const remainingBalance = stats.remainingBalance;
-  const balanceCard = {
+  const balanceCard: OverviewCard = {
     label: "Meal Balance",
     value: formatCurrency(Math.abs(remainingBalance)),
     sub: remainingBalance >= 0 ? "in mess cash" : "negative balance / due",
     icon: Wallet,
-    color: remainingBalance >= 0
-      ? "bg-violet-100 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300"
-      : "bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300",
+    tint: "sand",
+    iconTone: remainingBalance >= 0 ? "sage" : "danger",
     currency: "৳",
   };
 
-  const cards = [
+  const cards: OverviewCard[] = [
     {
       label: "Meal Rate",
       value: formatCurrency(stats.mealRate),
       sub: "per meal",
       icon: TrendingUp,
-      color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300",
+      tint: "sand",
       currency: "৳",
     },
     {
@@ -79,7 +89,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       value: formatCurrency(stats.totalBazar),
       sub: "this month",
       icon: ShoppingCart,
-      color: "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300",
+      tint: "terracotta",
       currency: "৳",
     },
     {
@@ -87,7 +97,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       value: formatCurrency(stats.totalMeals),
       sub: "all members",
       icon: Utensils,
-      color: "bg-sky-100 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300",
+      tint: "blush",
       currency: undefined,
     },
     {
@@ -95,7 +105,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       value: formatCurrency(stats.totalDeposits),
       sub: "given this month",
       icon: Wallet,
-      color: "bg-teal-100 text-teal-700 dark:bg-teal-950/70 dark:text-teal-300",
+      tint: "sage",
       currency: "৳",
     },
     balanceCard,
@@ -104,7 +114,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       value: formatCurrency(bills.houseRent + bills.buaBill),
       sub: "Monthly fixed costs",
       icon: Home,
-      color: "bg-slate-200 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300",
+      tint: "terracotta",
       currency: "৳",
     },
     {
@@ -112,7 +122,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
       value: formatCurrency(bills.otherBills),
       sub: "Additional fixed costs",
       icon: Home,
-      color: "bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300",
+      tint: "blush",
       currency: "৳",
     },
   ];
@@ -125,17 +135,17 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
         title="Overview"
         description="Monthly totals and shared costs at a glance."
       />
-      <div className={`overview-cards-strip -mx-4 grid grid-cols-1 gap-3 px-4 sm:mx-0 sm:gap-4 sm:px-0 min-[420px]:grid-cols-2 lg:grid-cols-3 ${isAdmin ? "xl:grid-cols-4" : "xl:grid-cols-6"}`}>
+      <div className="overview-cards-strip -mx-4 grid grid-cols-1 gap-3 px-4 sm:mx-0 sm:gap-4 sm:px-0 min-[420px]:grid-cols-2 lg:grid-cols-3">
         {visibleCards.map((card) => (
           <div
             key={card.label}
-            className="w-full rounded-2xl border border-subtle/90 bg-surface p-3.5 shadow-sm transition-colors duration-150 dark:border-subtle/80 dark:bg-surface sm:p-5"
+            className={`clay-card kpi-tint-${card.tint} w-full p-3.5 sm:p-5`}
           >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="min-w-0 truncate text-xs font-medium text-muted dark:text-muted sm:text-sm">
+              <span className="min-w-0 truncate text-xs font-medium text-secondary sm:text-sm">
                 {card.label}
               </span>
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${card.color}`}>
+              <div className={`kpi-icon ${card.iconTone === "danger" ? "kpi-icon-danger" : ""} flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl`}>
                 <card.icon className="h-4.5 w-4.5" />
               </div>
             </div>
@@ -150,7 +160,7 @@ export function OverviewCards({ stats, bills, isAdmin = false }: OverviewCardsPr
               )}
               <RollingNumber value={card.value} reduceMotion={reduceMotion} />
             </p>
-            <p className="mt-1 text-xs text-muted dark:text-muted">
+            <p className="mt-1 text-xs text-secondary">
               {card.sub}
             </p>
           </div>

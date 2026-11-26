@@ -29,7 +29,7 @@ export function EmptyState({
             transition={reduceMotion ? { duration: 0 } : { duration: 0.16, ease: "easeOut" }}
             className={`flex flex-col items-center justify-center gap-4 rounded-3xl border border-subtle/80 bg-elevated/90 px-6 py-10 text-center text-secondary shadow-sm backdrop-blur-sm ${className}`}
         >
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success-surface text-success shadow-inner">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-kpi-sage text-brand-secondary shadow-inner">
                 <Icon className="h-7 w-7" />
             </div>
             <div className="max-w-xl">
@@ -42,7 +42,7 @@ export function EmptyState({
                 <button
                     type="button"
                     onClick={onAction}
-                    className="mt-2 inline-flex items-center justify-center rounded-full bg-brand-fill px-5 py-2.5 text-sm font-semibold text-brand-on-fill shadow-lg shadow-brand/20 transition-colors duration-150 hover:bg-brand-fill-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    className="clay-pill mt-2 inline-flex items-center justify-center bg-brand px-5 py-2.5 text-sm font-semibold text-brand-on-fill transition-colors duration-150 hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                 >
                     {actionButtonLabel}
                 </button>

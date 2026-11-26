@@ -81,7 +81,7 @@ export default function LoginPage() {
   if (user && hasAccess && sessionError) {
     return (
       <div className="flex min-h-screen flex-1 items-center justify-center px-4">
-        <section className="glass-card w-full max-w-md rounded-3xl p-6 text-center">
+        <section className="clay-card w-full max-w-md p-6 text-center">
           <h1 className="text-lg font-semibold">Secure session unavailable</h1>
           <p className="mt-2 text-sm text-secondary dark:text-muted">{sessionError}</p>
           <div className="mt-5 flex justify-center gap-3">
@@ -119,25 +119,17 @@ export default function LoginPage() {
 
   return (
     <div
-      className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden px-4 py-8 sm:px-6"
-      style={{
-        backgroundImage:
-      "radial-gradient(circle at 18% 18%, rgba(16, 185, 129, 0.16), transparent 28%), radial-gradient(circle at 82% 78%, rgba(20, 184, 166, 0.14), transparent 26%), linear-gradient(rgba(148, 163, 184, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.09) 1px, transparent 1px)",
-        backgroundSize: "auto, auto, 32px 32px, 32px 32px",
-      }}
+      className="login-ambient relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden px-4 py-8 sm:px-6"
     >
-      <div className="pointer-events-none absolute inset-0 dark:bg-slate-950/35" />
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-300/10 blur-3xl dark:bg-emerald-500/10" />
-
       <main className="relative z-10 w-full max-w-md sm:max-w-lg">
-        <div className="glass-card rounded-3xl border border-subtle/90 p-5 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.32)] dark:border-slate-700/80 dark:shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] sm:p-10">
-      <div className="mb-7 flex justify-center">
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/90 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-emerald-800 shadow-sm dark:border-emerald-800/80 dark:bg-emerald-950/70 dark:text-emerald-200">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]" />
-          Mess Management &amp; Smart Split
-        </span>
-      </div>
-      <div className="mb-7 flex flex-col items-center text-center">
+        <div className="clay-card p-5 sm:p-10">
+          <div className="mb-7 flex justify-center">
+            <span className="clay-pill inline-flex items-center gap-2 border border-subtle bg-surface px-3 py-1.5 text-[11px] font-semibold tracking-wide text-brand-secondary">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_0_3px_rgba(223,108,67,0.14)]" />
+              Mess Management &amp; Smart Split
+            </span>
+          </div>
+          <div className="mb-7 flex flex-col items-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-container shadow-lg shadow-brand/20">
               <Image
                 src="/logo-512.png"
@@ -150,29 +142,29 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               Mess App
             </h1>
-            <p className="mt-2 text-sm text-secondary dark:text-muted sm:text-base">
+            <p className="mt-2 text-sm text-secondary sm:text-base">
               Track meals, bazar costs &amp; balances — all in one place
             </p>
           </div>
 
-          <div className="mb-7 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-            <div className="flex items-center gap-2.5 rounded-xl border border-sky-200/80 bg-sky-50/80 p-3 shadow-sm dark:border-sky-800/70 dark:bg-sky-950/40">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">
+          <div className="mb-7 flex flex-wrap justify-center gap-2">
+            <div className="clay-pill inline-flex items-center gap-2 border border-subtle bg-kpi-sage px-3 py-2 text-xs font-semibold text-brand-secondary sm:text-sm">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface/80 text-brand-secondary">
                 <Utensils className="h-4 w-4" />
               </span>
-              <span className="text-xs font-semibold sm:text-sm">Live Meal Sheet</span>
+              <span>Live Meal Sheet</span>
             </div>
-            <div className="flex items-center gap-2.5 rounded-xl border border-amber-200/80 bg-amber-50/80 p-3 shadow-sm dark:border-amber-800/70 dark:bg-amber-950/40">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+            <div className="clay-pill inline-flex items-center gap-2 border border-subtle bg-kpi-sand px-3 py-2 text-xs font-semibold text-secondary sm:text-sm">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface/80 text-brand">
                 <Calculator className="h-4 w-4" />
               </span>
-              <span className="text-xs font-semibold sm:text-sm">Auto Rate &amp; Bazar</span>
+              <span>Auto Rate &amp; Bazar</span>
             </div>
-            <div className="flex items-center gap-2.5 rounded-xl border border-violet-200/80 bg-violet-50/80 p-3 shadow-sm dark:border-violet-800/70 dark:bg-violet-950/40">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300">
+            <div className="clay-pill inline-flex items-center gap-2 border border-subtle bg-kpi-blush px-3 py-2 text-xs font-semibold text-secondary sm:text-sm">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface/80 text-brand">
                 <CircleCheck className="h-4 w-4" />
               </span>
-              <span className="text-xs font-semibold sm:text-sm">Instant Settlement</span>
+              <span>Instant Settlement</span>
             </div>
           </div>
 
@@ -186,7 +178,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleSignIn}
             disabled={signingIn}
-            className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white text-base font-semibold text-slate-900 shadow-[0_8px_24px_-10px_rgba(15,23,42,0.38)] transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-10px_rgba(15,23,42,0.45)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900 dark:hover:border-slate-400"
+            className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-brand/40 bg-surface text-base font-semibold text-primary shadow-[0_8px_24px_-10px_rgba(223,108,67,0.32)] transition-all duration-150 hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_12px_28px_-10px_rgba(223,108,67,0.42)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {signingIn ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -198,7 +190,7 @@ export default function LoginPage() {
             )}
           </button>
 
-          <p className="mt-6 text-center text-xs text-muted dark:text-muted">
+          <p className="mt-6 text-center text-xs text-secondary">
             6 members · 3 meals daily · Real-time balance tracking
           </p>
         </div>

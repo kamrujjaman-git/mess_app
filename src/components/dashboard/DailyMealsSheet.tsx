@@ -160,7 +160,7 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
         title="Daily Meal Sheet"
         description="Review meal entries by date and member."
       />
-      <div className="glass-card rounded-2xl">
+      <div className="clay-card overflow-hidden">
       {mealLockBanner && (
         <div className="flex items-center gap-2 border-b border-warning-border bg-warning-surface px-4 py-3 text-sm font-medium leading-relaxed text-warning-on-surface sm:px-6">
           <ShieldAlert className="h-4 w-4" />
@@ -172,7 +172,7 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
         <table className="w-full min-w-max table-fixed border-separate border-spacing-0 text-sm">
           <thead>
             <tr className="text-left text-xs font-bold uppercase tracking-wide text-primary">
-              <th className="sticky left-0 top-0 z-30 h-12 w-28 border-b-2 border-subtle bg-container px-4 py-0 font-bold leading-none sm:px-6 dark:border-subtle dark:bg-elevated">
+              <th className="sticky left-0 top-0 z-30 h-12 w-28 border-b-2 border-subtle bg-elevated/80 px-4 py-0 font-bold leading-none sm:px-6 dark:border-subtle">
                 DATE
               </th>
               {activeMembers.map((member, memberIndex) => (
@@ -180,7 +180,7 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                   key={member.id}
                   colSpan={3}
                   title={member.name}
-                  className={`sticky top-0 z-20 h-12 min-w-[10.5rem] overflow-hidden border-b-2 border-subtle bg-container px-2 py-0 text-center font-bold leading-none dark:border-subtle dark:bg-elevated ${memberIndex === activeMembers.length - 1 ? "pr-4" : ""}`}
+                  className={`sticky top-0 z-20 h-12 min-w-[10.5rem] overflow-hidden border-b-2 border-subtle bg-elevated/80 px-2 py-0 text-center font-bold leading-none dark:border-subtle ${memberIndex === activeMembers.length - 1 ? "pr-4" : ""}`}
                 >
                   <span className="block truncate">{member.name}</span>
                 </th>
@@ -204,8 +204,8 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
               const isFuture = row.date > todayKey;
               const isTodayRow = row.label === "Today";
               return (
-                <tr key={row.date} className={`border-b border-subtle last:border-0 ${isTodayRow ? "bg-success-surface/70" : isFuture ? "bg-elevated/60 text-muted" : ""}`}>
-                  <td className={`sticky left-0 z-10 w-28 whitespace-nowrap px-4 py-2.5 font-medium sm:px-6 ${isTodayRow ? "bg-success-surface" : isFuture ? "bg-elevated" : "bg-surface"}`}>
+                <tr key={row.date} className={`group border-b border-subtle last:border-0 transition-colors hover:bg-elevated/50 ${isTodayRow ? "bg-kpi-sage/70" : isFuture ? "bg-elevated/60 text-muted" : ""}`}>
+                    <td className={`sticky left-0 z-10 w-28 whitespace-nowrap px-4 py-2.5 font-medium transition-colors group-hover:bg-elevated/80 sm:px-6 ${isTodayRow ? "bg-kpi-sage" : isFuture ? "bg-elevated" : "bg-surface"}`}>
                     <div className="flex flex-col">
                       <span>{row.label}</span>
                       {!isPast && row.label !== "Today" && (
@@ -228,9 +228,9 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                                 type="button"
                                 onClick={(event) => handleMealToggleClick(event, record, member, field)}
                                 disabled={saving}
-                                className={`mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full border px-2 text-[11px] font-semibold tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${isActive
-                                  ? "border-brand-fill bg-brand-fill text-brand-on-fill shadow-sm"
-                                  : "border-subtle bg-surface text-secondary hover:border-brand hover:bg-success-surface"
+                                className={`clay-pill mx-auto flex h-10 min-w-10 cursor-pointer items-center justify-center border px-2 text-[11px] font-semibold tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${isActive
+                                  ? "border-brand bg-brand text-brand-on-fill shadow-sm"
+                                  : "border-subtle bg-surface text-secondary hover:border-brand hover:bg-kpi-sage"
                                   }`}
                               >
                                 {isActive ? "ON" : "OFF"}
@@ -238,7 +238,7 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                             ) : (
                               <div
                                 className={`mx-auto flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-medium tabular-nums ${isActive
-                                  ? "border-success-border bg-success-surface text-success-on-surface"
+                                  ? "border-brand-secondary/30 bg-kpi-sage text-brand-secondary"
                                   : "border-subtle/70 bg-container text-secondary"
                                   }`}
                               >
@@ -263,7 +263,7 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
           const isTodayRow = row.label === "Today";
           const isFuture = row.date > todayKey;
           return (
-            <div key={row.date} className={`rounded-xl border p-4 ${isTodayRow ? "border-success-border bg-success-surface/70" : isFuture ? "border-subtle/60 bg-elevated/60 text-muted" : "border-transparent bg-surface/50 dark:bg-elevated/40"}`}>
+            <div key={row.date} className={`rounded-xl border p-4 ${isTodayRow ? "border-brand-secondary/30 bg-kpi-sage/70" : isFuture ? "border-subtle/60 bg-elevated/60 text-muted" : "border-transparent bg-surface/50 dark:bg-elevated/40"}`}>
               <div className="mb-3 flex items-center justify-between">
                 <p className="font-semibold tabular-nums">{row.label} · {row.label === "Today" ? todayKey.slice(5) : row.label}</p>
               </div>
@@ -281,9 +281,9 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                             type="button"
                             onClick={(event) => handleMealToggleClick(event, record, member, field)}
                             disabled={saving}
-                            className={`h-10 min-w-10 cursor-pointer rounded-full border px-2 text-[11px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${isActive
-                              ? "border-brand-fill bg-brand-fill text-brand-on-fill"
-                              : "border-subtle bg-surface text-secondary hover:border-brand hover:bg-success-surface"
+                            className={`clay-pill h-10 min-w-10 cursor-pointer border px-2 text-[11px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${isActive
+                              ? "border-brand bg-brand text-brand-on-fill"
+                              : "border-subtle bg-surface text-secondary hover:border-brand hover:bg-kpi-sage"
                               }`}
                           >
                             {field[0].toUpperCase()}
@@ -292,7 +292,7 @@ export const DailyMealsSheet = memo(function DailyMealsSheet({
                           <div
                             key={field}
                             className={`flex h-10 min-w-10 items-center justify-center rounded-full border px-2 text-[11px] font-semibold ${isActive
-                              ? "border-success-border bg-success-surface text-success-on-surface"
+                              ? "border-brand-secondary/30 bg-kpi-sage text-brand-secondary"
                               : "border-subtle/70 bg-container text-secondary"
                               }`}
                           >

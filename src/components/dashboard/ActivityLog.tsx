@@ -172,7 +172,7 @@ export function ActivityLog() {
   );
 
   return (
-    <section className="space-y-4">
+    <section className="clay-card space-y-4 p-4 sm:p-6">
       <DashboardSectionHeader
         title="Activity Log"
         description="Read-only history of important changes made by administrators."
@@ -185,10 +185,10 @@ export function ActivityLog() {
             type="button"
             aria-pressed={selectedCategory === filter.value}
             onClick={() => setSelectedCategory(filter.value)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`clay-pill border px-3 py-1.5 text-xs font-semibold transition-colors ${
               selectedCategory === filter.value
-                ? "border-brand-fill bg-brand-fill text-brand-on-fill"
-                : "border-subtle bg-surface text-secondary hover:bg-container dark:bg-elevated"
+                ? "border-brand bg-brand text-brand-on-fill"
+                : "border-subtle bg-elevated/60 text-secondary hover:bg-elevated"
             }`}
           >
             {filter.label}
@@ -216,11 +216,11 @@ export function ActivityLog() {
       ) : null}
 
       {loading ? (
-        <div className="flex min-h-32 items-center justify-center rounded-2xl border border-subtle bg-surface text-secondary dark:bg-elevated">
+        <div className="flex min-h-32 items-center justify-center rounded-2xl border border-subtle bg-elevated/60 text-secondary">
           <Loader2 className="h-5 w-5 animate-spin" aria-label="Loading activity log" />
         </div>
       ) : visibleEntries.length === 0 ? (
-        <div className="rounded-2xl border border-subtle bg-surface px-4 py-10 text-center text-sm text-secondary dark:bg-elevated">
+        <div className="rounded-2xl border border-subtle bg-elevated/60 px-4 py-10 text-center text-sm text-secondary">
           No activity entries found for this category.
         </div>
       ) : (
@@ -228,12 +228,12 @@ export function ActivityLog() {
           {visibleEntries.map((entry) => (
             <li
               key={entry.id}
-              className="rounded-2xl border border-subtle bg-surface p-4 shadow-sm dark:bg-elevated sm:p-5"
+              className="rounded-2xl border border-subtle bg-elevated/40 p-4 transition-colors hover:bg-elevated/70 sm:p-5"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-info-surface px-2.5 py-1 text-[11px] font-semibold text-info-on-surface">
+                    <span className="rounded-full bg-kpi-sage px-2.5 py-1 text-[11px] font-semibold text-brand-secondary">
                       {entry.actorName}
                     </span>
                     <span className="text-xs text-muted" title={entry.actorEmail}>
@@ -268,7 +268,7 @@ export function ActivityLog() {
             type="button"
             onClick={loadOlderEntries}
             disabled={loadingMore}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-subtle bg-surface px-4 text-sm font-semibold text-secondary transition-colors hover:bg-container disabled:opacity-60 dark:bg-elevated"
+            className="clay-pill inline-flex min-h-10 items-center gap-2 border border-subtle bg-elevated/60 px-4 text-sm font-semibold text-secondary transition-colors hover:bg-elevated disabled:opacity-60"
           >
             {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Load older activity

@@ -151,9 +151,9 @@ export function PremiumDatePicker({
                     onClick={openPicker}
                     aria-haspopup="dialog"
                     aria-expanded={open}
-                    className="tactile-press glass flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-primary transition-colors duration-150 hover:bg-container"
+                    className="clay-pill tactile-press flex min-h-11 w-full items-center gap-3 border border-subtle bg-elevated/60 px-3 py-2.5 text-left text-sm font-semibold text-primary transition-colors duration-150 hover:bg-elevated"
                 >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-success-surface text-success">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-kpi-sage text-brand-secondary">
                         <CalendarDays className="h-4 w-4" />
                     </span>
                     <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
@@ -161,12 +161,12 @@ export function PremiumDatePicker({
             )}
 
             {open && mode !== "month" ? (
-                <div className="popover-appear absolute left-0 top-[calc(100%+0.6rem)] z-[999] w-[min(20rem,calc(100vw-2rem))] origin-top-left transform-gpu rounded-3xl border border-subtle/80 bg-surface/95 p-4 shadow-2xl shadow-slate-900/20 backdrop-blur-2xl dark:border-subtle dark:bg-surface/95" role="dialog" aria-label={label ?? "Choose date"}>
+                <div className="popover-appear clay-card absolute left-0 top-[calc(100%+0.6rem)] z-[999] w-[min(20rem,calc(100vw-2rem))] origin-top-left transform-gpu p-4" role="dialog" aria-label={label ?? "Choose date"}>
                     <div className="mb-3 flex items-center justify-between gap-2">
                         <button
                             type="button"
                             onClick={() => shiftPeriod(-1)}
-                            className="glass flex h-9 w-9 items-center justify-center rounded-full text-secondary"
+                            className="clay-pill flex h-9 w-9 items-center justify-center text-secondary"
                             aria-label="Previous period"
                         >
                             <ChevronLeft className="h-4 w-4" />
@@ -174,7 +174,7 @@ export function PremiumDatePicker({
                         <button
                             type="button"
                             onClick={() => setView(view === "days" ? "months" : view === "months" ? "years" : "days")}
-                            className="rounded-xl px-3 py-2 text-sm font-bold text-primary transition hover:bg-success-surface"
+                            className="clay-pill px-3 py-2 text-sm font-bold text-primary transition hover:bg-kpi-sand"
                             aria-label="Switch date picker view"
                         >
                             {view === "years" ? `${yearStart}-${yearStart + 9}` : `${monthNames[visibleMonth]} ${visibleYear}`}
@@ -182,7 +182,7 @@ export function PremiumDatePicker({
                         <button
                             type="button"
                             onClick={() => shiftPeriod(1)}
-                            className="glass flex h-9 w-9 items-center justify-center rounded-full text-secondary"
+                            className="clay-pill flex h-9 w-9 items-center justify-center text-secondary"
                             aria-label="Next period"
                         >
                             <ChevronRight className="h-4 w-4" />
@@ -207,8 +207,8 @@ export function PremiumDatePicker({
                                             setOpen(false);
                                         }}
                                         className={`h-9 rounded-xl text-sm font-semibold tabular-nums transition-colors duration-150 ${parsed.year === visibleYear && parsed.month === visibleMonth && parsed.day === day
-                                            ? "border-t border-brand-fill-hover bg-brand-fill text-brand-on-fill shadow-lg"
-                                            : "text-secondary hover:bg-success-surface disabled:cursor-not-allowed disabled:opacity-35"}`}
+                                            ? "border-t border-brand-hover bg-brand text-white shadow-lg"
+                                            : "text-secondary hover:bg-kpi-sage disabled:cursor-not-allowed disabled:opacity-35"}`}
                                     >
                                         {day}
                                     </button>
@@ -225,8 +225,8 @@ export function PremiumDatePicker({
                                     type="button"
                                     onClick={() => selectMonth(index)}
                                     className={`rounded-xl px-2 py-3 text-xs font-semibold transition-colors duration-150 ${parsed.year === visibleYear && parsed.month === index
-                                        ? "border-t border-brand-fill-hover bg-brand-fill text-brand-on-fill shadow-lg"
-                                        : "text-secondary hover:bg-success-surface"}`}
+                                        ? "border-t border-brand-hover bg-brand text-white shadow-lg"
+                                        : "text-secondary hover:bg-kpi-sage"}`}
                                 >
                                     {month.slice(0, 3)}
                                 </button>
@@ -242,8 +242,8 @@ export function PremiumDatePicker({
                                     type="button"
                                     onClick={() => selectYear(year)}
                                     className={`rounded-xl px-2 py-3 text-xs font-semibold tabular-nums transition-colors duration-150 ${parsed.year === year
-                                        ? "border-t border-brand-fill-hover bg-brand-fill text-brand-on-fill shadow-lg"
-                                        : "text-secondary hover:bg-success-surface"}`}
+                                        ? "border-t border-brand-hover bg-brand text-white shadow-lg"
+                                        : "text-secondary hover:bg-kpi-sage"}`}
                                 >
                                     {year}
                                 </button>

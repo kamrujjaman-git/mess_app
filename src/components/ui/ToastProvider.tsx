@@ -36,7 +36,7 @@ function AnimatedSuccessCheck() {
     return (
         <svg
             viewBox="0 0 24 24"
-            className="success-check-icon h-5 w-5 flex-shrink-0 text-success"
+            className="success-check-icon h-5 w-5 flex-shrink-0 text-brand-secondary"
             fill="none"
             aria-hidden="true"
         >
@@ -115,7 +115,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const undo = useCallback((title: string, onUndo: () => void) => {
         return toast.custom(
             (toastItem) => (
-                <div className={`flex w-[min(92vw,28rem)] items-center justify-between gap-4 rounded-2xl border border-subtle/80 bg-surface/95 px-4 py-3 text-primary shadow-lg shadow-slate-200/50 backdrop-blur-md transition-all duration-300 dark:shadow-black/40 ${toastItem.visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"}`}>
+                <div className={`clay-card flex w-[min(92vw,28rem)] items-center justify-between gap-4 px-4 py-3 text-primary transition-all duration-300 ${toastItem.visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"}`}>
                     <span className="min-w-0 text-sm font-semibold">{title}</span>
                     <button
                         type="button"
@@ -123,7 +123,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             onUndo();
                             toast.dismiss(toastItem.id);
                         }}
-                        className="min-h-9 shrink-0 rounded-lg bg-success-surface px-3 text-sm font-bold text-success-on-surface transition hover:bg-success-border"
+                        className="clay-pill min-h-9 shrink-0 bg-kpi-sage px-3 text-sm font-bold text-brand-secondary transition hover:bg-kpi-sage/80"
                     >
                         Undo
                     </button>
@@ -150,7 +150,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
         return (
             <div
-                className={`flex w-[min(92vw,28rem)] min-w-0 items-center justify-between gap-3 rounded-2xl border border-subtle/80 bg-surface/95 px-4 py-3 text-primary shadow-lg shadow-slate-200/50 backdrop-blur-md transition-all duration-300 ease-out dark:shadow-black/40 sm:px-5 ${toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"}`}
+                className={`clay-card flex w-[min(92vw,28rem)] min-w-0 items-center justify-between gap-3 px-4 py-3 text-primary transition-all duration-300 ease-out sm:px-5 ${toastItem.visible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0"}`}
             >
                 <div className="flex items-center gap-3">
                     {isSuccess && <AnimatedSuccessCheck />}
@@ -159,7 +159,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                             <AlertCircle className="h-5 w-5 text-danger stroke-[2.2]" />
                         </span>
                     )}
-                    {!isSuccess && !isError && <Info className="w-5 h-5 text-info flex-shrink-0 stroke-[2.2]" />}
+                    {!isSuccess && !isError && <Info className="w-5 h-5 text-brand-secondary flex-shrink-0 stroke-[2.2]" />}
 
                     <span className="text-sm font-semibold tracking-wide">{resolveValue(toastItem.message, toastItem)}</span>
                 </div>
@@ -168,7 +168,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     type="button"
                     aria-label="Dismiss notification"
                     onClick={() => toast.dismiss(toastItem.id)}
-                    className="z-10 ml-auto flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-subtle/80 bg-surface/70 text-muted shadow-sm transition-colors duration-200 hover:bg-surface hover:text-primary active:scale-90 dark:bg-elevated/80 dark:hover:bg-container"
+                    className="clay-pill z-10 ml-auto flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center border border-subtle/80 bg-elevated/60 text-muted transition-colors duration-200 hover:bg-elevated hover:text-primary"
                 >
                     <X className="w-3.5 h-3.5 stroke-[2.5]" />
                 </button>

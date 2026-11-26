@@ -217,7 +217,7 @@ export function CarryForwardModal({
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-5"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-[#141210]/70 p-3 backdrop-blur-sm sm:p-5"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !submitting) onClose();
       }}
@@ -226,7 +226,7 @@ export function CarryForwardModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="carry-forward-title"
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-subtle bg-surface p-5 text-primary shadow-2xl sm:p-7"
+        className="clay-card max-h-[92vh] w-full max-w-2xl overflow-y-auto p-5 text-primary sm:p-7"
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -279,7 +279,7 @@ export function CarryForwardModal({
             </p>
           </div>
         ) : allApplied ? (
-          <div className="rounded-2xl border border-success-border bg-success-surface p-6 text-center text-success-on-surface">
+          <div className="rounded-2xl border border-brand-secondary/30 bg-kpi-sage p-6 text-center text-brand-secondary">
             <Check className="mx-auto mb-2 h-6 w-6" aria-hidden="true" />
             <p className="font-semibold">Already applied</p>
             <p className="mt-1 text-sm">
@@ -303,7 +303,7 @@ export function CarryForwardModal({
                     isApplied
                       ? "cursor-not-allowed border-subtle bg-container/50 opacity-70"
                       : isSelected
-                        ? "border-brand bg-container"
+                        ? "border-brand bg-kpi-terracotta/40"
                         : "border-subtle bg-surface hover:bg-container/60"
                   }`}
                 >
@@ -328,7 +328,7 @@ export function CarryForwardModal({
                   <span
                     className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold tabular-nums sm:text-sm ${
                       isCredit
-                        ? "bg-success-surface text-success-on-surface"
+                        ? "bg-kpi-sage text-brand-secondary"
                         : "bg-danger-surface text-danger-on-surface"
                     }`}
                   >
@@ -359,7 +359,7 @@ export function CarryForwardModal({
               type="button"
               onClick={handleApply}
               disabled={submitting || selectedCount === 0}
-              className="tactile-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-fill px-5 py-2.5 text-sm font-semibold text-brand-on-fill transition hover:bg-brand-fill-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="clay-pill tactile-press inline-flex min-h-11 items-center justify-center gap-2 bg-brand px-5 py-2.5 text-sm font-semibold text-brand-on-fill transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

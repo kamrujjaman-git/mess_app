@@ -25,7 +25,7 @@ function BalanceBadge({ amount }: { amount: number }) {
   }
   if (amount > 0) {
     return (
-      <span className="summary-balance-badge summary-balance-refund inline-flex max-w-full items-center rounded-full border border-success-border bg-success-surface px-3 py-1 text-xs font-semibold tabular-nums text-success-on-surface">
+      <span className="summary-balance-badge summary-balance-refund inline-flex max-w-full items-center rounded-full border border-brand-secondary/30 bg-kpi-sage px-3 py-1 text-xs font-semibold tabular-nums text-brand-secondary">
         +৳{formatCurrency(amount)} REFUND
       </span>
     );
@@ -89,7 +89,7 @@ export const SummaryTable = memo(function SummaryTable({
             {(member.name.trim().charAt(0) || "M").toUpperCase()}
           </span>
         )}
-        <span className={`min-w-0 flex-1 truncate ${inactive ? "text-slate-500 line-through decoration-slate-400/60 dark:text-slate-400" : ""}`} title={member.name}>{member.name}</span>
+        <span className={`min-w-0 flex-1 truncate ${inactive ? "text-muted line-through decoration-border-strong" : ""}`} title={member.name}>{member.name}</span>
       </span>
     );
   }
@@ -97,11 +97,11 @@ export const SummaryTable = memo(function SummaryTable({
   function renderMemberRow(member: MemberSummary) {
     const inactive = member.status !== "active";
     const cellClass = inactive
-      ? "border-b border-subtle/80 bg-slate-100/85 px-6 py-4 text-slate-500 transition-colors group-hover:bg-slate-100 dark:bg-slate-800/45 dark:text-slate-400 dark:group-hover:bg-slate-800/60"
+      ? "border-b border-subtle/80 bg-elevated/80 px-6 py-4 text-muted transition-colors group-hover:bg-elevated dark:bg-elevated/60 dark:text-muted dark:group-hover:bg-elevated/80"
       : "border-b border-subtle/80 px-6 py-4 transition-colors group-hover:bg-elevated/80 dark:border-subtle dark:group-hover:bg-elevated/50";
 
     return (
-      <tr key={member.id} className={`group ${inactive ? "border-l-4 border-l-amber-400/80 bg-slate-100/85 dark:bg-slate-800/45 print:hidden" : ""}`}>
+      <tr key={member.id} className={`group ${inactive ? "border-l-4 border-l-amber-400/80 bg-elevated/70 dark:bg-elevated/50 print:hidden" : ""}`}>
         <td className={`${cellClass} break-words font-medium ${inactive ? "border-l-4 border-l-amber-400/80" : ""}`}>
           <div className="flex items-center gap-2">
             {renderMemberIdentity(member)}
@@ -115,7 +115,7 @@ export const SummaryTable = memo(function SummaryTable({
                 href={buildWhatsAppLink({ name: member.name, whatsAppNumber: member.whatsAppNumber }, member.finalBalance)}
                 target="_blank"
                 rel="noreferrer"
-                className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-full border border-success-border bg-success-surface text-success transition hover:bg-success-border"
+                className="summary-chat-link inline-flex h-8 w-8 items-center justify-center rounded-full border border-brand-secondary/30 bg-kpi-sage text-brand-secondary transition hover:bg-kpi-sage/80"
                 aria-label={`Open WhatsApp for ${member.name}`}
                 title={`Open WhatsApp for ${member.name}`}
               >
@@ -165,7 +165,7 @@ export const SummaryTable = memo(function SummaryTable({
   return (
     <div
       id="summary-report"
-      className="summary-responsive-container summary-report-sheet w-full overflow-hidden rounded-3xl border border-subtle/80 bg-surface p-4 shadow-xl dark:border-subtle dark:bg-surface sm:p-8"
+      className="summary-responsive-container summary-report-sheet clay-card w-full overflow-hidden p-4 sm:p-8"
     >
       <div className="summary-print-header hidden border-b border-subtle/60 px-4 py-4 dark:border-subtle/60 sm:px-6">
         <div className="mb-3 flex items-start justify-between gap-3">
@@ -199,7 +199,7 @@ export const SummaryTable = memo(function SummaryTable({
           <button
             type="button"
             onClick={handleDownloadPdf}
-            className="summary-print-button print:hidden inline-flex items-center justify-center gap-2 rounded-xl bg-brand-fill px-4 py-2 text-sm font-semibold text-brand-on-fill shadow-sm transition-colors hover:bg-brand-fill-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            className="summary-print-button clay-pill print:hidden inline-flex items-center justify-center gap-2 bg-brand px-4 py-2 text-sm font-semibold text-brand-on-fill transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
             <Download className="h-4 w-4" />
             Print / Save as PDF
@@ -210,7 +210,7 @@ export const SummaryTable = memo(function SummaryTable({
       <div className="summary-print-table summary-desktop-table overflow-x-auto overflow-y-hidden">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
-            <tr className="border-b border-subtle/60 text-left text-xs uppercase tracking-wide text-muted dark:border-subtle/60 dark:text-muted">
+            <tr className="border-b border-subtle/60 bg-elevated/80 text-left text-xs uppercase tracking-wide text-muted dark:border-subtle/60 dark:text-muted">
               <th className="px-6 py-4 font-medium">Member</th>
               <th className="px-6 py-4 font-medium">Meals</th>
               <th className="px-6 py-4 font-medium">Deposited</th>
@@ -232,7 +232,7 @@ export const SummaryTable = memo(function SummaryTable({
               key={member.id}
               className={`summary-mobile-member rounded-xl border p-3 transition-colors ${
                 inactive
-                  ? "border-l-4 border-l-amber-400/80 border-y-subtle border-r-subtle bg-slate-100/85 text-slate-500 dark:border-subtle dark:bg-slate-800/45 dark:text-slate-400"
+                  ? "border-l-4 border-l-amber-400/80 border-y-subtle border-r-subtle bg-elevated/80 text-muted dark:border-subtle dark:bg-elevated/50 dark:text-muted"
                   : "border-subtle/60 bg-surface/50 hover:bg-elevated/80 dark:border-subtle/60 dark:bg-elevated/40 dark:hover:bg-elevated/50"
               }`}
             >
@@ -252,7 +252,7 @@ export const SummaryTable = memo(function SummaryTable({
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
                       inactive
                         ? "bg-container text-secondary"
-                        : "bg-success-surface text-success-on-surface"
+                        : "bg-kpi-sage text-brand-secondary"
                     }`}>
                       {inactive ? "Inactive" : "Active"}
                     </span>
@@ -295,7 +295,7 @@ export const SummaryTable = memo(function SummaryTable({
                       href={buildWhatsAppLink({ name: member.name, whatsAppNumber: member.whatsAppNumber }, member.finalBalance)}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-success-border bg-success-surface px-3 text-sm font-medium text-success transition hover:bg-success-border"
+                      className="clay-pill mt-3 inline-flex h-9 items-center gap-2 border border-brand-secondary/30 bg-kpi-sage px-3 text-sm font-medium text-brand-secondary transition hover:bg-kpi-sage/80"
                       aria-label={`Open WhatsApp for ${member.name}`}
                     >
                       <WhatsAppActionIcon />

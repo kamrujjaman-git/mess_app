@@ -52,7 +52,7 @@ export function SearchFilterBar({
         !!selectedMonth || !!selectedMember || !!selectedCategory || !!dateRange.start || !!dateRange.end;
 
     return (
-        <div className={`glass-card space-y-4 rounded-3xl p-4 ${className}`}>
+        <div className={`clay-card space-y-4 p-4 ${className}`}>
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                 <label className="relative block">
                     <span className="sr-only">Search</span>
@@ -62,7 +62,7 @@ export function SearchFilterBar({
                         value={query}
                         onChange={(event) => onQueryChange(event.target.value)}
                         placeholder="Search members, deposit notes, expense titles..."
-                        className="w-full rounded-2xl border border-subtle bg-elevated/90 py-3 pl-10 pr-4 text-sm text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-subtle dark:bg-surface/90"
+                        className="w-full rounded-2xl border border-subtle bg-elevated/60 py-3 pl-10 pr-4 text-sm text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
                     />
                 </label>
 
@@ -75,7 +75,7 @@ export function SearchFilterBar({
                         type="button"
                         disabled={!hasActiveFilters}
                         onClick={onClearAll}
-                        className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted transition hover:bg-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-elevated"
+                        className="clay-pill bg-elevated/60 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted transition hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Clear All
                     </button>
@@ -88,7 +88,7 @@ export function SearchFilterBar({
                     <select
                         value={selectedMonth ?? ""}
                         onChange={(event) => onMonthChange(event.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-subtle bg-elevated/90 py-3 px-3 text-sm text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-subtle dark:bg-surface/90"
+                        className="mt-2 w-full rounded-2xl border border-subtle bg-elevated/60 py-3 px-3 text-sm text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
                     >
                         <option value="">All months</option>
                         {monthOptions.map((option) => (
@@ -104,7 +104,7 @@ export function SearchFilterBar({
                     <select
                         value={selectedMember ?? ""}
                         onChange={(event) => onMemberChange(event.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-subtle bg-elevated/90 py-3 px-3 text-sm text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-subtle dark:bg-surface/90"
+                        className="mt-2 w-full rounded-2xl border border-subtle bg-elevated/60 py-3 px-3 text-sm text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
                     >
                         <option value="">All members</option>
                         {memberOptions.map((option) => (
@@ -120,7 +120,7 @@ export function SearchFilterBar({
                     <select
                         value={selectedCategory ?? ""}
                         onChange={(event) => onCategoryChange(event.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-subtle bg-elevated/90 py-3 px-3 text-sm text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-subtle dark:bg-surface/90"
+                        className="mt-2 w-full rounded-2xl border border-subtle bg-elevated/60 py-3 px-3 text-sm text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
                     >
                         <option value="">All categories</option>
                         {categoryOptions.map((option) => (

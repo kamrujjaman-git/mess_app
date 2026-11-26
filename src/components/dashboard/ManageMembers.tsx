@@ -102,7 +102,7 @@ export function ManageMembers({
                   retrying = false;
                 }
               }}
-              className="min-h-9 shrink-0 rounded-lg bg-white/70 px-3 text-sm font-bold text-danger-on-surface transition hover:bg-white dark:bg-black/20 dark:hover:bg-black/30"
+              className="clay-pill min-h-9 shrink-0 border border-danger-border bg-elevated/60 px-3 text-sm font-bold text-danger-on-surface transition hover:bg-elevated"
             >
               Retry
             </button>
@@ -243,7 +243,7 @@ export function ManageMembers({
               </span>
             }
           />
-          <div id="admin-add-member" className="glass-card rounded-2xl p-4 sm:p-6">
+          <div id="admin-add-member" className="clay-card p-4 sm:p-6">
             <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
               <label className="block min-w-0">
                 <span className="mb-1 block text-xs font-medium text-secondary dark:text-secondary">Full name</span>
@@ -282,7 +282,7 @@ export function ManageMembers({
                 type="button"
                 onClick={handleAdd}
                 disabled={saving === "add" || !newName.trim()}
-                className="tactile-press flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-fill px-5 text-sm font-semibold text-brand-on-fill transition-colors duration-150 hover:bg-brand-fill-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
+                className="clay-pill tactile-press flex h-11 items-center justify-center gap-2 bg-brand px-5 text-sm font-semibold text-brand-on-fill transition-colors duration-150 hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
               >
                 {saving === "add" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -309,7 +309,7 @@ export function ManageMembers({
               </span>
             }
           />
-          <div id="admin-all-members" className="glass-card overflow-hidden rounded-2xl">
+          <div id="admin-all-members" className="clay-card overflow-hidden">
           {members.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted">No members yet.</p>
           ) : (
@@ -320,7 +320,7 @@ export function ManageMembers({
                 className={`px-4 py-4 transition-colors sm:px-6 ${
                   member.status === "active"
                     ? "hover:bg-elevated/80 dark:hover:bg-elevated/40"
-                    : "border-l-4 border-l-amber-400/80 bg-slate-100/85 text-secondary dark:bg-slate-800/45"
+                    : "border-l-4 border-l-amber-400/80 bg-elevated/80 text-secondary dark:bg-elevated/50"
                 }`}
               >
                 {editingId === member.id ? (
@@ -353,7 +353,7 @@ export function ManageMembers({
                         type="button"
                         onClick={() => handleSaveEdit(member)}
                         disabled={saving === member.id}
-                        className="tactile-press flex h-9 items-center gap-1.5 rounded-lg bg-brand-fill px-3 text-sm font-medium text-brand-on-fill hover:bg-brand-fill-hover disabled:opacity-60"
+                        className="clay-pill tactile-press flex h-9 items-center gap-1.5 bg-brand px-3 text-sm font-medium text-brand-on-fill hover:bg-brand-hover disabled:opacity-60"
                       >
                         {saving === member.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -367,7 +367,7 @@ export function ManageMembers({
                       <button
                         type="button"
                         onClick={() => setEditingId(null)}
-                        className="h-9 rounded-lg px-3 text-sm font-medium text-secondary hover:bg-container dark:text-muted dark:hover:bg-elevated"
+                        className="clay-pill h-9 bg-elevated/60 px-3 text-sm font-medium text-secondary hover:bg-elevated"
                       >
                         Cancel
                       </button>
@@ -396,17 +396,17 @@ export function ManageMembers({
                       )}
                       <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className={`truncate font-medium ${member.status !== "active" ? "text-slate-500 dark:text-slate-400 line-through decoration-slate-400/60" : ""}`}>{member.name}</p>
+                        <p className={`truncate font-medium ${member.status !== "active" ? "text-muted line-through decoration-border-strong" : ""}`}>{member.name}</p>
                         <span
                           className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${member.status === "active"
-                            ? "bg-success-surface text-success-on-surface"
+                            ? "bg-kpi-sage text-brand-secondary"
                             : "border border-amber-300/80 bg-amber-100 text-amber-900 dark:border-amber-700/80 dark:bg-amber-950 dark:text-amber-200"
                             }`}
                         >
                           {member.status === "active" ? "Active" : "INACTIVE"}
                         </span>
                         {primaryAdminEmail && member.email?.trim().toLowerCase() === primaryAdminEmail ? (
-                          <span className="flex-shrink-0 rounded-full bg-success-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-success-on-surface">
+                          <span className="flex-shrink-0 rounded-full bg-kpi-sage px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-secondary">
                             Super Admin
                           </span>
                         ) : member.isAdmin ? (
@@ -419,7 +419,7 @@ export function ManageMembers({
                             href={buildWhatsAppLink(member, 0)}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-success-border bg-success-surface text-success transition hover:bg-success-border"
+                            className="clay-pill flex-shrink-0 inline-flex h-9 w-9 items-center justify-center border border-brand-secondary/30 bg-kpi-sage text-brand-secondary transition hover:bg-kpi-sage/80"
                             aria-label={`Open WhatsApp for ${member.name}`}
                             title={`Open WhatsApp for ${member.name}`}
                           >
@@ -448,7 +448,7 @@ export function ManageMembers({
                           disabled={saving === `admin-${member.id}`}
                           className={`tactile-toggle inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors sm:h-9 sm:px-3 sm:text-xs ${member.isAdmin
                             ? "bg-warning-surface text-warning-on-surface hover:bg-warning-border"
-                            : "bg-success-surface text-success-on-surface hover:bg-success-border"
+                            : "bg-kpi-sage text-brand-secondary hover:bg-kpi-sage/80"
                             }`}
                           title={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
                           aria-label={member.isAdmin ? "Revoke Admin Access" : "Grant Admin Access"}
@@ -499,7 +499,7 @@ export function ManageMembers({
                           disabled={saving === `status-${member.id}` || saving === `remove-${member.id}`}
                           className={`tactile-toggle flex h-8 w-8 items-center justify-center rounded-lg transition-colors sm:h-9 sm:w-9 ${member.status === "active"
                             ? "text-warning hover:bg-warning-surface"
-                            : "text-brand hover:bg-success-surface"
+                            : "text-brand-secondary hover:bg-kpi-sage"
                             }`}
                           aria-label={
                             member.status === "active"

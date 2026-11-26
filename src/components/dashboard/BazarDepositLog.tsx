@@ -105,7 +105,7 @@ function ResponsiveEditSheet({
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="responsive-bottom-sheet fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm"
+          className="responsive-bottom-sheet fixed inset-0 z-[90] flex items-center justify-center bg-[#141210]/70 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -118,7 +118,7 @@ function ResponsiveEditSheet({
             role="dialog"
             aria-modal="true"
             aria-labelledby="log-edit-sheet-title"
-            className="responsive-bottom-sheet-panel border border-subtle bg-surface p-4 text-primary shadow-2xl sm:p-6"
+            className="responsive-bottom-sheet-panel glass-bar p-4 text-primary sm:p-6"
             initial={reduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
@@ -454,10 +454,10 @@ export const BazarDepositLog = memo(function BazarDepositLog({
                   setBazarDesc(item);
                   setBazarMoreOptionsOpen(true);
                 }}
-                className={`tactile-toggle rounded-full border px-3 py-1.5 text-xs font-medium ${
+                className={`clay-pill tactile-toggle border px-3 py-1.5 text-xs font-medium ${
                   bazarDesc === item
-                    ? "border-brand-fill bg-brand-fill text-brand-on-fill"
-                    : "border-subtle bg-surface text-secondary hover:bg-container"
+                    ? "border-brand bg-brand text-brand-on-fill"
+                    : "border-subtle bg-elevated/60 text-secondary hover:bg-kpi-sage"
                 }`}
               >
                 {item}
@@ -501,10 +501,10 @@ export const BazarDepositLog = memo(function BazarDepositLog({
                   type="button"
                   onClick={() => toggleBazarBuyerSelection(member.id)}
                   aria-pressed={isSelected}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                  className={`clay-pill border px-3 py-1.5 text-xs font-medium transition ${
                     isSelected
-                      ? "border-brand-fill bg-brand-fill text-brand-on-fill"
-                      : "border-subtle bg-surface text-secondary hover:border-brand hover:bg-success-surface dark:bg-elevated"
+                      ? "border-brand bg-brand text-brand-on-fill"
+                      : "border-subtle bg-elevated/60 text-secondary hover:border-brand hover:bg-kpi-sage"
                   }`}
                 >
                   {member.name}
@@ -518,7 +518,7 @@ export const BazarDepositLog = memo(function BazarDepositLog({
             type="button"
             onClick={() => saveBazar(entry.id)}
             disabled={saving === entry.id}
-            className="tactile-press flex h-9 items-center gap-1 rounded-lg bg-brand-fill px-3 text-sm font-medium text-brand-on-fill disabled:opacity-60"
+            className="clay-pill tactile-press flex h-9 items-center gap-1 bg-brand px-3 text-sm font-medium text-brand-on-fill disabled:opacity-60"
           >
             {saving === entry.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save
@@ -566,10 +566,10 @@ export const BazarDepositLog = memo(function BazarDepositLog({
               type="button"
               aria-pressed={depositAmount === String(amount)}
               onClick={() => setDepositAmount(String(amount))}
-              className={`tactile-toggle rounded-full border px-3 py-1.5 text-xs font-semibold tabular-nums ${
+              className={`clay-pill tactile-toggle border px-3 py-1.5 text-xs font-semibold tabular-nums ${
                 depositAmount === String(amount)
-                  ? "border-brand-fill bg-brand-fill text-brand-on-fill"
-                  : "border-subtle bg-surface text-secondary hover:bg-container"
+                  ? "border-brand bg-brand text-brand-on-fill"
+                  : "border-subtle bg-elevated/60 text-secondary hover:bg-kpi-sage"
               }`}
             >
               ৳{amount.toLocaleString("en-BD")}
@@ -605,7 +605,7 @@ export const BazarDepositLog = memo(function BazarDepositLog({
             type="button"
             onClick={() => saveDeposit(entry.id)}
             disabled={saving === entry.id}
-            className="tactile-press flex h-9 items-center gap-1 rounded-lg bg-brand-fill px-3 text-sm font-medium text-brand-on-fill disabled:opacity-60"
+            className="clay-pill tactile-press flex h-9 items-center gap-1 bg-brand px-3 text-sm font-medium text-brand-on-fill disabled:opacity-60"
           >
             {saving === entry.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save
@@ -639,7 +639,7 @@ export const BazarDepositLog = memo(function BazarDepositLog({
             type="button"
             onClick={() => saveBill(field)}
             disabled={saving === field}
-            className="tactile-press flex h-9 items-center gap-1 rounded-lg bg-brand-fill px-3 text-sm font-medium text-brand-on-fill disabled:opacity-60"
+            className="clay-pill tactile-press flex h-9 items-center gap-1 bg-brand px-3 text-sm font-medium text-brand-on-fill disabled:opacity-60"
           >
             {saving === field ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save
@@ -679,13 +679,13 @@ export const BazarDepositLog = memo(function BazarDepositLog({
         title: "Deposit Log",
         description: "Review member deposits and notes.",
         count: visibleDeposits.length,
-        badgeClass: "bg-success-surface text-success-on-surface",
+        badgeClass: "bg-kpi-sage text-brand-secondary",
       }
       : {
         title: "Monthly Fixed Bills",
         description: "Review shared household charges for this month.",
         count: billFields.length,
-        badgeClass: "bg-info-surface text-info-on-surface",
+        badgeClass: "bg-kpi-terracotta text-brand",
       };
 
   return (
@@ -702,7 +702,7 @@ export const BazarDepositLog = memo(function BazarDepositLog({
       {selectedSection !== "bills" ? (
         <div className="space-y-4">
           {selectedSection === "bazar" ? (
-            <div id="bazar-log" className="bazar-responsive-container min-w-0 overflow-hidden rounded-2xl border border-subtle/90 bg-elevated/70 shadow-sm transition-colors dark:border-subtle/80 dark:bg-surface/80 dark:backdrop-blur-md">
+            <div id="bazar-log" className="bazar-responsive-container clay-card min-w-0 overflow-hidden">
               {visibleBazar.length === 0 ? (
                 <div className="p-4 sm:p-6">
                   <EmptyState
@@ -802,7 +802,7 @@ export const BazarDepositLog = memo(function BazarDepositLog({
                                       <button
                                         type="button"
                                         onClick={() => startEditBazar(entry)}
-                                        className="tactile-press rounded-lg bg-brand-fill px-3 py-2 text-sm font-medium text-brand-on-fill"
+                                        className="clay-pill tactile-press bg-brand px-3 py-2 text-sm font-medium text-brand-on-fill"
                                       >
                                         Edit entry
                                       </button>
@@ -830,7 +830,7 @@ export const BazarDepositLog = memo(function BazarDepositLog({
           ) : null}
 
           {selectedSection === "deposits" ? (
-            <div id="deposit-log" className="bazar-responsive-container min-w-0 overflow-hidden rounded-2xl border border-subtle/90 bg-elevated/70 shadow-sm transition-colors dark:border-subtle/80 dark:bg-surface/80 dark:backdrop-blur-md">
+            <div id="deposit-log" className="bazar-responsive-container clay-card min-w-0 overflow-hidden">
               {visibleDeposits.length === 0 ? (
                 <div className="p-4 sm:p-6">
                   <EmptyState
@@ -930,7 +930,7 @@ export const BazarDepositLog = memo(function BazarDepositLog({
                                       <button
                                         type="button"
                                         onClick={() => startEditDeposit(entry)}
-                                        className="tactile-press rounded-lg bg-brand-fill px-3 py-2 text-sm font-medium text-brand-on-fill"
+                                        className="clay-pill tactile-press bg-brand px-3 py-2 text-sm font-medium text-brand-on-fill"
                                       >
                                         Edit entry
                                       </button>
@@ -960,7 +960,7 @@ export const BazarDepositLog = memo(function BazarDepositLog({
       ) : null}
 
       {isAdmin && selectedSection === "bills" && (
-        <div id="fixed-bills-log" className="min-w-0 overflow-hidden rounded-2xl border border-subtle/90 bg-elevated/70 shadow-sm transition-colors dark:border-subtle/80 dark:bg-surface/80 dark:backdrop-blur-md">
+        <div id="fixed-bills-log" className="clay-card min-w-0 overflow-hidden">
           <ul className="divide-y divide-subtle/60">
             {billFields.map((field) => (
               <li key={field} className="px-4 py-3 transition-colors duration-150 hover:bg-elevated dark:hover:bg-elevated/40 sm:px-6">

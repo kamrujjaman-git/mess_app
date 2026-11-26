@@ -21,7 +21,7 @@ export function InlineActions({
         <button
           type="button"
           onClick={onEdit}
-          className="tactile-press flex h-9 w-9 items-center justify-center rounded-lg bg-surface/60 text-secondary transition-colors duration-150 hover:bg-success-surface hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:bg-elevated/60"
+          className="tactile-press flex h-9 w-9 items-center justify-center rounded-lg bg-elevated/60 text-secondary transition-colors duration-150 hover:bg-kpi-sage hover:text-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           aria-label={editLabel}
           title={editLabel}
         >
@@ -44,4 +44,4 @@ export function InlineActions({
 }
 
 export const inputClass =
-  "h-11 w-full rounded-xl border border-subtle/70 bg-surface px-3 text-sm text-primary placeholder:text-muted outline-none transition-colors duration-150 focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-subtle/80 dark:bg-surface";
+  "h-11 w-full rounded-xl border border-subtle bg-elevated/60 px-3 text-sm text-primary placeholder:text-muted outline-none transition-colors duration-150 focus:border-brand focus:ring-2 focus:ring-brand/30";

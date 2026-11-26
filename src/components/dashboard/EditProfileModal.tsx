@@ -352,7 +352,7 @@ export function EditProfileModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: reduceMotion ? 0 : 0.15 }}
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#141210]/70 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !saving) onClose();
       }}
@@ -365,7 +365,7 @@ export function EditProfileModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-profile-title"
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-subtle bg-surface p-4 text-primary shadow-2xl sm:p-6"
+        className="clay-card max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto p-4 text-primary sm:p-6"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -387,7 +387,7 @@ export function EditProfileModal({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-5">
           <div className="flex items-center gap-4">
-            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-success-surface text-xl font-bold text-success ring-2 ring-brand/25">
+            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-kpi-sage text-xl font-bold text-brand-secondary ring-2 ring-brand/25">
               {visibleImageURL && !previewFailed ? (
                 <Image
                   src={visibleImageURL}
@@ -409,7 +409,7 @@ export function EditProfileModal({
             <div className="min-w-0">
               <label
                 htmlFor="profile-picture"
-                className="tactile-press inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-subtle px-3 text-sm font-medium text-secondary transition-colors hover:bg-elevated dark:border-subtle dark:text-secondary dark:hover:bg-elevated"
+                className="clay-pill tactile-press inline-flex min-h-10 cursor-pointer items-center gap-2 border border-subtle bg-elevated/60 px-3 text-sm font-medium text-secondary transition-colors hover:bg-elevated"
               >
                 <ImagePlus className="h-4 w-4" />
                 Choose picture
@@ -513,7 +513,7 @@ export function EditProfileModal({
                   setName(event.currentTarget.value);
                   setErrorMessage("");
                 }}
-                className="h-11 w-full rounded-xl border border-subtle bg-surface pl-10 pr-3 text-sm text-primary outline-none transition-colors placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/15"
+                className="h-11 w-full rounded-xl border border-subtle bg-elevated/60 pl-10 pr-3 text-sm text-primary outline-none transition-colors placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/30"
                 placeholder="Your name"
               />
             </div>
@@ -533,7 +533,7 @@ export function EditProfileModal({
             <button
               type="submit"
               disabled={saving}
-              className="tactile-press inline-flex min-h-10 items-center gap-2 rounded-xl bg-brand-fill px-4 text-sm font-semibold text-brand-on-fill transition-colors hover:bg-brand-fill-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="clay-pill tactile-press inline-flex min-h-10 items-center gap-2 bg-brand px-4 text-sm font-semibold text-brand-on-fill transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />

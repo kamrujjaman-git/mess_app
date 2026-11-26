@@ -263,7 +263,7 @@ export function AdminPanel({
 
   return (
     <div className="space-y-4">
-      <div className="glass-card flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <div className="clay-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div>
           <h2 className="text-sm font-bold text-primary">Month-end balance transfer</h2>
           <p className="mt-1 text-xs text-secondary">
@@ -274,7 +274,7 @@ export function AdminPanel({
           type="button"
           onClick={() => setCarryForwardOpen(true)}
           aria-haspopup="dialog"
-          className="tactile-press inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-brand bg-container px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand-fill hover:text-brand-on-fill"
+          className="clay-pill tactile-press inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-brand bg-brand px-4 py-2 text-sm font-semibold text-brand-on-fill transition hover:bg-brand-hover"
         >
           <ArrowRightLeft className="h-4 w-4" aria-hidden="true" />
           Carry Forward Balance
@@ -321,7 +321,7 @@ export function AdminPanel({
             }
           />
           {selectedSection === "daily-meals" ? (
-            <div id="admin-daily-meals" className="glass-card rounded-2xl p-4 sm:p-6">
+            <div id="admin-daily-meals" className="clay-card p-4 sm:p-6">
             <div className="mb-4">
               <PremiumDatePicker
                 value={mealDate}
@@ -376,7 +376,7 @@ export function AdminPanel({
               type="button"
               onClick={handleSaveMeals}
               disabled={saving === "meals" || activeMembers.length === 0}
-              className="tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-fill text-sm font-semibold text-brand-on-fill transition hover:bg-brand-fill-hover disabled:opacity-60"
+              className="clay-pill tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 bg-brand text-sm font-semibold text-brand-on-fill transition hover:bg-brand-hover disabled:opacity-60"
             >
               {saving === "meals" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -397,7 +397,7 @@ export function AdminPanel({
 
           <div className="space-y-4">
             {selectedSection === "add-bazar" ? (
-              <div id="admin-add-bazar" className="glass-card rounded-2xl p-4 sm:p-6">
+              <div id="admin-add-bazar" className="clay-card p-4 sm:p-6">
               <div className="space-y-3">
                 <PremiumDatePicker
                   value={bazarDate}
@@ -432,10 +432,10 @@ export function AdminPanel({
                           setBazarDesc(item);
                           setBazarMoreOptionsOpen(true);
                         }}
-                        className={`tactile-toggle rounded-full border px-3 py-1.5 text-xs font-medium ${
+                        className={`clay-pill tactile-toggle border px-3 py-1.5 text-xs font-medium ${
                           bazarDesc === item
-                            ? "border-brand-fill bg-brand-fill text-brand-on-fill"
-                            : "border-subtle bg-surface text-secondary hover:bg-container"
+                            ? "border-brand bg-brand text-brand-on-fill"
+                            : "border-subtle bg-elevated/60 text-secondary hover:bg-kpi-sage"
                         }`}
                       >
                         {item}
@@ -483,9 +483,9 @@ export function AdminPanel({
                             key={member.id}
                             type="button"
                             onClick={() => toggleBuyerSelection(member.id)}
-                            className={`tactile-toggle rounded-full border px-3 py-1.5 text-xs font-medium transition ${isSelected
-                              ? "border-brand-fill bg-brand-fill text-brand-on-fill shadow-sm"
-                              : "border-subtle bg-surface text-secondary hover:border-brand hover:bg-success-surface dark:border-subtle dark:bg-elevated dark:text-secondary"
+                            className={`clay-pill tactile-toggle border px-3 py-1.5 text-xs font-medium transition ${isSelected
+                              ? "border-brand bg-brand text-brand-on-fill shadow-sm"
+                              : "border-subtle bg-elevated/60 text-secondary hover:border-brand hover:bg-kpi-sage"
                               }`}
                           >
                             {member.name}
@@ -505,7 +505,7 @@ export function AdminPanel({
                 type="button"
                 onClick={handleAddBazar}
                 disabled={saving === "bazar"}
-                className="tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-fill text-sm font-semibold text-brand-on-fill transition hover:bg-brand-fill-hover disabled:opacity-60"
+                className="clay-pill tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 bg-brand text-sm font-semibold text-brand-on-fill transition hover:bg-brand-hover disabled:opacity-60"
               >
                 {saving === "bazar" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -520,7 +520,7 @@ export function AdminPanel({
             ) : null}
 
             {selectedSection === "add-deposit" ? (
-              <div id="admin-add-deposit" className="glass-card rounded-2xl p-4 sm:p-6">
+              <div id="admin-add-deposit" className="clay-card p-4 sm:p-6">
               <div className="space-y-3">
                 <label className="block space-y-1">
                   <span className="block text-xs font-medium text-secondary dark:text-secondary">Member</span>
@@ -562,10 +562,10 @@ export function AdminPanel({
                         setDepositAmount(String(amount));
                         clearFormError("deposit");
                       }}
-                      className={`tactile-toggle rounded-full border px-3 py-1.5 text-xs font-semibold tabular-nums ${
+                      className={`clay-pill tactile-toggle border px-3 py-1.5 text-xs font-semibold tabular-nums ${
                         depositAmount === String(amount)
-                          ? "border-brand-fill bg-brand-fill text-brand-on-fill"
-                          : "border-subtle bg-surface text-secondary hover:bg-container"
+                          ? "border-brand bg-brand text-brand-on-fill"
+                          : "border-subtle bg-elevated/60 text-secondary hover:bg-kpi-sage"
                       }`}
                     >
                       ৳{amount.toLocaleString("en-BD")}
@@ -614,7 +614,7 @@ export function AdminPanel({
                 type="button"
                 onClick={handleAddDeposit}
                 disabled={saving === "deposit"}
-                className="tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-fill text-sm font-semibold text-brand-on-fill transition hover:bg-brand-fill-hover disabled:opacity-60"
+                className="clay-pill tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 bg-brand text-sm font-semibold text-brand-on-fill transition hover:bg-brand-hover disabled:opacity-60"
               >
                 {saving === "deposit" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -630,7 +630,7 @@ export function AdminPanel({
           </div>
 
           {selectedSection === "fixed-bills" ? (
-            <div id="admin-fixed-bills" className="glass-card rounded-2xl p-4 sm:p-6">
+            <div id="admin-fixed-bills" className="clay-card p-4 sm:p-6">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted">
@@ -702,7 +702,7 @@ export function AdminPanel({
               type="button"
               onClick={handleSaveBills}
               disabled={saving === "bills"}
-              className="tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-fill text-sm font-semibold text-brand-on-fill transition hover:bg-brand-fill-hover disabled:opacity-60 sm:w-auto sm:px-8"
+              className="clay-pill tactile-press mt-4 flex h-11 w-full items-center justify-center gap-2 bg-brand text-sm font-semibold text-brand-on-fill transition hover:bg-brand-hover disabled:opacity-60 sm:w-auto sm:px-8"
             >
               {saving === "bills" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

@@ -110,7 +110,7 @@ export function SwipeableListItem({
                 style={{
                     touchAction: "pan-y",
                 }}
-                className="relative z-10 h-full w-full cursor-pointer select-none rounded-2xl bg-surface p-2.5 shadow-sm dark:bg-surface"
+                className="relative z-10 h-full w-full cursor-pointer select-none rounded-2xl bg-surface p-2.5 shadow-sm transition-colors hover:bg-elevated/60"
             >
                 {children}
             </motion.div>

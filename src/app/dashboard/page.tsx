@@ -103,6 +103,32 @@ function getAdminSectionFromUrl(section: string | null): AdminSection | null {
     : null;
 }
 
+function getDashboardBreadcrumbLabel(
+  tab: DashboardTab,
+  section: DashboardLogSection | null,
+  adminSection: AdminSection | null
+): string {
+  if (tab === "cards") return "Overview";
+  if (tab === "summary") return "Summary Table";
+  if (tab === "meals") return "Daily Meal Sheet";
+  if (tab === "logs") {
+    if (section === "deposits") return "Deposit Log";
+    if (section === "bills") return "Monthly Fixed Bills";
+    return "Bazar Log";
+  }
+
+  const adminLabels: Record<AdminSection, string> = {
+    "daily-meals": "Daily Meals",
+    "add-bazar": "Add Bazar",
+    "add-deposit": "Add Deposit",
+    "fixed-bills": "Set Fixed Bills",
+    "add-member": "Add New Member",
+    "all-members": "All Members",
+    "activity-log": "Activity Log",
+  };
+  return adminLabels[adminSection ?? "daily-meals"];
+}
+
 function DashboardLoading() {
   return (
     <div className="min-h-screen flex-1 px-4 py-6 sm:px-6 lg:px-8">
@@ -165,6 +191,11 @@ function DashboardContent() {
     : activeTab === "admin"
       ? "summary"
       : activeTab;
+  const breadcrumbLabel = getDashboardBreadcrumbLabel(
+    currentTab,
+    activeSection,
+    activeAdminSection
+  );
   useEffect(() => {
     if (!user || !hasAccess) return;
     const unsub = subscribeToMonthData(
@@ -520,7 +551,10 @@ function DashboardContent() {
   );
 
   const currentDataReady = monthLoadedKey === monthKey;
-  const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
+  const closeMobileNav = useCallback(
+    () => setMobileNavOpen(false),
+    [setMobileNavOpen]
+  );
 
   if (loading || accessLoading || !user) {
     return (
@@ -550,6 +584,7 @@ function DashboardContent() {
         user={user}
         isAdmin={isAdmin}
         memberName={memberDisplayName}
+        breadcrumbLabel={breadcrumbLabel}
         totalBalance={stats?.remainingBalance ?? null}
         onLogout={handleLogout}
         sidebarExpanded={sidebarExpanded}

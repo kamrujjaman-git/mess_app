@@ -72,7 +72,7 @@ export function DeleteConfirmationModal({
             <AnimatePresence>
                 {open ? (
                     <motion.div
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-[#141210]/70 p-4 backdrop-blur-sm"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -90,7 +90,7 @@ export function DeleteConfirmationModal({
                             role="dialog"
                             aria-modal="true"
                             aria-labelledby="delete-confirmation-title"
-                            className="relative mx-auto w-full max-w-xs rounded-3xl border border-subtle/80 bg-surface p-6 text-center text-primary shadow-2xl sm:max-w-sm"
+                            className="clay-card relative mx-auto w-full max-w-xs p-6 text-center text-primary sm:max-w-sm"
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
@@ -126,7 +126,7 @@ export function DeleteConfirmationModal({
                                     onClick={onCancel}
                                     disabled={busy}
                                     ref={cancelButtonRef}
-                                    className="tactile-press w-full cursor-pointer rounded-xl bg-container px-4 py-2.5 text-sm font-bold text-secondary outline-none transition-colors duration-150 hover:bg-elevated focus:outline-none focus:ring-2 focus:ring-subtle disabled:opacity-50"
+                                    className="clay-pill tactile-press w-full cursor-pointer bg-elevated/60 px-4 py-2.5 text-sm font-bold text-secondary outline-none transition-colors duration-150 hover:bg-elevated focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
@@ -136,7 +136,7 @@ export function DeleteConfirmationModal({
                                     disabled={busy}
                                     ref={deleteButtonRef}
                                     autoFocus
-                                    className="tactile-press w-full cursor-pointer rounded-xl bg-danger-fill px-4 py-2.5 text-sm font-bold text-danger-on-fill shadow-md shadow-danger/20 outline-none transition-colors duration-150 hover:bg-danger-fill-hover focus:outline-none focus:ring-2 focus:ring-danger/60 focus:ring-offset-2 focus:ring-offset-surface disabled:cursor-wait disabled:opacity-60"
+                                    className="clay-pill tactile-press w-full cursor-pointer bg-danger-fill px-4 py-2.5 text-sm font-bold text-danger-on-fill shadow-md shadow-danger/20 outline-none transition-colors duration-150 hover:bg-danger-fill-hover focus:outline-none focus:ring-2 focus:ring-danger/60 focus:ring-offset-2 focus:ring-offset-surface disabled:cursor-wait disabled:opacity-60"
                                 >
                                     {busy ? "Deleting..." : confirmLabel}
                                 </button>

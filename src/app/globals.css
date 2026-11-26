@@ -67,20 +67,29 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --bg-canvas: #eef3f7;
-  --bg-surface: #ffffff;
-  --bg-elevated: #f8fafc;
-  --bg-container: #e2e8f0;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #475569;
-  --border-subtle: #cbd5e1;
-  --brand-primary: #059669;
-  --brand-hover: #064e3b;
-  --brand-on-primary: #ffffff;
-  --brand-fill: #059669;
-  --brand-fill-hover: #047857;
-  --brand-on-fill: #ffffff;
+  --bg-canvas: #faf6f0;
+  --bg-sidebar: #e8f1ec;
+  --bg-surface: #fffdfa;
+  --bg-elevated: #f4ede3;
+  --bg-container: var(--bg-elevated);
+  --text-primary: #1e1b18;
+  --text-secondary: #6b6259;
+  --text-muted: #94897e;
+  --border-subtle: #e8dfd2;
+  --border-strong: #d8cbb8;
+  --border-sidebar: #d4e3dc;
+  --brand-primary: #df6c43;
+  --brand-primary-hover: #cc5b33;
+  --brand-secondary: #2e6f56;
+  --brand-hover: var(--brand-primary-hover);
+  --brand-on-primary: #1e1b18;
+  --brand-fill: var(--brand-primary);
+  --brand-fill-hover: var(--brand-primary-hover);
+  --brand-on-fill: #1e1b18;
+  --kpi-sand: #f7efe2;
+  --kpi-terracotta: #fbe5dc;
+  --kpi-blush: #f6ece7;
+  --kpi-sage: #ebf2ec;
   --status-danger: #b91c1c;
   --status-danger-surface: #fef2f2;
   --status-danger-on-surface: #7f1d1d;
@@ -119,6 +128,7 @@
   --color-background: var(--bg-canvas);
   --color-foreground: var(--text-primary);
   --color-canvas: var(--bg-canvas);
+  --color-sidebar: var(--bg-sidebar);
   --color-surface: var(--bg-surface);
   --color-elevated: var(--bg-elevated);
   --color-container: var(--bg-container);
@@ -126,12 +136,19 @@
   --color-secondary: var(--text-secondary);
   --color-muted: var(--text-muted);
   --color-subtle: var(--border-subtle);
+  --color-strong: var(--border-strong);
   --color-brand: var(--brand-primary);
   --color-brand-hover: var(--brand-hover);
+  --color-brand-primary-hover: var(--brand-primary-hover);
+  --color-brand-secondary: var(--brand-secondary);
   --color-brand-on: var(--brand-on-primary);
   --color-brand-fill: var(--brand-fill);
   --color-brand-fill-hover: var(--brand-fill-hover);
   --color-brand-on-fill: var(--brand-on-fill);
+  --color-kpi-sand: var(--kpi-sand);
+  --color-kpi-terracotta: var(--kpi-terracotta);
+  --color-kpi-blush: var(--kpi-blush);
+  --color-kpi-sage: var(--kpi-sage);
   --color-danger: var(--status-danger);
   --color-danger-surface: var(--status-danger-surface);
   --color-danger-on-surface: var(--status-danger-on-surface);
@@ -341,12 +358,14 @@ body {
   }
 
   .tactile-press,
-  .tactile-toggle {
+  .tactile-toggle,
+  .clay-pill {
     transition: none;
   }
 
   .tactile-press:active:not(:disabled),
-  .tactile-toggle:active:not(:disabled) {
+  .tactile-toggle:active:not(:disabled),
+  .clay-pill:active:not(:disabled) {
     transform: none;
   }
 
@@ -358,20 +377,29 @@ body {
 }
 
 .dark {
-  --bg-canvas: #020617;
-  --bg-surface: #111827;
-  --bg-elevated: #1e293b;
-  --bg-container: #334155;
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #cbd5e1;
-  --border-subtle: #475569;
-  --brand-primary: #34d399;
-  --brand-hover: #6ee7b7;
-  --brand-on-primary: #022c22;
-  --brand-fill: #047857;
-  --brand-fill-hover: #065f46;
-  --brand-on-fill: #ffffff;
+  --bg-canvas: #141210;
+  --bg-sidebar: #17221e;
+  --bg-surface: #1f1c19;
+  --bg-elevated: #282420;
+  --bg-container: var(--bg-elevated);
+  --text-primary: #f5efe8;
+  --text-secondary: #a89d91;
+  --text-muted: #7a7066;
+  --border-subtle: #312b25;
+  --border-strong: #423a32;
+  --border-sidebar: #24352e;
+  --brand-primary: #f07d54;
+  --brand-primary-hover: #f68f6a;
+  --brand-secondary: #58b08c;
+  --brand-hover: var(--brand-primary-hover);
+  --brand-on-primary: #24140e;
+  --brand-fill: var(--brand-primary);
+  --brand-fill-hover: var(--brand-primary-hover);
+  --brand-on-fill: #24140e;
+  --kpi-sand: #2a231b;
+  --kpi-terracotta: #38221b;
+  --kpi-blush: #28211e;
+  --kpi-sage: #1d2923;
   --status-danger: #fca5a5;
   --status-danger-surface: #450a0a;
   --status-danger-on-surface: #fecaca;
@@ -400,18 +428,133 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 8px rgba(91, 64, 42, 0.08);
 }
 
 .glass-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 8px rgba(91, 64, 42, 0.08);
   transition: box-shadow 160ms ease;
 }
 
 .glass-card:hover {
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 14px rgba(91, 64, 42, 0.12);
+}
+
+.clay-card {
+  background: var(--clay-card-background, var(--bg-surface));
+  border: 1px solid var(--border-subtle);
+  border-radius: 1.5rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 18px 42px -28px rgba(91, 64, 42, 0.36),
+    0 2px 8px rgba(91, 64, 42, 0.08);
+  transition: box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.dark .clay-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 232, 0.07),
+    0 22px 48px -30px rgba(0, 0, 0, 0.72),
+    0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+.glass-bar {
+  background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
+  box-shadow: 0 8px 26px -18px rgba(53, 38, 27, 0.35);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .glass-bar {
+    background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
+
+.login-ambient {
+  background-color: var(--bg-canvas);
+  background-image:
+    radial-gradient(ellipse at 18% 18%, color-mix(in srgb, var(--brand-secondary) 18%, transparent), transparent 36%),
+    radial-gradient(ellipse at 82% 80%, color-mix(in srgb, var(--brand-primary) 16%, transparent), transparent 34%);
+}
+
+.dark .login-ambient {
+  background-image:
+    radial-gradient(ellipse at 18% 18%, color-mix(in srgb, var(--brand-secondary) 20%, transparent), transparent 36%),
+    radial-gradient(ellipse at 82% 80%, color-mix(in srgb, var(--brand-primary) 18%, transparent), transparent 34%);
+}
+
+.clay-pill {
+  border-radius: 9999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 2px 6px rgba(91, 64, 42, 0.09);
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.clay-pill:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.kpi-tint-sand {
+  --clay-card-background: var(--kpi-sand);
+}
+
+.kpi-tint-terracotta {
+  --clay-card-background: var(--kpi-terracotta);
+}
+
+.kpi-tint-blush {
+  --clay-card-background: var(--kpi-blush);
+}
+
+.kpi-tint-sage {
+  --clay-card-background: var(--kpi-sage);
+}
+
+.dark .clay-pill {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 232, 0.07),
+    0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.kpi-icon {
+  background: color-mix(in srgb, var(--clay-card-background, var(--bg-surface)) 78%, var(--brand-secondary));
+  color: var(--brand-secondary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.kpi-icon-danger {
+  background: color-mix(in srgb, var(--clay-card-background, var(--bg-surface)) 78%, var(--status-danger));
+  color: var(--status-danger);
+}
+
+.kpi-tint-terracotta .kpi-icon {
+  background: color-mix(in srgb, var(--clay-card-background) 78%, var(--brand-primary));
+  color: var(--brand-primary-hover);
+}
+
+.kpi-tint-blush .kpi-icon {
+  background: color-mix(in srgb, var(--clay-card-background) 78%, var(--brand-primary));
+  color: var(--brand-primary);
+}
+
+.kpi-tint-sage .kpi-icon {
+  background: color-mix(in srgb, var(--clay-card-background) 78%, var(--brand-secondary));
+  color: var(--brand-secondary);
+}
+
+.sidebar-shell {
+  background-color: var(--bg-sidebar);
+  border-color: var(--border-sidebar);
 }
 
 button {
@@ -554,8 +697,8 @@ summary {
   }
 
   body {
-    background: #ffffff !important;
-    color: #0f172a !important;
+    background: #fffdfa !important;
+    color: #1e1b18 !important;
   }
 
   body * {
@@ -576,8 +719,8 @@ summary {
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    background: #ffffff !important;
-    color: #0f172a !important;
+    background: #fffdfa !important;
+    color: #1e1b18 !important;
     padding: 0 !important;
   }
 
@@ -590,7 +733,7 @@ summary {
     display: block !important;
     width: 100% !important;
     margin-bottom: 12px !important;
-    border-bottom: 2px solid #059669 !important;
+    border-bottom: 2px solid #df6c43 !important;
     padding: 0 0 12px !important;
   }
 
@@ -609,11 +752,11 @@ summary {
 
   .summary-report-sheet h1,
   .summary-report-sheet h2 {
-    color: #0f172a !important;
+    color: #1e1b18 !important;
   }
 
   .summary-report-heading {
-    border-color: #e2e8f0 !important;
+    border-color: #e8dfd2 !important;
     margin-bottom: 0 !important;
     padding-top: 12px !important;
     padding-bottom: 12px !important;
@@ -637,20 +780,20 @@ summary {
   }
 
   .summary-print-table thead tr {
-    background: #f1f5f9 !important;
-    border-bottom: 1px solid #cbd5e1 !important;
+    background: #f4ede3 !important;
+    border-bottom: 1px solid #d8cbb8 !important;
   }
 
   .summary-print-table th {
     padding: 10px 12px !important;
-    color: #475569 !important;
+    color: #6b6259 !important;
     font-size: 8pt !important;
     letter-spacing: 0.06em !important;
   }
 
   .summary-print-table td {
     padding: 11px 12px !important;
-    border-bottom: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid #e8dfd2 !important;
     font-size: 9.5pt !important;
   }
 
@@ -680,15 +823,15 @@ summary {
   }
 
   .summary-balance-refund {
-    border: 1px solid #a7f3d0 !important;
-    background: #ecfdf5 !important;
-    color: #065f46 !important;
+    border: 1px solid #d4e3dc !important;
+    background: #ebf2ec !important;
+    color: #2e6f56 !important;
   }
 
   .summary-balance-settled {
-    border: 1px solid #e2e8f0 !important;
-    background: #f1f5f9 !important;
-    color: #475569 !important;
+    border: 1px solid #d8cbb8 !important;
+    background: #f4ede3 !important;
+    color: #6b6259 !important;
   }
 
   .summary-print-logo {
@@ -702,6 +845,6 @@ summary {
 
   .summary-print-table th,
   .summary-print-table td {
-    color: #0f172a !important;
+    color: #1e1b18 !important;
   }
 }

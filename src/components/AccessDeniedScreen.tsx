@@ -29,7 +29,7 @@ export function AccessDeniedScreen({
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
-      <div className="glass-card w-full max-w-md rounded-3xl p-8 text-center sm:p-10">
+      <div className="clay-card w-full max-w-md p-8 text-center sm:p-10">
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-danger-surface">
           <ShieldX className="h-8 w-8 text-danger" />
         </div>
@@ -50,7 +50,7 @@ export function AccessDeniedScreen({
         <button
           type="button"
           onClick={onLogout}
-          className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-fill text-sm font-semibold text-brand-on-fill transition-colors hover:bg-brand-fill-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+          className="clay-pill mt-6 flex h-12 w-full items-center justify-center gap-2 bg-brand text-sm font-semibold text-brand-on-fill transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
         >
           <LogOut className="h-4 w-4" />
           Sign Out

@@ -241,7 +241,7 @@ export function Sidebar({
                         });
                       }
                     }}
-                    className={`group relative isolate flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold transition-colors duration-150 ease-out ${
+                    className={`group relative isolate flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 text-left text-sm font-semibold transition-colors duration-150 ease-out ${
                       groupIsActive
                         ? "text-brand"
                         : "text-secondary hover:bg-container/80 dark:text-secondary dark:hover:bg-elevated/80"
@@ -251,7 +251,7 @@ export function Sidebar({
                       <motion.span
                         layoutId={`sidebar-group-active-${isMobile ? "mobile" : "desktop"}`}
                         transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
-                        className="pointer-events-none absolute inset-0 rounded-xl bg-success-surface"
+                        className="pointer-events-none absolute inset-0 rounded-2xl border border-subtle bg-surface shadow-[0_4px_14px_-10px_rgba(73,52,36,0.4)]"
                         aria-hidden="true"
                       />
                     ) : null}
@@ -297,7 +297,7 @@ export function Sidebar({
                                   type="button"
                                   onClick={() => navigate(item)}
                                   aria-current={active ? "page" : undefined}
-                                  className={`relative isolate flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium leading-4 transition-colors duration-150 ${
+                                  className={`relative isolate flex min-h-10 w-full items-center gap-2 rounded-2xl px-2.5 py-1.5 text-left text-xs font-medium leading-4 transition-colors duration-150 ${
                                     active
                                       ? "text-brand"
                                       : "text-secondary hover:bg-container/70 hover:text-primary dark:hover:bg-elevated/60"
@@ -307,14 +307,14 @@ export function Sidebar({
                                     <motion.span
                                       layoutId={`sidebar-item-active-${isMobile ? "mobile" : "desktop"}`}
                                       transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
-                                      className="pointer-events-none absolute inset-0 rounded-md bg-success-surface"
+                                      className="pointer-events-none absolute inset-0 rounded-2xl border border-subtle bg-surface shadow-[0_4px_14px_-10px_rgba(73,52,36,0.4)]"
                                       aria-hidden="true"
                                     />
                                   ) : null}
                                   <ItemIcon className="relative z-10 h-4 w-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
                                   <span className="relative z-10 min-w-0 flex-1 whitespace-normal">{item.label}</span>
                                   {active ? (
-                                    <span className="relative z-10 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+                                    <span className="relative z-10 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-secondary" aria-hidden="true" />
                                   ) : null}
                                 </button>
                               );
@@ -334,7 +334,7 @@ export function Sidebar({
     <>
       <aside
         aria-label="Primary navigation"
-        className={`sidebar-shell fixed inset-y-0 left-0 z-50 hidden flex-col overflow-visible border-r border-subtle/80 bg-surface/80 pt-2 backdrop-blur-xl transition-[width] duration-150 ease-out transform-gpu motion-reduce:transition-none dark:border-subtle dark:bg-surface/80 md:flex ${
+        className={`sidebar-shell fixed inset-y-0 left-0 z-50 hidden flex-col overflow-visible border-r bg-sidebar pt-2 backdrop-blur-xl transition-[width] duration-150 ease-out transform-gpu motion-reduce:transition-none md:flex ${
           expanded ? "w-64" : "w-[72px]"
         }`}
       >
@@ -376,7 +376,7 @@ export function Sidebar({
             ) : null}
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-lg border border-subtle bg-surface/95 px-2.5 py-1.5 text-xs font-medium text-primary opacity-0 shadow-lg shadow-slate-900/10 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+              className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-lg border border-subtle bg-surface/95 px-2.5 py-1.5 text-xs font-medium text-primary opacity-0 shadow-[0_8px_24px_-16px_rgba(91,64,42,0.28)] transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
             >
               {expanded ? "Close sidebar" : "Open sidebar"}
             </span>
@@ -396,7 +396,7 @@ export function Sidebar({
           >
             <button
               type="button"
-              className="absolute inset-0 h-full w-full cursor-default bg-slate-950/45 backdrop-blur-sm"
+              className="absolute inset-0 h-full w-full cursor-default bg-[#141210]/45 backdrop-blur-sm"
               aria-label="Close navigation menu"
               onClick={onCloseMobile}
             />
@@ -405,7 +405,7 @@ export function Sidebar({
               role="dialog"
               aria-modal="true"
               aria-label="Dashboard navigation"
-              className="sidebar-shell absolute inset-y-0 left-0 flex w-[min(20rem,88vw)] transform-gpu flex-col border-r border-subtle/80 bg-surface/95 pt-3 shadow-2xl backdrop-blur-xl will-change-transform dark:border-subtle dark:bg-surface/95"
+              className="sidebar-shell absolute inset-y-0 left-0 flex w-[min(20rem,88vw)] transform-gpu flex-col border-r bg-sidebar pt-3 shadow-2xl backdrop-blur-xl will-change-transform"
               initial={reduceMotion ? false : { x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
