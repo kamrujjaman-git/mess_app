@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import type { Member } from "@/lib/mess";
 import { buildWhatsAppLink, normalizeWhatsAppNumber } from "@/lib/mess";
+import { syncMemberClaims } from "@/lib/firestore";
 import { InlineActions, inputClass } from "./InlineActions";
 import { DeleteConfirmationModal } from "@/components/ui/DeleteConfirmationModal";
 import { DashboardSectionHeader } from "./DashboardSectionHeader";
@@ -71,6 +72,48 @@ export function ManageMembers({
   const [saving, setSaving] = useState<string | null>(null);
   const [memberPendingDelete, setMemberPendingDelete] = useState<Member | null>(null);
 
+  async function syncClaimsAfterUpdate(memberId: string): Promise<boolean> {
+    try {
+      await syncMemberClaims(memberId);
+      return true;
+    } catch {
+      console.error("Member access was saved, but claims synchronization failed.");
+      let retrying = false;
+      let toastId = "";
+      toastId = toast.custom(
+        (toastItem) => (
+          <div className={`flex w-[min(92vw,28rem)] items-center justify-between gap-4 rounded-2xl border border-danger-border bg-danger-surface px-4 py-3 text-danger-on-surface shadow-lg transition-all ${toastItem.visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"}`}>
+            <span className="min-w-0 text-sm font-semibold">
+              Member change saved, but access is not synchronized.
+            </span>
+            <button
+              type="button"
+              onClick={async () => {
+                if (retrying) return;
+                retrying = true;
+                try {
+                  await syncMemberClaims(memberId);
+                  toast.dismiss(toastId);
+                  toast.success("Member access synchronized.");
+                } catch {
+                  console.error("Member claims synchronization retry failed.");
+                  toast.error("Access synchronization still failed. Please retry.");
+                } finally {
+                  retrying = false;
+                }
+              }}
+              className="min-h-9 shrink-0 rounded-lg bg-white/70 px-3 text-sm font-bold text-danger-on-surface transition hover:bg-white dark:bg-black/20 dark:hover:bg-black/30"
+            >
+              Retry
+            </button>
+          </div>
+        ),
+        { duration: Infinity }
+      );
+      return false;
+    }
+  }
+
   async function handleAdd() {
     if (!newName.trim()) {
       toast.error("Please enter a member name.");
@@ -105,13 +148,22 @@ export function ManageMembers({
     }
     setSaving(member.id);
     try {
-      await onUpdateMember({
+      const updatedMember = {
         ...member,
         name: editName,
         email: editEmail,
         whatsAppNumber: normalizeWhatsAppNumber(editWhatsAppNumber),
-      });
+      };
+      await onUpdateMember(updatedMember);
       setEditingId(null);
+      const accessChanged =
+        member.email.trim().toLowerCase() !== updatedMember.email.trim().toLowerCase() ||
+        member.status !== updatedMember.status ||
+        member.active !== updatedMember.active ||
+        member.isAdmin !== updatedMember.isAdmin ||
+        member.isBlocked !== updatedMember.isBlocked ||
+        member.isRemoved !== updatedMember.isRemoved;
+      if (accessChanged && !(await syncClaimsAfterUpdate(member.id))) return;
       toast.success("Member updated successfully.");
     } catch (error) {
       console.error("Update member failed:", error);
@@ -126,6 +178,7 @@ export function ManageMembers({
     setSaving(`status-${member.id}`);
     try {
       await onSetMemberStatus(member.id, newStatus);
+      if (!(await syncClaimsAfterUpdate(member.id))) return;
       toast.success(`Member marked ${newStatus}.`);
     } catch (error) {
       console.error("Update member status failed:", error);
@@ -165,6 +218,7 @@ export function ManageMembers({
     setSaving(`admin-${member.id}`);
     try {
       await onUpdateMember({ ...member, isAdmin: nextIsAdmin });
+      if (!(await syncClaimsAfterUpdate(member.id))) return;
       toast.success(nextIsAdmin ? "Admin access granted." : "Admin access revoked.");
     } catch (error) {
       console.error("Update admin access failed:", error);

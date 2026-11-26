@@ -96,9 +96,14 @@ Set `FIREBASE_PROJECT_ID` if it differs from `NEXT_PUBLIC_FIREBASE_PROJECT_ID`; 
 Use Node.js 22.x for local runs and the Vercel project runtime; `firebase-admin` 14 requires Node.js 22 or newer.
 
 🔒 Firestore Security Rules Setup
-Deploy the repository rules with `firebase deploy --only firestore:rules` after connecting the Firebase CLI to the correct project.
+Before deploying, connect the Firebase CLI to the correct project and check the `settings/members` document in Firestore Console/Admin SDK. Ensure `activeEmails` contains the normalized lowercase email of each member whose status is not `inactive` or `removed`, `active` is not `false`, and `isBlocked` / `isRemoved` are not `true`. Ensure `adminEmails` is the active subset whose `isAdmin` is `true`. The app maintains both arrays after deployment; the rules also accept active Firebase custom claims during migration.
 
-**Existing project data must be migrated before deploying these rules:** populate `settings/members.activeEmails` with normalized emails for members whose status is not `inactive` or `removed`, `active` is not `false`, and `isBlocked` / `isRemoved` are not `true` (legacy records without a status are treated as active). Populate `adminEmails` with the subset of those members whose `isAdmin` is `true`. These arrays are maintained automatically by the app after deployment. The configured Super Admin retains access during migration.
+Deploy the backfilled rules with:
+```bash
+firebase deploy --only firestore:rules
+```
+
+Legacy records without a status are treated as active. Keep the Super Admin email in `firestore.rules` synchronized with `NEXT_PUBLIC_ADMIN_EMAIL`; the configured Super Admin retains access during migration.
 
 📦 Deployment
 This project is optimized for deployment on Vercel:

@@ -1,4 +1,6 @@
 import { getAdminAuth, getAdminFirestore } from "@/lib/firebase-admin";
+import { recordServerAuditLog } from "@/lib/audit-log-server";
+import { formatMonthKey } from "@/lib/mess";
 import { withIdempotency } from "@/lib/idempotency";
 import { apiResponse, withApiObservability } from "@/lib/observability";
 import { consumeRateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -218,10 +220,14 @@ async function deleteMemberData(memberId: string, performedBy: string) {
     });
 
     return {
-      meals: mealRecordCount,
-      deposits: depositsToDelete.length,
-      bazarReferences: bazarUpdates.length,
-      profiles: profiles.size,
+      cleanup: {
+        meals: mealRecordCount,
+        deposits: depositsToDelete.length,
+        bazarReferences: bazarUpdates.length,
+        profiles: profiles.size,
+      },
+      memberName: String(targetMember.name ?? "Member"),
+      memberEmail: targetEmail,
     };
   });
 }
@@ -318,8 +324,18 @@ export async function POST(request: Request) {
       }
 
       try {
-        const cleanup = await deleteMemberData(memberId, decodedToken.email ?? callerEmail);
-        return apiResponse({ ok: true, cleanup }, 200, "complete");
+        const deletion = await deleteMemberData(memberId, decodedToken.email ?? callerEmail);
+        void recordServerAuditLog({
+          action: "Member deleted",
+          category: "members",
+          actorEmail: callerEmail,
+          actorName: typeof decodedToken.name === "string" && decodedToken.name.trim()
+            ? decodedToken.name.trim()
+            : callerEmail,
+          summary: `Deleted ${deletion.memberName}${deletion.memberEmail ? ` (${deletion.memberEmail})` : ""}; removed ${deletion.cleanup.meals} meal record(s), ${deletion.cleanup.deposits} deposit(s), and ${deletion.cleanup.bazarReferences} bazar reference(s).`,
+          monthKey: formatMonthKey(new Date()),
+        });
+        return apiResponse({ ok: true, cleanup: deletion.cleanup }, 200, "complete");
       } catch (error) {
         if (error instanceof MemberDeletionError) {
           return apiResponse(

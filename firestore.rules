@@ -8,15 +8,32 @@ service cloud.firestore {
     return signedIn() && request.auth.token.email_verified == true;
   }
 
+  function hasActiveClaim() {
+    return signedIn() &&
+      "active" in request.auth.token &&
+      request.auth.token.active == true;
+  }
+
+  function hasRoleClaim(role) {
+    return signedIn() &&
+      "role" in request.auth.token &&
+      request.auth.token.role == role;
+  }
+
   function isSuperAdmin() {
     // Keep this deployed email synchronized with NEXT_PUBLIC_ADMIN_EMAIL.
     // Firestore rules cannot read Next.js environment variables at runtime.
     return verifiedSignedIn() &&
-      request.auth.token.email != null &&
-      request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower();
+      (
+        (hasRoleClaim("super_admin") && hasActiveClaim()) ||
+        (
+          request.auth.token.email != null &&
+          request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower()
+        )
+      );
   }
 
-  function isActiveMember() {
+  function isDirectoryActiveMember() {
     return verifiedSignedIn() &&
       request.auth.token.email != null &&
       exists(/databases/$(database)/documents/settings/members) &&
@@ -26,14 +43,66 @@ service cloud.firestore {
       ]);
   }
 
+  function isActiveMember() {
+    return verifiedSignedIn() &&
+      request.auth.token.email != null &&
+      (hasActiveClaim() || isDirectoryActiveMember());
+  }
+
   function isAdmin() {
-    return isSuperAdmin() || (
-      isActiveMember() &&
-      get(/databases/$(database)/documents/settings/members).data.adminEmails is list &&
-      get(/databases/$(database)/documents/settings/members).data.adminEmails.hasAny([
-        request.auth.token.email.lower()
-      ])
+    return verifiedSignedIn() && (
+      isSuperAdmin() ||
+      (
+        hasRoleClaim("admin") &&
+        hasActiveClaim()
+      ) ||
+      (
+        isDirectoryActiveMember() &&
+        get(/databases/$(database)/documents/settings/members).data.adminEmails is list &&
+        get(/databases/$(database)/documents/settings/members).data.adminEmails.hasAny([
+          request.auth.token.email.lower()
+        ])
+      )
     );
+  }
+
+  function validAuditLog(data) {
+    return data.keys().hasAll([
+        "action",
+        "category",
+        "actorEmail",
+        "actorName",
+        "summary",
+        "monthKey",
+        "createdAt"
+      ]) &&
+      data.keys().hasOnly([
+        "action",
+        "category",
+        "actorEmail",
+        "actorName",
+        "summary",
+        "monthKey",
+        "createdAt"
+      ]) &&
+      data.action is string &&
+      data.action.size() > 0 &&
+      data.action.size() <= 80 &&
+      data.category in ["meals", "bazar", "deposits", "fixed_costs", "members"] &&
+      data.actorEmail is string &&
+      data.actorEmail.size() > 0 &&
+      data.actorEmail.size() <= 254 &&
+      data.actorEmail == request.auth.token.email.lower() &&
+      data.actorName is string &&
+      data.actorName.size() > 0 &&
+      data.actorName.size() <= 120 &&
+      data.summary is string &&
+      data.summary.size() > 0 &&
+      data.summary.size() <= 500 &&
+      data.monthKey is string &&
+      data.monthKey.matches("^[0-9]{4}-(0[1-9]|1[0-2])$") &&
+      data.createdAt is timestamp &&
+      data.createdAt == request.time;
   }
 
   function memberDirectoryUpdateIsSafe() {
@@ -51,6 +120,46 @@ service cloud.firestore {
       date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
       date.substring(0, 7) == monthKey &&
       !isFutureDate(date);
+  }
+
+  function isPreviousMonth(sourceMonthKey, targetMonthKey) {
+    return sourceMonthKey.matches('^[0-9]{4}-(0[1-9]|1[0-2])$') &&
+      targetMonthKey.matches('^[0-9]{4}-(0[1-9]|1[0-2])$') &&
+      (
+        (
+          sourceMonthKey.substring(0, 4) == targetMonthKey.substring(0, 4) &&
+          int(sourceMonthKey.substring(5, 7)) + 1 == int(targetMonthKey.substring(5, 7))
+        ) ||
+        (
+          int(sourceMonthKey.substring(5, 7)) == 12 &&
+          int(targetMonthKey.substring(5, 7)) == 1 &&
+          int(targetMonthKey.substring(0, 4)) == int(sourceMonthKey.substring(0, 4)) + 1
+        )
+      );
+  }
+
+  function validCarryForwardDeposit(monthKey, entryId, data) {
+    return data.keys().hasAll([
+        "memberId",
+        "memberName",
+        "amount",
+        "date",
+        "note",
+        "carryForwardFrom"
+      ]) &&
+      isPreviousMonth(data.carryForwardFrom, monthKey) &&
+      entryId.matches("^cf_" + data.carryForwardFrom + "_.*$") &&
+      data.memberId is string &&
+      data.memberId.size() > 0 &&
+      data.memberId.size() <= 254 &&
+      data.memberName is string &&
+      data.memberName.size() > 0 &&
+      data.memberName.size() <= 120 &&
+      data.amount is number &&
+      data.amount != 0 &&
+      data.date == monthKey + "-01" &&
+      data.note is string &&
+      data.note.matches("^Carry forward from .{1,120}$");
   }
 
   function isFutureDate(date) {
@@ -119,10 +228,14 @@ service cloud.firestore {
 
   match /months/{monthKey}/deposits/{entryId} {
     allow read: if isActiveMember() || isSuperAdmin();
-    allow create, update: if isAdmin() &&
-      validEntryDate(monthKey, request.resource.data.date) &&
-      validMoney(request.resource.data.amount) &&
-      request.resource.data.amount > 0;
+    allow create, update: if isAdmin() && (
+      (
+        validEntryDate(monthKey, request.resource.data.date) &&
+        validMoney(request.resource.data.amount) &&
+        request.resource.data.amount > 0
+      ) ||
+      validCarryForwardDeposit(monthKey, entryId, request.resource.data)
+    );
     allow delete: if isAdmin();
   }
 
@@ -135,5 +248,11 @@ service cloud.firestore {
       request.resource.data.performedBy == request.auth.token.email &&
       request.resource.data.timestamp is string;
     allow update, delete: if isSuperAdmin();
+  }
+
+  match /audit_logs/{logId} {
+    allow read: if isAdmin();
+    allow create: if isAdmin() && validAuditLog(request.resource.data);
+    allow update, delete: if false;
   }
 }

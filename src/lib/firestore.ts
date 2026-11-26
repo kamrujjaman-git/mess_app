@@ -22,13 +22,20 @@ import {
   MonthBills,
   Member,
   BillField,
+  BILL_LABELS,
+  CarryForwardBalance,
   createDefaultMembers,
   createEmptyDailyMeals,
+  formatCurrency,
+  formatMonthKey,
+  formatMonthLabel,
+  getPreviousMonthKey,
   getAllowedMemberEmails,
   getActiveMembers,
   isMemberActive,
   isDateOnOrBeforeToday,
 } from "./mess";
+import { recordAuditLog } from "./audit-log";
 
 function monthDoc(monthKey: string) {
   return doc(db, "months", monthKey);
@@ -44,6 +51,19 @@ function bazarCollection(monthKey: string) {
 
 function depositsCollection(monthKey: string) {
   return collection(db, "months", monthKey, "deposits");
+}
+
+const MONTH_KEY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+const CARRY_FORWARD_CHUNK_SIZE = 400;
+
+export function getCarryForwardDepositId(
+  sourceMonthKey: string,
+  memberId: string
+): string {
+  if (!MONTH_KEY_PATTERN.test(sourceMonthKey) || !memberId.trim()) {
+    throw new Error("A valid source month and member are required.");
+  }
+  return `cf_${sourceMonthKey}_${encodeURIComponent(memberId)}`;
 }
 
 function assertEntryDate(monthKey: string, date: string): void {
@@ -248,6 +268,12 @@ export async function addMember(
       ...memberAccessFields(nextMembers),
     });
   });
+  recordAuditLog({
+    action: "Member added",
+    category: "members",
+    summary: `Added ${newMember.name}${newMember.email ? ` (${newMember.email})` : ""}.`,
+    monthKey: formatMonthKey(new Date()),
+  });
   return newMember;
 }
 
@@ -320,6 +346,62 @@ export async function updateMember(updated: Member): Promise<void> {
       });
     }
   });
+
+  const previousIsAdmin = initialMember.isAdmin === true;
+  const nextIsAdmin = normalizedMember.isAdmin === true;
+  if (previousIsAdmin !== nextIsAdmin) {
+    recordAuditLog({
+      action: nextIsAdmin ? "Admin access granted" : "Admin access revoked",
+      category: "members",
+      summary: `${normalizedMember.name} was ${nextIsAdmin ? "promoted to" : "demoted from"} admin.`,
+      monthKey: formatMonthKey(new Date()),
+    });
+  }
+  if (
+    initialMember.status !== normalizedMember.status ||
+    isMemberActive(initialMember) !== isMemberActive(normalizedMember)
+  ) {
+    recordAuditLog({
+      action: "Member status changed",
+      category: "members",
+      summary: `${normalizedMember.name} was marked ${normalizedMember.status}.`,
+      monthKey: formatMonthKey(new Date()),
+    });
+  }
+}
+
+export async function syncMemberClaims(memberId: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Sign in again before synchronizing member access.");
+  }
+
+  const response = await fetch("/api/auth/claims", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${await user.getIdToken()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ memberId }),
+    cache: "no-store",
+  });
+
+  let result: unknown;
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+  if (!response.ok) {
+    const message = result &&
+      typeof result === "object" &&
+      !Array.isArray(result) &&
+      "error" in result &&
+      typeof result.error === "string"
+      ? result.error
+      : "Member access was saved, but claims synchronization failed.";
+    throw new Error(message);
+  }
 }
 
 const memberDeletionRequests = new Map<string, Promise<void>>();
@@ -438,6 +520,15 @@ export async function setMemberStatus(
       });
     }
   });
+
+  if (initialMember.status !== status) {
+    recordAuditLog({
+      action: "Member status changed",
+      category: "members",
+      summary: `${initialMember.name} was marked ${status}.`,
+      monthKey: formatMonthKey(new Date()),
+    });
+  }
 }
 
 export async function getMonthBills(monthKey: string): Promise<MonthBills> {
@@ -471,6 +562,12 @@ export async function updateMonthBills(
     },
     { merge: true }
   );
+  recordAuditLog({
+    action: "Fixed costs updated",
+    category: "fixed_costs",
+    summary: `Updated monthly fixed costs for ${monthKey}: Rent ৳${Math.round(bills.houseRent)}, Bua ৳${Math.round(bills.buaBill)}, Other Bills ৳${Math.round(bills.otherBills)}.`,
+    monthKey,
+  });
 }
 
 export async function updateBillField(
@@ -480,6 +577,12 @@ export async function updateBillField(
 ): Promise<void> {
   assertNonNegativeAmount(value);
   await setDoc(monthDoc(monthKey), { [field]: Math.round(value) }, { merge: true });
+  recordAuditLog({
+    action: `${BILL_LABELS[field]} updated`,
+    category: "fixed_costs",
+    summary: `${BILL_LABELS[field]} was set to ৳${Math.round(value)} for ${monthKey}.`,
+    monthKey,
+  });
 }
 
 export async function deleteBillField(
@@ -510,6 +613,12 @@ export async function saveDailyMeals(
     performedBy,
     (members) => validateMemberReferences(members, Object.keys(record.meals))
   );
+  recordAuditLog({
+    action: "Meal entry saved",
+    category: "meals",
+    summary: `Saved meal entries for ${record.date} across ${Object.keys(record.meals).length} member(s).`,
+    monthKey,
+  });
 }
 
 export async function deleteDailyMeals(
@@ -524,6 +633,12 @@ export async function deleteDailyMeals(
     `Deleted meal entries for ${date}.`,
     performedBy
   );
+  recordAuditLog({
+    action: "Meal entry deleted",
+    category: "meals",
+    summary: `Deleted meal entries for ${date}.`,
+    monthKey,
+  });
 }
 
 export async function getBazarEntries(
@@ -585,6 +700,12 @@ export async function addBazarEntry(
     performedBy,
     (members) => validateMemberReferences(members, buyerIds)
   );
+  recordAuditLog({
+    action: "Bazar entry added",
+    category: "bazar",
+    summary: `Added a bazar entry of ৳${Math.round(entry.amount)} for ${entry.date}${entry.description ? `: ${entry.description}` : ""}.`,
+    monthKey,
+  });
 }
 
 export async function updateBazarEntry(
@@ -608,6 +729,12 @@ export async function updateBazarEntry(
     performedBy,
     (members) => validateMemberReferences(members, buyerIds)
   );
+  recordAuditLog({
+    action: "Bazar entry updated",
+    category: "bazar",
+    summary: `Updated bazar entry for ${entry.date} to ৳${Math.round(entry.amount)}${entry.description ? `: ${entry.description}` : ""}.`,
+    monthKey,
+  });
 }
 
 export async function deleteBazarEntry(
@@ -621,6 +748,12 @@ export async function deleteBazarEntry(
     `Deleted a bazar entry from ${monthKey}.`,
     performedBy
   );
+  recordAuditLog({
+    action: "Bazar entry deleted",
+    category: "bazar",
+    summary: `Deleted a bazar entry from ${monthKey}.`,
+    monthKey,
+  });
 }
 
 export async function getDepositEntries(
@@ -629,6 +762,113 @@ export async function getDepositEntries(
   const q = query(depositsCollection(monthKey), orderBy("date", "desc"));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DepositEntry);
+}
+
+export async function applyCarryForwardBalances(
+  sourceMonthKey: string,
+  targetMonthKey: string,
+  selectedBalances: CarryForwardBalance[]
+): Promise<CarryForwardBalance[]> {
+  if (
+    !MONTH_KEY_PATTERN.test(sourceMonthKey) ||
+    !MONTH_KEY_PATTERN.test(targetMonthKey) ||
+    getPreviousMonthKey(targetMonthKey) !== sourceMonthKey
+  ) {
+    throw new Error("Carry-forward must use the immediately previous calendar month.");
+  }
+
+  const memberIds = new Set<string>();
+  const balances = selectedBalances.map((balance) => {
+    const amount = Math.round(balance.amount * 100) / 100;
+    if (
+      !balance.memberId.trim() ||
+      !balance.memberName.trim() ||
+      !Number.isFinite(amount) ||
+      Math.abs(amount) < 0.01 ||
+      (balance.kind !== "credit" && balance.kind !== "due") ||
+      (balance.kind === "credit" && amount <= 0) ||
+      (balance.kind === "due" && amount >= 0) ||
+      memberIds.has(balance.memberId)
+    ) {
+      throw new Error("One or more carry-forward balances are invalid.");
+    }
+    memberIds.add(balance.memberId);
+    return { ...balance, amount };
+  });
+
+  const createdBalances: CarryForwardBalance[] = [];
+  const sourceMonthLabel = formatMonthLabel(sourceMonthKey);
+  const targetDate = `${targetMonthKey}-01`;
+
+  try {
+    for (let offset = 0; offset < balances.length; offset += CARRY_FORWARD_CHUNK_SIZE) {
+      const chunk = balances.slice(offset, offset + CARRY_FORWARD_CHUNK_SIZE);
+      const createdInChunk = await runTransaction(db, async (transaction) => {
+        const membersSnapshot = await transaction.get(doc(db, "settings", "members"));
+        const currentMembers = parseMembers(
+          membersSnapshot.exists() ? membersSnapshot.data() : undefined
+        );
+        const activeMemberById = new Map(
+          getActiveMembers(currentMembers).map((member) => [member.id, member])
+        );
+        const refs = chunk.map((balance) => ({
+          balance,
+          ref: doc(
+            depositsCollection(targetMonthKey),
+            getCarryForwardDepositId(sourceMonthKey, balance.memberId)
+          ),
+        }));
+        const snapshots = await Promise.all(
+          refs.map(({ ref }) => transaction.get(ref))
+        );
+
+        refs.forEach(({ balance, ref }, index) => {
+          if (snapshots[index].exists()) return;
+
+          const member = activeMemberById.get(balance.memberId);
+          if (!member) {
+            throw new Error(
+              `${balance.memberName} is no longer an active member. Refresh the preview and try again.`
+            );
+          }
+
+          transaction.set(ref, {
+            memberId: member.id,
+            memberName: member.name,
+            amount: balance.amount,
+            date: targetDate,
+            note: `Carry forward from ${sourceMonthLabel}`,
+            carryForwardFrom: sourceMonthKey,
+          });
+        });
+
+        return refs.flatMap(({ balance }, index) =>
+          snapshots[index].exists() ? [] : [balance]
+        );
+      });
+      createdBalances.push(...createdInChunk);
+    }
+  } finally {
+    if (createdBalances.length > 0) {
+      const totalCredit = createdBalances
+        .filter((balance) => balance.amount > 0)
+        .reduce((sum, balance) => sum + balance.amount, 0);
+      const totalDue = createdBalances
+        .filter((balance) => balance.amount < 0)
+        .reduce((sum, balance) => sum + Math.abs(balance.amount), 0);
+
+      recordAuditLog({
+        action: "carry_forward_balance",
+        category: "deposits",
+        summary:
+          `Carried forward ${createdBalances.length} member balance(s) from ${sourceMonthLabel} to ${formatMonthLabel(targetMonthKey)} ` +
+          `(Credit: ৳${formatCurrency(totalCredit)}, Due: ৳${formatCurrency(totalDue)}).`,
+        monthKey: targetMonthKey,
+      });
+    }
+  }
+
+  return createdBalances;
 }
 
 export async function addDepositEntry(
@@ -648,6 +888,12 @@ export async function addDepositEntry(
     performedBy,
     (members) => validateDepositMember(members, entry)
   );
+  recordAuditLog({
+    action: "Deposit added",
+    category: "deposits",
+    summary: `Added a deposit of ৳${Math.round(entry.amount)} for ${entry.memberName} on ${entry.date}${entry.note ? `: ${entry.note}` : ""}.`,
+    monthKey,
+  });
 }
 
 export async function updateDepositEntry(
@@ -668,6 +914,12 @@ export async function updateDepositEntry(
     performedBy,
     (members) => validateDepositMember(members, entry)
   );
+  recordAuditLog({
+    action: "Deposit updated",
+    category: "deposits",
+    summary: `Updated ${entry.memberName}'s deposit to ৳${Math.round(entry.amount)} on ${entry.date}${entry.note ? `: ${entry.note}` : ""}.`,
+    monthKey,
+  });
 }
 
 export async function deleteDepositEntry(
@@ -681,6 +933,12 @@ export async function deleteDepositEntry(
     `Deleted a deposit entry from ${monthKey}.`,
     performedBy
   );
+  recordAuditLog({
+    action: "Deposit deleted",
+    category: "deposits",
+    summary: `Deleted a deposit entry from ${monthKey}.`,
+    monthKey,
+  });
 }
 
 export interface MonthData {

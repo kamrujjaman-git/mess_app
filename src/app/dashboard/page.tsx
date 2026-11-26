@@ -97,7 +97,8 @@ function getAdminSectionFromUrl(section: string | null): AdminSection | null {
     section === "add-deposit" ||
     section === "fixed-bills" ||
     section === "add-member" ||
-    section === "all-members"
+    section === "all-members" ||
+    section === "activity-log"
     ? section
     : null;
 }

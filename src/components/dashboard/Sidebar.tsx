@@ -5,6 +5,7 @@ import Image from "next/image";
 import {
   Banknote,
   ChevronDown,
+  ClipboardList,
   LayoutDashboard,
   LayoutGrid,
   PanelLeftClose,
@@ -30,7 +31,8 @@ export type AdminSection =
   | "add-deposit"
   | "fixed-bills"
   | "add-member"
-  | "all-members";
+  | "all-members"
+  | "activity-log";
 
 export interface SidebarDestination {
   tab: DashboardTab;
@@ -97,6 +99,7 @@ const navigationGroups: NavigationGroup[] = [
       { label: "Set Fixed Bills", icon: ReceiptText, tab: "admin", adminSection: "fixed-bills" },
       { label: "Add New Member", icon: UserPlus, tab: "admin", adminSection: "add-member" },
       { label: "All Members", icon: Users, tab: "admin", adminSection: "all-members" },
+      { label: "Activity Log", icon: ClipboardList, tab: "admin", adminSection: "activity-log" },
     ],
   },
 ];

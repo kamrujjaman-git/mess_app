@@ -7,6 +7,7 @@ import {
   useState,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import {
@@ -20,12 +21,15 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { subscribeToMembers } from "@/lib/firestore";
 import { isMemberActive, type Member } from "@/lib/mess";
+import toast from "react-hot-toast";
 
 type AccessDeniedReason = "inactive" | "not-member" | "removed" | null;
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
+  sessionLoading: boolean;
+  sessionError: string | null;
   accessLoading: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -36,15 +40,49 @@ interface AuthContextValue {
   userProfilePhotoURL: string | null;
   profileVersion: number;
   signInWithGoogle: () => Promise<void>;
+  retrySessionSync: () => void;
   refreshUserProfile: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+async function postSessionToken(idToken: string, signal: AbortSignal): Promise<boolean> {
+  const response = await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+    cache: "no-store",
+    signal,
+  });
+
+  let result: unknown;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error("The secure session service returned an invalid response.");
+  }
+  if (!response.ok) {
+    throw new Error(
+      isRecord(result) && typeof result.error === "string"
+        ? result.error
+        : "Could not establish a secure session."
+    );
+  }
+
+  return isRecord(result) && result.claimsChanged === true;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [sessionRetryCount, setSessionRetryCount] = useState(0);
   const [members, setMembers] = useState<Member[]>([]);
   const [membersReady, setMembersReady] = useState(false);
   const [userProfile, setUserProfile] = useState<{
@@ -52,6 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     photoURL: string | null;
   } | null>(null);
   const [profileVersion, setProfileVersion] = useState(0);
+  const sessionSyncRef = useRef<{
+    controller: AbortController;
+    promise: Promise<void>;
+  } | null>(null);
 
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
   const normalizedAdminEmail = adminEmail.trim().toLowerCase();
@@ -113,10 +155,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(firebaseUser);
       setLoading(false);
       setMembersReady(false);
-      if (!firebaseUser) setMembers([]);
+      if (!firebaseUser) {
+        setMembers([]);
+        setSessionLoading(false);
+        setSessionError(null);
+      } else {
+        setSessionLoading(true);
+        setSessionError(null);
+      }
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const controller = new AbortController();
+    const syncPromise = (async () => {
+      try {
+        let claimsChanged = await postSessionToken(
+          await user.getIdToken(),
+          controller.signal
+        );
+        if (claimsChanged) {
+          claimsChanged = await postSessionToken(
+            await user.getIdToken(true),
+            controller.signal
+          );
+        }
+        if (!controller.signal.aborted) {
+          setSessionError(null);
+          setSessionLoading(false);
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("Failed to establish the server session.");
+        setSessionError(
+          error instanceof Error
+            ? error.message
+            : "Could not establish a secure session. Please retry."
+        );
+        setSessionLoading(false);
+        toast.error("Could not establish a secure session. Please retry.");
+      }
+    })();
+
+    sessionSyncRef.current = { controller, promise: syncPromise };
+    return () => {
+      controller.abort();
+      if (sessionSyncRef.current?.controller === controller) {
+        sessionSyncRef.current = null;
+      }
+    };
+  }, [user, sessionRetryCount]);
 
   useEffect(() => {
     if (!user) return;
@@ -164,6 +255,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithPopup(auth, provider);
   }, []);
 
+  const retrySessionSync = useCallback(() => {
+    setSessionRetryCount((count) => count + 1);
+    setSessionLoading(true);
+    setSessionError(null);
+  }, []);
+
   const refreshUserProfile = useCallback(async () => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -175,17 +272,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    setUser(null);
-    setLoading(false);
-    setMembers([]);
-    setMembersReady(false);
+    const pendingSync = sessionSyncRef.current;
+    pendingSync?.controller.abort();
+    await pendingSync?.promise;
 
+    let cookieClearFailed = false;
+    try {
+      const response = await fetch("/api/auth/session", {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      if (!response.ok) cookieClearFailed = true;
+    } catch {
+      cookieClearFailed = true;
+      console.error("Failed to clear the server session cookie.");
+    }
+
+    let signOutError: unknown;
     try {
       await signOut(auth);
     } catch (error) {
+      signOutError = error;
       console.error("Logout failed:", error);
-      throw error;
+    } finally {
+      setUser(null);
+      setLoading(false);
+      setSessionLoading(false);
+      setSessionError(null);
+      setMembers([]);
+      setMembersReady(false);
     }
+
+    if (cookieClearFailed) {
+      toast.error("Signed out, but the server session cookie could not be cleared.");
+    }
+    if (signOutError) throw signOutError;
   }, []);
 
   return (
@@ -193,6 +314,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         loading,
+        sessionLoading,
+        sessionError,
         accessLoading,
         isAdmin,
         isSuperAdmin,
@@ -203,6 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userProfilePhotoURL,
         profileVersion,
         signInWithGoogle,
+        retrySessionSync,
         refreshUserProfile,
         logout,
       }}

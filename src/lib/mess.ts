@@ -86,6 +86,7 @@ export interface DepositEntry {
   amount: number;
   date: string;
   note: string;
+  carryForwardFrom?: string;
 }
 
 export interface MonthBills {
@@ -114,6 +115,13 @@ export interface MemberSummary {
   finalBalance: number;
   status: MemberStatus;
   whatsAppNumber?: string;
+}
+
+export interface CarryForwardBalance {
+  memberId: string;
+  memberName: MemberName;
+  amount: number;
+  kind: "credit" | "due";
 }
 
 export interface MessStats {
@@ -350,10 +358,48 @@ export function calculateMessStats(
   };
 }
 
+export function previewCarryForwardBalances(
+  summaries: MemberSummary[]
+): CarryForwardBalance[] {
+  return summaries.flatMap((summary) => {
+    const amount = summary.finalBalance;
+    if (
+      summary.status !== "active" ||
+      !Number.isFinite(amount) ||
+      Math.abs(amount) < 0.01
+    ) {
+      return [];
+    }
+
+    return [{
+      memberId: summary.id,
+      memberName: summary.name,
+      amount,
+      kind: amount > 0 ? "credit" : "due",
+    }];
+  });
+}
+
 export function formatMonthKey(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
+}
+
+export function getPreviousMonthKey(monthKey: string): string {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(monthKey);
+  if (!match) {
+    throw new Error("A valid month key is required.");
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const previousYear = month === 1 ? year - 1 : year;
+  if (previousYear < 0) {
+    throw new Error("The month key does not have a previous calendar month.");
+  }
+  const previousMonth = month === 1 ? 12 : month - 1;
+  return `${String(previousYear).padStart(4, "0")}-${String(previousMonth).padStart(2, "0")}`;
 }
 
 export function formatMonthLabel(monthKey?: string): string {

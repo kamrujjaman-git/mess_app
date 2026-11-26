@@ -2,11 +2,13 @@
 
 import { useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { ChevronDown, Loader2, Save, Plus } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, Loader2, Save, Plus } from "lucide-react";
 import type { Member, MemberMeals, MonthBills } from "@/lib/mess";
 import { getActiveMembers, getTodayDateString, isDateOnOrBeforeToday } from "@/lib/mess";
 import { AnimatedFormError } from "@/components/ui/AnimatedFormError";
 import { ManageMembers } from "./ManageMembers";
+import { ActivityLog } from "./ActivityLog";
+import { CarryForwardModal } from "./CarryForwardModal";
 import { inputClass } from "./InlineActions";
 import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
 import type { AdminSection } from "./Sidebar";
@@ -96,6 +98,7 @@ export function AdminPanel({
   const [billDraft, setBillDraft] = useState<MonthBills | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Partial<Record<EntryFormKey, FormErrorState>>>({});
+  const [carryForwardOpen, setCarryForwardOpen] = useState(false);
   const inFlightSubmissionsRef = useRef(new Set<string>());
   const billInputs = billDraft ?? bills;
   const selectedDepositMemberId = activeMembers.some((member) => member.id === depositMemberId)
@@ -260,7 +263,33 @@ export function AdminPanel({
 
   return (
     <div className="space-y-4">
-      {selectedSection === "add-member" || selectedSection === "all-members" ? (
+      <div className="glass-card flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div>
+          <h2 className="text-sm font-bold text-primary">Month-end balance transfer</h2>
+          <p className="mt-1 text-xs text-secondary">
+            Preview active members&apos; closing balances before carrying them into this month.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCarryForwardOpen(true)}
+          aria-haspopup="dialog"
+          className="tactile-press inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-brand bg-container px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand-fill hover:text-brand-on-fill"
+        >
+          <ArrowRightLeft className="h-4 w-4" aria-hidden="true" />
+          Carry Forward Balance
+        </button>
+      </div>
+      {carryForwardOpen ? (
+        <CarryForwardModal
+          targetMonthKey={selectedMonthKey}
+          members={members}
+          onClose={() => setCarryForwardOpen(false)}
+        />
+      ) : null}
+      {selectedSection === "activity-log" ? (
+        <ActivityLog />
+      ) : selectedSection === "add-member" || selectedSection === "all-members" ? (
         <ManageMembers
           members={members}
           activeView={selectedSection === "add-member" ? "add" : "all"}

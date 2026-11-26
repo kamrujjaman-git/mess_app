@@ -36,16 +36,27 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
-  const { user, loading, accessLoading, hasAccess, accessDeniedReason, logout, signInWithGoogle } = useAuth();
+  const {
+    user,
+    loading,
+    sessionLoading,
+    sessionError,
+    accessLoading,
+    hasAccess,
+    accessDeniedReason,
+    logout,
+    retrySessionSync,
+    signInWithGoogle,
+  } = useAuth();
   const router = useRouter();
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!loading && !accessLoading && user && hasAccess) {
+    if (!loading && !sessionLoading && !sessionError && !accessLoading && user && hasAccess) {
       router.replace("/dashboard");
     }
-  }, [user, loading, accessLoading, hasAccess, router]);
+  }, [user, loading, sessionLoading, sessionError, accessLoading, hasAccess, router]);
 
   async function handleSignIn() {
     setSigningIn(true);
@@ -59,10 +70,37 @@ export default function LoginPage() {
     }
   }
 
-  if (loading || accessLoading) {
+  if (loading || sessionLoading || accessLoading) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  if (user && hasAccess && sessionError) {
+    return (
+      <div className="flex min-h-screen flex-1 items-center justify-center px-4">
+        <section className="glass-card w-full max-w-md rounded-3xl p-6 text-center">
+          <h1 className="text-lg font-semibold">Secure session unavailable</h1>
+          <p className="mt-2 text-sm text-secondary dark:text-muted">{sessionError}</p>
+          <div className="mt-5 flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={retrySessionSync}
+              className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-xl border border-subtle px-4 py-2 text-sm font-semibold"
+            >
+              Sign out
+            </button>
+          </div>
+        </section>
       </div>
     );
   }
