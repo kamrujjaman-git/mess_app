@@ -221,21 +221,24 @@ export function DashboardNav({
   return (
     <>
       <header className={`glass-bar relative sticky top-0 z-40 w-full max-w-full overflow-visible transition-[margin,width] duration-150 ease-out motion-reduce:transition-none ${sidebarExpanded ? "md:ml-64 md:w-[calc(100%-16rem)]" : "md:ml-[72px] md:w-[calc(100%-72px)]"}`}>
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2 px-3 py-3 sm:px-4 sm:py-4 md:flex md:flex-nowrap md:justify-between md:gap-3 lg:px-8">
-        <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-1 md:hidden">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:px-4 sm:py-4 md:flex md:flex-nowrap md:justify-between md:gap-3 lg:px-8">
+        <div className="col-start-1 row-start-1 flex min-w-0 flex-1 items-center gap-1 overflow-hidden md:hidden">
           <button
             type="button"
             onClick={onOpenMobileNav}
-            className="tactile-press flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-container"
+            className="tactile-press flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-container sm:h-9 sm:w-9"
             aria-label="Open navigation menu"
             aria-haspopup="dialog"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-[10px] font-medium text-secondary sm:text-xs">
-            <span className="shrink-0">Dashboard</span>
-            <ChevronRight className="h-3 w-3 shrink-0 text-muted" aria-hidden="true" />
-            <span className="truncate text-primary">{breadcrumbLabel}</span>
+          <nav
+            aria-label={`Dashboard / ${breadcrumbLabel}`}
+            className="min-w-0 flex-1 overflow-hidden text-[10px] font-medium text-primary sm:text-xs"
+          >
+            <span className="block truncate whitespace-nowrap" aria-current="page" title={breadcrumbLabel}>
+              {breadcrumbLabel}
+            </span>
           </nav>
         </div>
 
@@ -268,7 +271,7 @@ export function DashboardNav({
           </div>
         </div>
 
-        <div className="col-start-2 row-start-1 ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:gap-1.5 md:ml-0">
+        <div className="col-start-2 row-start-1 ml-auto flex shrink-0 items-center justify-end gap-1.5 md:ml-0">
           {typeof totalBalance === "number" && (
             <div className="clay-pill flex shrink-0 items-center gap-1 whitespace-nowrap border border-brand-secondary/30 bg-kpi-sage px-1.5 py-1 text-[10px] font-semibold text-brand-secondary sm:gap-1.5 sm:px-2.5 sm:text-xs" title="Current meal balance">
               <Wallet className="h-3.5 w-3.5 shrink-0" />
@@ -279,7 +282,7 @@ export function DashboardNav({
             <button
               type="button"
               onClick={handleBellClick}
-              className="tactile-press glass relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors duration-200"
+              className="tactile-press glass relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-secondary transition-colors duration-200 sm:h-9 sm:w-9"
               aria-label="Open notifications"
               title="Notifications"
             >
@@ -368,7 +371,7 @@ export function DashboardNav({
           <button
             type="button"
             onClick={() => setIsDark((prev) => !prev)}
-            className="tactile-press glass flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors duration-200"
+            className="tactile-press glass flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-secondary transition-colors duration-200 sm:h-9 sm:w-9"
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
