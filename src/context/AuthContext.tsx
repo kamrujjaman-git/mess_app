@@ -51,7 +51,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-async function postSessionToken(idToken: string, signal: AbortSignal): Promise<boolean> {
+interface SessionTokenResult {
+  claimsChanged: boolean;
+  photoSyncFailed: boolean;
+}
+
+async function postSessionToken(
+  idToken: string,
+  signal: AbortSignal
+): Promise<SessionTokenResult> {
   const response = await fetch("/api/auth/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -74,16 +82,25 @@ async function postSessionToken(idToken: string, signal: AbortSignal): Promise<b
     );
   }
 
-  return isRecord(result) && result.claimsChanged === true;
+  return {
+    claimsChanged: isRecord(result) && result.claimsChanged === true,
+    photoSyncFailed: isRecord(result) && result.photoSyncFailed === true,
+  };
 }
 
 async function syncSessionCookie(user: User, signal: AbortSignal): Promise<void> {
-  const claimsChanged = await postSessionToken(
+  const initialSync = await postSessionToken(
     await user.getIdToken(),
     signal
   );
-  if (claimsChanged) {
-    await postSessionToken(await user.getIdToken(true), signal);
+  if (initialSync.photoSyncFailed) {
+    console.error("Member profile photo sync did not complete.");
+  }
+  if (initialSync.claimsChanged) {
+    const refreshedSync = await postSessionToken(await user.getIdToken(true), signal);
+    if (refreshedSync.photoSyncFailed) {
+      console.error("Member profile photo sync did not complete.");
+    }
   }
 }
 

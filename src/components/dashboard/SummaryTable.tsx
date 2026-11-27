@@ -15,6 +15,42 @@ interface SummaryTableProps {
   isAdmin?: boolean;
 }
 
+function decodeImage(image: HTMLImageElement): Promise<void> {
+  return Promise.resolve()
+    .then(() => image.decode())
+    .then(() => undefined, () => undefined);
+}
+
+function waitForImageDecode(image: HTMLImageElement): Promise<void> {
+  if (image.complete) return decodeImage(image);
+
+  return new Promise((resolve) => {
+    const finish = () => {
+      image.removeEventListener("load", finish);
+      image.removeEventListener("error", finish);
+      void decodeImage(image).then(resolve);
+    };
+    image.addEventListener("load", finish, { once: true });
+    image.addEventListener("error", finish, { once: true });
+  });
+}
+
+async function waitForAvatarImages(report: HTMLElement): Promise<void> {
+  const images = Array.from(
+    report.querySelectorAll<HTMLImageElement>("img.summary-member-avatar")
+  );
+  let timeoutId: number | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timeoutId = window.setTimeout(resolve, 800);
+  });
+
+  await Promise.race([
+    Promise.all(images.map(waitForImageDecode)).then(() => undefined),
+    timeout,
+  ]);
+  if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+}
+
 function BalanceBadge({ amount }: { amount: number }) {
   if (amount === 0) {
     return (
@@ -64,6 +100,7 @@ export const SummaryTable = memo(function SummaryTable({
     () => new Map(memberProfiles.map((member) => [member.id, member.photoURL])),
     [memberProfiles]
   );
+  const [failedPhotoKeys, setFailedPhotoKeys] = useState<Set<string>>(() => new Set());
   const visibleMembers = useMemo(
     () => isAdmin ? members : members.filter((member) => member.status === "active"),
     [isAdmin, members]
@@ -72,20 +109,32 @@ export const SummaryTable = memo(function SummaryTable({
 
   function renderMemberIdentity(member: MemberSummary) {
     const photoURL = photoURLById.get(member.id);
+    const photoKey = `${member.id}\u0000${photoURL ?? ""}`;
     const inactive = member.status !== "active";
     return (
       <span className="flex min-w-0 flex-1 items-center gap-2">
-        {photoURL ? (
+        {photoURL && !failedPhotoKeys.has(photoKey) ? (
           <Image
             src={photoURL}
             alt=""
-            width={32}
-            height={32}
+            width={24}
+            height={24}
+            loading="eager"
+            decoding="async"
             unoptimized
-            className={`h-8 w-8 shrink-0 rounded-full object-cover ${inactive ? "grayscale opacity-60" : ""}`}
+            referrerPolicy="no-referrer"
+            onError={() => {
+              setFailedPhotoKeys((failed) => {
+                if (failed.has(photoKey)) return failed;
+                const next = new Set(failed);
+                next.add(photoKey);
+                return next;
+              });
+            }}
+            className={`summary-member-avatar h-6 w-6 shrink-0 rounded-full object-cover ${inactive ? "grayscale opacity-60" : ""}`}
           />
         ) : (
-          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-container text-xs font-semibold text-secondary dark:bg-container dark:text-secondary ${inactive ? "grayscale opacity-60" : ""}`}>
+          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-container text-[10px] font-semibold text-secondary dark:bg-container dark:text-secondary ${inactive ? "grayscale opacity-60" : ""}`}>
             {(member.name.trim().charAt(0) || "M").toUpperCase()}
           </span>
         )}
@@ -134,7 +183,7 @@ export const SummaryTable = memo(function SummaryTable({
     );
   }
 
-  function handleDownloadPdf() {
+  async function handleDownloadPdf() {
     if (typeof window === "undefined") {
       return;
     }
@@ -148,6 +197,7 @@ export const SummaryTable = memo(function SummaryTable({
     }
 
     try {
+      await waitForAvatarImages(summaryReport);
       window.print();
     } catch (error) {
       console.error("PDF export failed:", error);

@@ -49,6 +49,10 @@ import {
   type MonthData,
 } from "@/lib/firestore";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 async function notifyByEmail(
   user: { getIdToken: () => Promise<string> } | null,
   emails: string[],
@@ -162,6 +166,10 @@ function DashboardContent() {
   const [monthLoadedKey, setMonthLoadedKey] = useState("");
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<{ monthKey: string; message: string } | null>(null);
+  const [resolvedMemberPhotoState, setResolvedMemberPhotoState] = useState<{
+    uid: string;
+    photos: Map<string, string>;
+  } | null>(null);
   const activeTab = getTabFromUrl(searchParams.get("tab"));
   const requestedAdminSection = getAdminSectionFromUrl(searchParams.get("adminSection"));
   const legacyAdminSubTab = searchParams.get("subtab");
@@ -179,6 +187,63 @@ function DashboardContent() {
       (member) =>
         member.email?.trim().toLowerCase() === user.email?.trim().toLowerCase()
     ) ?? null
+    : null;
+
+  useEffect(() => {
+    if (!user || !hasAccess) return;
+
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const idToken = await user.getIdToken();
+        const response = await fetch("/api/member-avatars", {
+          headers: { Authorization: `Bearer ${idToken}` },
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        let body: unknown;
+        try {
+          body = await response.json();
+        } catch {
+          throw new Error("Member photo service returned an invalid response.");
+        }
+        if (!response.ok || !isRecord(body) || !Array.isArray(body.photos)) {
+          throw new Error(
+            isRecord(body) && typeof body.error === "string"
+              ? body.error
+              : "Could not load member photos."
+          );
+        }
+
+        const photos = new Map<string, string>();
+        for (const photo of body.photos) {
+          if (
+            isRecord(photo) &&
+            typeof photo.memberId === "string" &&
+            typeof photo.photoURL === "string" &&
+            photo.photoURL.trim()
+          ) {
+            photos.set(photo.memberId, photo.photoURL.trim());
+          }
+        }
+        if (!controller.signal.aborted) {
+          setResolvedMemberPhotoState({ uid: user.uid, photos });
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          console.error("Could not load member profile photos.");
+        }
+      }
+    })();
+
+    return () => controller.abort();
+  }, [user, hasAccess]);
+  const resolvedMemberPhotos = user &&
+    hasAccess &&
+    resolvedMemberPhotoState &&
+    resolvedMemberPhotoState.uid === user.uid
+    ? resolvedMemberPhotoState.photos
     : null;
 
   useEffect(() => {
@@ -560,6 +625,13 @@ function DashboardContent() {
       : null,
     [monthData]
   );
+  const summaryMemberProfiles = useMemo(
+    () => (monthData?.members ?? []).map((member) => ({
+      ...member,
+      photoURL: member.photoURL || resolvedMemberPhotos?.get(member.id) || null,
+    })),
+    [monthData?.members, resolvedMemberPhotos]
+  );
 
   const currentDataReady = monthLoadedKey === monthKey;
   const closeMobileNav = useCallback(
@@ -652,7 +724,7 @@ function DashboardContent() {
             {currentTab === "summary" && (
               <SummaryTable
                 members={stats.members}
-                memberProfiles={monthData.members}
+                memberProfiles={summaryMemberProfiles}
                 monthKey={monthKey}
                 isAdmin={isAdmin}
               />

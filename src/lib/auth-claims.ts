@@ -10,7 +10,7 @@ export interface UserClaims {
 
 type ClaimsMember = Pick<
   Member,
-  "id" | "name" | "email" | "status" | "active" | "isAdmin" | "isBlocked" | "isRemoved"
+  "id" | "name" | "email" | "status" | "active" | "isAdmin" | "isBlocked" | "isRemoved" | "photoURL"
 >;
 
 export interface MemberDirectory {
@@ -48,6 +48,9 @@ function parseMember(value: unknown, fallbackId = "", fallbackEmail = ""): Claim
     isAdmin: value.isAdmin === true || role === "admin" || role === "super_admin",
     isBlocked,
     isRemoved,
+    photoURL: typeof value.photoURL === "string" && value.photoURL.trim()
+      ? value.photoURL.trim()
+      : null,
   };
 }
 
@@ -87,6 +90,128 @@ function matchesCanonicalEmailList(value: unknown, expected: string[]): boolean 
   return Array.isArray(value) &&
     value.length === expected.length &&
     value.every((email, index) => email === expected[index]);
+}
+
+function storedPhotoURL(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isMemberEmail(value: unknown, fallbackKey: string, email: string): boolean {
+  if (!isRecord(value)) return false;
+  const memberEmail = normalizeEmail(value.email) ||
+    (fallbackKey.includes("@") ? normalizeEmail(fallbackKey) : "");
+  return memberEmail === email;
+}
+
+function rosterPhotoURL(roster: unknown, email: string): string {
+  if (Array.isArray(roster)) {
+    for (const member of roster) {
+      if (isMemberEmail(member, "", email)) {
+        const photoURL = storedPhotoURL(isRecord(member) ? member.photoURL : null);
+        if (photoURL) return photoURL;
+      }
+    }
+  } else if (isRecord(roster)) {
+    for (const [key, member] of Object.entries(roster)) {
+      if (isMemberEmail(member, key, email)) {
+        const photoURL = storedPhotoURL(isRecord(member) ? member.photoURL : null);
+        if (photoURL) return photoURL;
+      }
+    }
+  }
+  return "";
+}
+
+function rosterWithPhotoURL(
+  roster: unknown,
+  email: string,
+  photoURL: string
+): { roster: unknown; changed: boolean } {
+  if (Array.isArray(roster)) {
+    let changed = false;
+    const updatedRoster = roster.map((member) => {
+      if (
+        !isRecord(member) ||
+        !isMemberEmail(member, "", email) ||
+        storedPhotoURL(member.photoURL)
+      ) {
+        return member;
+      }
+      changed = true;
+      return { ...member, photoURL };
+    });
+    return { roster: updatedRoster, changed };
+  }
+
+  if (isRecord(roster)) {
+    let changed = false;
+    const updatedRoster = { ...roster };
+    for (const [key, member] of Object.entries(roster)) {
+      if (
+        !isRecord(member) ||
+        !isMemberEmail(member, key, email) ||
+        storedPhotoURL(member.photoURL)
+      ) {
+        continue;
+      }
+      updatedRoster[key] = { ...member, photoURL };
+      changed = true;
+    }
+    return { roster: updatedRoster, changed };
+  }
+
+  return { roster, changed: false };
+}
+
+function verifiedPhotoURL(value: unknown): string {
+  if (typeof value !== "string" || !value.trim() || value.length > 4096) return "";
+  try {
+    return new URL(value).protocol === "https:" ? value.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+export async function syncMemberPhoto(
+  uid: string,
+  email: string,
+  photoURL: unknown
+): Promise<string | null> {
+  const normalizedEmail = normalizeEmail(email);
+  if (!uid.trim() || !normalizedEmail) {
+    throw new Error("A user ID and verified email are required to synchronize a profile photo.");
+  }
+
+  const firestore = getAdminFirestore();
+  const userRef = firestore.doc(`users/${uid}`);
+  const membersRef = firestore.doc("settings/members");
+  const tokenPhotoURL = verifiedPhotoURL(photoURL);
+
+  return firestore.runTransaction(async (transaction) => {
+    const [userSnapshot, membersSnapshot] = await Promise.all([
+      transaction.get(userRef),
+      transaction.get(membersRef),
+    ]);
+    const settings = membersSnapshot.data();
+    const roster = settings?.members;
+    const memberPhotoURL = rosterPhotoURL(roster, normalizedEmail);
+    const userPhotoURL = storedPhotoURL(userSnapshot.data()?.photoURL);
+    const resolvedPhotoURL = memberPhotoURL || userPhotoURL || tokenPhotoURL;
+    if (!resolvedPhotoURL) return null;
+
+    if (!userPhotoURL) {
+      transaction.set(userRef, { photoURL: resolvedPhotoURL }, { merge: true });
+    }
+
+    if (membersSnapshot.exists && !memberPhotoURL) {
+      const updated = rosterWithPhotoURL(roster, normalizedEmail, resolvedPhotoURL);
+      if (updated.changed) {
+        transaction.set(membersRef, { members: updated.roster }, { merge: true });
+      }
+    }
+
+    return resolvedPhotoURL;
+  });
 }
 
 export async function readMemberDirectory(): Promise<MemberDirectory> {

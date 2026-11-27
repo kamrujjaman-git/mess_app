@@ -696,6 +696,11 @@ summary {
     print-color-adjust: exact !important;
   }
 
+  .summary-member-avatar {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   body {
     background: #fffdfa !important;
     color: #1e1b18 !important;

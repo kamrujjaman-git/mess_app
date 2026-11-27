@@ -7,6 +7,7 @@ import {
   readMemberDirectory,
   resolveUserClaims,
   setUserClaimsIfChanged,
+  syncMemberPhoto,
 } from "@/lib/auth-claims";
 import { formatMonthKey } from "@/lib/mess";
 import { apiResponse, withApiObservability } from "@/lib/observability";
@@ -98,9 +99,24 @@ export async function POST(request: Request): Promise<Response> {
       return claimsError("Only an administrator can synchronize another member's access.", 403, "authorization");
     }
 
+    let photoSyncFailed = false;
+    try {
+      await syncMemberPhoto(callerToken.uid, callerEmail, callerToken.picture);
+    } catch (error) {
+      photoSyncFailed = true;
+      const code = isRecord(error) && typeof error.code === "string"
+        ? error.code
+        : "unknown";
+      console.error("Could not synchronize the profile photo during claims sync.", { code });
+    }
+
     const targetEmail = normalizeEmail(targetMember.email);
     if (!targetEmail) {
-      return apiResponse({ ok: true, synced: false }, 200, "no-auth-account");
+      return apiResponse(
+        { ok: true, synced: false, photoSyncFailed },
+        200,
+        "no-auth-account"
+      );
     }
 
     let targetUser;
@@ -110,7 +126,11 @@ export async function POST(request: Request): Promise<Response> {
         : await adminAuth.getUserByEmail(targetEmail);
     } catch (error) {
       if (isUserNotFoundError(error)) {
-        return apiResponse({ ok: true, synced: false }, 200, "no-auth-account");
+        return apiResponse(
+          { ok: true, synced: false, photoSyncFailed },
+          200,
+          "no-auth-account"
+        );
       }
       return claimsError("Could not look up the member's sign-in account. Try again.", 503, "auth-user-lookup");
     }
@@ -140,6 +160,10 @@ export async function POST(request: Request): Promise<Response> {
       });
     }
 
-    return apiResponse({ ok: true, synced: true, claimsChanged: changed }, 200, "claims-synchronized");
+    return apiResponse(
+      { ok: true, synced: true, claimsChanged: changed, photoSyncFailed },
+      200,
+      "claims-synchronized"
+    );
   });
 }

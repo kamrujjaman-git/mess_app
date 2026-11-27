@@ -5,6 +5,7 @@ import {
   readMemberDirectory,
   resolveUserClaims,
   setUserClaimsIfChanged,
+  syncMemberPhoto,
 } from "@/lib/auth-claims";
 import { apiResponse, withApiObservability } from "@/lib/observability";
 import { consumeRateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -34,12 +35,21 @@ function sessionError(message: string, status: number, step: string): Response {
   return apiResponse({ ok: false, error: message, step }, status, step);
 }
 
-function setSessionCookie(sessionCookie: string, claimsChanged: boolean): Response {
+function setSessionCookie(
+  sessionCookie: string,
+  claimsChanged: boolean,
+  photoSyncFailed: boolean
+): Response {
   const headers = new Headers({
     "Cache-Control": "no-store",
     "Set-Cookie": `${SESSION_COOKIE_NAME}=${sessionCookie}; Max-Age=${SESSION_EXPIRES_IN_MS / 1000}; ${cookieAttributes()}`,
   });
-  return apiResponse({ ok: true, claimsChanged }, 200, "session-created", headers);
+  return apiResponse(
+    { ok: true, claimsChanged, photoSyncFailed },
+    200,
+    "session-created",
+    headers
+  );
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -98,6 +108,17 @@ export async function POST(request: Request): Promise<Response> {
       return sessionError("Could not load member access settings. Try again.", 503, "member-directory");
     }
 
+    let photoSyncFailed = false;
+    try {
+      await syncMemberPhoto(decodedToken.uid, email, decodedToken.picture);
+    } catch (error) {
+      photoSyncFailed = true;
+      const code = isRecord(error) && typeof error.code === "string"
+        ? error.code
+        : "unknown";
+      console.error("Could not synchronize the profile photo during session setup.", { code });
+    }
+
     const desiredClaims = resolveUserClaims(email, directory);
     let claimsChanged: boolean;
     try {
@@ -119,7 +140,7 @@ export async function POST(request: Request): Promise<Response> {
       return sessionError("Could not create a secure session. Try again.", 503, "cookie-creation");
     }
 
-    return setSessionCookie(sessionCookie, claimsChanged);
+    return setSessionCookie(sessionCookie, claimsChanged, photoSyncFailed);
   });
 }
 
