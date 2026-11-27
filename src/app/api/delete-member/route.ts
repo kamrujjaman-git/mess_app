@@ -45,20 +45,48 @@ function isInvalidIdTokenError(error: unknown): boolean {
 async function deleteMemberData(memberId: string, performedBy: string) {
   const firestore = getAdminFirestore();
   const membersRef = firestore.doc("settings/members");
+  const pendingRevocationRef = firestore.doc(`member_access_revocations/${memberId}`);
   const activityRef = firestore.collection("activity_logs").doc();
 
   return firestore.runTransaction(async (transaction) => {
-    const membersSnapshot = await transaction.get(membersRef);
+    const [membersSnapshot, pendingRevocationSnapshot] = await Promise.all([
+      transaction.get(membersRef),
+      transaction.get(pendingRevocationRef),
+    ]);
+    if (pendingRevocationSnapshot.exists) {
+      const pending = pendingRevocationSnapshot.data() ?? {};
+      const cleanup = isRecord(pending.cleanup) ? pending.cleanup : {};
+      return {
+        memberId,
+        cleanup: {
+          meals: Number(cleanup.meals) || 0,
+          deposits: Number(cleanup.deposits) || 0,
+          bazarReferences: Number(cleanup.bazarReferences) || 0,
+          profiles: Number(cleanup.profiles) || 0,
+        },
+        memberName: typeof pending.memberName === "string" ? pending.memberName : "Member",
+        memberEmail: normalizeEmail(pending.memberEmail),
+      };
+    }
+
     const settings = membersSnapshot.data();
     const rawMembers = settings?.members;
-    if (!Array.isArray(rawMembers)) {
+    const members = Array.isArray(rawMembers)
+      ? rawMembers
+      : isRecord(rawMembers)
+        ? Object.entries(rawMembers).map(([key, member]) =>
+          isRecord(member)
+            ? { ...member, id: typeof member.id === "string" ? member.id : key }
+            : member
+        )
+        : null;
+    if (!members) {
       throw new MemberDeletionError("The member directory is unavailable.", 409);
     }
 
-    if (!rawMembers.every(isRecord)) {
+    if (!members.every(isRecord)) {
       throw new MemberDeletionError("The member directory contains invalid records.", 409);
     }
-    const members = rawMembers;
     const targetMember = members.find((member) => member.id === memberId);
     if (!targetMember) {
       throw new MemberDeletionError("Member not found. Refresh the dashboard and try again.", 404);
@@ -162,7 +190,11 @@ async function deleteMemberData(memberId: string, performedBy: string) {
         member.active !== false &&
         member.isBlocked !== true &&
         member.isRemoved !== true &&
-        member.isAdmin === true
+        (
+          member.isAdmin === true ||
+          member.role === "admin" ||
+          member.role === "super_admin"
+        )
       )
       .map(getMemberEmail)
       .filter(Boolean);
@@ -177,6 +209,7 @@ async function deleteMemberData(memberId: string, performedBy: string) {
       mealsToDelete.length +
       depositsToDelete.length +
       bazarUpdates.length +
+      1 +
       1;
     if (writeCount > MAX_TRANSACTION_WRITES) {
       throw new MemberDeletionError(
@@ -190,6 +223,19 @@ async function deleteMemberData(memberId: string, performedBy: string) {
       members: remainingMembers,
       activeEmails,
       adminEmails,
+    });
+    const cleanup = {
+      meals: mealsToUpdate.length + mealsToDelete.length,
+      deposits: depositsToDelete.length,
+      bazarReferences: bazarUpdates.length,
+      profiles: profiles.size,
+    };
+    transaction.create(pendingRevocationRef, {
+      memberId,
+      memberEmail: targetEmail,
+      memberName: String(targetMember.name ?? "Member"),
+      cleanup,
+      createdAt: new Date().toISOString(),
     });
     for (const profileRef of profiles.values()) {
       transaction.delete(profileRef);
@@ -210,7 +256,7 @@ async function deleteMemberData(memberId: string, performedBy: string) {
       });
     }
 
-    const mealRecordCount = mealsToUpdate.length + mealsToDelete.length;
+    const mealRecordCount = cleanup.meals;
     transaction.create(activityRef, {
       id: activityRef.id,
       action: "Member Deleted",
@@ -220,16 +266,44 @@ async function deleteMemberData(memberId: string, performedBy: string) {
     });
 
     return {
-      cleanup: {
-        meals: mealRecordCount,
-        deposits: depositsToDelete.length,
-        bazarReferences: bazarUpdates.length,
-        profiles: profiles.size,
-      },
+      memberId,
+      cleanup,
       memberName: String(targetMember.name ?? "Member"),
       memberEmail: targetEmail,
     };
   });
+}
+
+async function revokeDeletedMemberAccount(
+  adminAuth: ReturnType<typeof getAdminAuth>,
+  memberId: string,
+  email: string
+): Promise<void> {
+  let userRecord: Awaited<ReturnType<typeof adminAuth.getUser>> | null = null;
+  try {
+    const candidate = await adminAuth.getUser(memberId);
+    if (!email || normalizeEmail(candidate.email) === email) {
+      userRecord = candidate;
+    }
+  } catch (error) {
+    if (!isRecord(error) || error.code !== "auth/user-not-found") {
+      throw error;
+    }
+  }
+
+  if (!userRecord && email) {
+    try {
+      userRecord = await adminAuth.getUserByEmail(email);
+    } catch (error) {
+      if (!isRecord(error) || error.code !== "auth/user-not-found") {
+        throw error;
+      }
+    }
+  }
+  if (!userRecord) return;
+
+  await adminAuth.setCustomUserClaims(userRecord.uid, { active: false, role: null });
+  await adminAuth.revokeRefreshTokens(userRecord.uid);
 }
 
 export async function POST(request: Request) {
@@ -325,6 +399,27 @@ export async function POST(request: Request) {
 
       try {
         const deletion = await deleteMemberData(memberId, decodedToken.email ?? callerEmail);
+        try {
+          await revokeDeletedMemberAccount(adminAuth, deletion.memberId, deletion.memberEmail);
+          await getAdminFirestore()
+            .doc(`member_access_revocations/${deletion.memberId}`)
+            .delete();
+        } catch (error) {
+          const code = isRecord(error) && typeof error.code === "string"
+            ? error.code
+            : "unknown";
+          console.error("Member data was deleted, but Firebase Auth revocation is pending.", { code });
+          return apiResponse(
+            {
+              ok: false,
+              error: "Member data was deleted, but account access revocation is pending. Retry deletion to finish it.",
+              step: "auth-revocation",
+            },
+            503,
+            "auth-revocation"
+          );
+        }
+
         void recordServerAuditLog({
           action: "Member deleted",
           category: "members",

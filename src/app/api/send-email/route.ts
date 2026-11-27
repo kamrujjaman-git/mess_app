@@ -101,7 +101,7 @@ async function authorizeRequest(
 
     let decodedToken: Awaited<ReturnType<ReturnType<typeof getAdminAuth>["verifyIdToken"]>>;
     try {
-        decodedToken = await getAdminAuth().verifyIdToken(token);
+        decodedToken = await getAdminAuth().verifyIdToken(token, true);
     } catch (error) {
         const invalidToken = isInvalidIdTokenError(error);
         throw new SendEmailError(

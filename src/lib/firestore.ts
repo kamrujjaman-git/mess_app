@@ -120,6 +120,38 @@ function memberAccessFields(members: Member[]) {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function postMemberMutation(payload: Record<string, unknown>): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Sign in again before changing members.");
+  }
+
+  const response = await fetch("/api/manage-members", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${await user.getIdToken()}`,
+      "Content-Type": "application/json",
+      "X-Idempotency-Key": createIdempotencyKey(),
+    },
+    body: JSON.stringify(payload),
+  });
+  const result: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(
+      isRecord(result) && typeof result.error === "string"
+        ? result.error
+        : "The member change could not be completed. Refresh and try again."
+    );
+  }
+  if (!isRecord(result) || result.ok !== true) {
+    throw new Error("The member change could not be confirmed. Refresh and try again.");
+  }
+}
+
 function parseMembers(data: Record<string, unknown> | undefined): Member[] {
   if (!data) return createDefaultMembers();
 
@@ -270,16 +302,7 @@ export async function addMember(
     isAdmin: false,
     whatsAppNumber: String(whatsAppNumber ?? "").trim(),
   };
-  const membersRef = doc(db, "settings", "members");
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(membersRef);
-    const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
-    const nextMembers = [...members, newMember];
-    transaction.set(membersRef, {
-      members: nextMembers,
-      ...memberAccessFields(nextMembers),
-    });
-  });
+  await postMemberMutation({ operation: "add", member: newMember });
   recordAuditLog({
     action: "Member added",
     category: "members",
@@ -305,59 +328,7 @@ export async function updateMember(updated: Member): Promise<void> {
   if (!initialMember) {
     throw new Error("Member not found. Refresh the dashboard and try again.");
   }
-  const emails = [...new Set(
-    [initialMember.email, normalizedMember.email]
-      .map((email) => email.trim())
-      .filter(Boolean)
-      .flatMap((email) => [email, email.toLowerCase()])
-  )];
-  const profileSnapshots = await Promise.all(
-    emails.map((email) =>
-      getDocs(query(collection(db, "users"), where("email", "==", email)))
-    )
-  );
-  const profileRefs = new Map(
-    profileSnapshots.flatMap((profileSnapshot) =>
-      profileSnapshot.docs.map((profile) => [profile.ref.path, profile.ref] as const)
-    )
-  );
-
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(membersRef);
-    const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
-    const index = members.findIndex((m) => m.id === updated.id);
-    if (index === -1) {
-      throw new Error("Member not found. Refresh the dashboard and try again.");
-    }
-
-    const previousMember = members[index];
-    if (JSON.stringify(previousMember) !== JSON.stringify(initialMember)) {
-      throw new Error("This member changed while you were editing. Refresh and try again.");
-    }
-
-    const userSnapshots = await Promise.all(
-      [...profileRefs.values()].map((profileRef) => transaction.get(profileRef))
-    );
-
-    const nextMembers = [...members];
-    nextMembers[index] = normalizedMember;
-    transaction.set(membersRef, {
-      members: nextMembers,
-      ...memberAccessFields(nextMembers),
-    });
-    for (const userSnapshot of userSnapshots) {
-      if (!userSnapshot.exists()) continue;
-      transaction.update(userSnapshot.ref, {
-        email: normalizedMember.email,
-        name: normalizedMember.name,
-        isAdmin: Boolean(normalizedMember.isAdmin),
-        status: normalizedMember.status,
-        active: normalizedMember.active !== false,
-        isBlocked: Boolean(normalizedMember.isBlocked),
-        isRemoved: Boolean(normalizedMember.isRemoved),
-      });
-    }
-  });
+  await postMemberMutation({ operation: "update", member: normalizedMember });
 
   const previousIsAdmin = initialMember.isAdmin === true;
   const nextIsAdmin = normalizedMember.isAdmin === true;
@@ -461,8 +432,7 @@ export async function setMemberStatus(
   memberId: string,
   status: Member["status"]
 ): Promise<void> {
-  const membersRef = doc(db, "settings", "members");
-  const initialSnapshot = await getDoc(membersRef);
+  const initialSnapshot = await getDoc(doc(db, "settings", "members"));
   const initialMembers = parseMembers(
     initialSnapshot.exists() ? initialSnapshot.data() : undefined
   );
@@ -471,67 +441,7 @@ export async function setMemberStatus(
     throw new Error("Member not found. Refresh the dashboard and try again.");
   }
 
-  const profileRefs = new Map<string, ReturnType<typeof doc>>();
-  const directProfileRef = doc(db, "users", memberId);
-  profileRefs.set(directProfileRef.path, directProfileRef);
-  if (initialMember.email.trim()) {
-    const profileEmails = [...new Set([
-      initialMember.email.trim(),
-      initialMember.email.trim().toLowerCase(),
-    ])];
-    const profileSnapshots = await Promise.all(
-      profileEmails.map((email) =>
-        getDocs(query(collection(db, "users"), where("email", "==", email)))
-      )
-    );
-    for (const profileSnapshot of profileSnapshots) {
-      for (const profile of profileSnapshot.docs) {
-        profileRefs.set(profile.ref.path, profile.ref);
-      }
-    }
-  }
-
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(membersRef);
-    const members = parseMembers(snapshot.exists() ? snapshot.data() : undefined);
-    const index = members.findIndex((m) => m.id === memberId);
-    if (index === -1) {
-      throw new Error("Member not found. Refresh the dashboard and try again.");
-    }
-    if (JSON.stringify(members[index]) !== JSON.stringify(initialMember)) {
-      throw new Error("This member changed while you were updating status. Refresh and try again.");
-    }
-
-    const userSnapshots = await Promise.all(
-      [...profileRefs.values()].map((profileRef) => transaction.get(profileRef))
-    );
-    const nextMembers = [...members];
-    nextMembers[index] = {
-      ...nextMembers[index],
-      status,
-      active: status === "active",
-      isRemoved: status === "removed"
-        ? true
-        : status === "active"
-          ? false
-          : Boolean(nextMembers[index].isRemoved),
-      isBlocked: status === "active" ? false : Boolean(nextMembers[index].isBlocked),
-    };
-    transaction.set(membersRef, {
-      members: nextMembers,
-      ...memberAccessFields(nextMembers),
-    });
-    for (const userSnapshot of userSnapshots) {
-      if (!userSnapshot.exists()) continue;
-      transaction.update(userSnapshot.ref, {
-        status,
-        active: status === "active",
-        isAdmin: Boolean(nextMembers[index].isAdmin),
-        isBlocked: Boolean(nextMembers[index].isBlocked),
-        isRemoved: Boolean(nextMembers[index].isRemoved),
-      });
-    }
-  });
+  await postMemberMutation({ operation: "status", memberId, status });
 
   if (initialMember.status !== status) {
     recordAuditLog({

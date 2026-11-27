@@ -230,6 +230,9 @@ export async function readMemberDirectory(): Promise<MemberDirectory> {
         : 0;
     const storedActiveEmails = normalizeEmailList(settings?.activeEmails);
     const storedAdminEmails = normalizeEmailList(settings?.adminEmails);
+    const hasStoredAdminEmails = Boolean(
+      settings && Object.prototype.hasOwnProperty.call(settings, "adminEmails")
+    );
     const rosterHasEmail = (members.length === 0 && rawRosterSize === 0) ||
       members.some((member) => Boolean(normalizeEmail(member.email)));
 
@@ -238,10 +241,13 @@ export async function readMemberDirectory(): Promise<MemberDirectory> {
 
     if (snapshot.exists && hasRoster && rosterHasEmail) {
       activeEmails = memberEmails(members, isMemberActive);
-      adminEmails = memberEmails(
+      const rosterAdminEmails = memberEmails(
         members,
         (member) => isMemberActive(member) && member.isAdmin === true
       );
+      adminEmails = hasStoredAdminEmails
+        ? storedAdminEmails.filter((email) => activeEmails.includes(email))
+        : rosterAdminEmails;
 
       if (
         !matchesCanonicalEmailList(settings?.activeEmails, activeEmails) ||
@@ -272,10 +278,9 @@ export function resolveUserClaims(
   const member = directory.members.find(
     (candidate) => normalizeEmail(candidate.email) === normalizedEmail
   );
-  const isAdmin = directory.adminEmails.has(normalizedEmail) || member?.isAdmin === true;
 
   return {
-    role: isAdmin ? "admin" : "member",
+    role: directory.adminEmails.has(normalizedEmail) ? "admin" : "member",
     active: Boolean(member && isMemberActive(member)),
   };
 }

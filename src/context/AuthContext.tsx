@@ -229,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [sessionRetryCount]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || sessionLoading) return;
 
     const unsubscribe = subscribeToMembers(
       (fetchedMembers) => {
@@ -244,7 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return unsubscribe;
-  }, [user]);
+  }, [user, sessionLoading]);
 
   useEffect(() => {
     if (!user) return;

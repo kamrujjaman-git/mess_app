@@ -104,6 +104,15 @@ function isDataImageURL(value: unknown): value is string {
   return typeof value === "string" && /^data:image\/(?:jpeg|png|webp);base64,/i.test(value);
 }
 
+function isGoogleProfilePhotoURL(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "googleusercontent.com" || hostname.endsWith(".googleusercontent.com");
+  } catch {
+    return false;
+  }
+}
+
 function detectedImageType(bytes: Buffer): string | null {
   if (
     bytes.length >= 3 &&
@@ -419,15 +428,17 @@ async function updateProfile(
         typeof matchingMember.photoURL === "string"
         ? matchingMember.photoURL
         : null;
-      const firestoreDataPhotoURL = [
-        ...storedProfilePhotoURLs,
+      const storedPhotoURLs = [
         ...(memberPhotoURL ? [memberPhotoURL] : []),
-      ].find(isDataImageURL);
-      const firestorePhotoURL = storedProfilePhotoURLs[0] ?? memberPhotoURL;
+        ...storedProfilePhotoURLs,
+      ].filter((value) => value.trim());
+      const customStoredPhotoURL = storedPhotoURLs.find(
+        (value) => !isGoogleProfilePhotoURL(value)
+      );
       nextPhotoURL = photoURL ??
-        firestoreDataPhotoURL ??
+        customStoredPhotoURL ??
+        storedPhotoURLs[0] ??
         updatedUser.photoURL ??
-        firestorePhotoURL ??
         null;
 
       const profilePatch: Record<string, unknown> = {

@@ -81,7 +81,7 @@ export async function POST(request: Request): Promise<Response> {
 
     let decodedToken: Awaited<ReturnType<typeof adminAuth.verifyIdToken>>;
     try {
-      decodedToken = await adminAuth.verifyIdToken(idToken);
+      decodedToken = await adminAuth.verifyIdToken(idToken, true);
     } catch (error) {
       return isInvalidIdTokenError(error)
         ? sessionError("The sign-in token is invalid or expired.", 401, "token-verification")
