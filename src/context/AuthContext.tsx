@@ -77,6 +77,16 @@ async function postSessionToken(idToken: string, signal: AbortSignal): Promise<b
   return isRecord(result) && result.claimsChanged === true;
 }
 
+async function syncSessionCookie(user: User, signal: AbortSignal): Promise<void> {
+  const claimsChanged = await postSessionToken(
+    await user.getIdToken(),
+    signal
+  );
+  if (claimsChanged) {
+    await postSessionToken(await user.getIdToken(true), signal);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,63 +161,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const accessLoading = Boolean(user && !membersReady);
 
   useEffect(() => {
+    let activeController: AbortController | null = null;
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      activeController?.abort();
       setUser(firebaseUser);
       setLoading(false);
       setMembersReady(false);
       if (!firebaseUser) {
+        activeController = null;
+        sessionSyncRef.current = null;
         setMembers([]);
         setSessionLoading(false);
         setSessionError(null);
       } else {
         setSessionLoading(true);
         setSessionError(null);
+
+        const controller = new AbortController();
+        activeController = controller;
+        const syncPromise = syncSessionCookie(firebaseUser, controller.signal)
+          .then(() => {
+            if (controller.signal.aborted) return;
+            setSessionError(null);
+            setSessionLoading(false);
+          })
+          .catch((error: unknown) => {
+            if (controller.signal.aborted) return;
+            console.error("Failed to establish the server session.");
+            setSessionError(
+              error instanceof Error
+                ? error.message
+                : "Could not establish a secure session. Please retry."
+            );
+            setSessionLoading(false);
+            toast.error("Could not establish a secure session. Please retry.");
+          });
+
+        sessionSyncRef.current = { controller, promise: syncPromise };
+        void syncPromise;
       }
     });
-    return unsubscribe;
-  }, []);
 
-  useEffect(() => {
-    if (!user) return;
-
-    const controller = new AbortController();
-    const syncPromise = (async () => {
-      try {
-        let claimsChanged = await postSessionToken(
-          await user.getIdToken(),
-          controller.signal
-        );
-        if (claimsChanged) {
-          claimsChanged = await postSessionToken(
-            await user.getIdToken(true),
-            controller.signal
-          );
-        }
-        if (!controller.signal.aborted) {
-          setSessionError(null);
-          setSessionLoading(false);
-        }
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        console.error("Failed to establish the server session.");
-        setSessionError(
-          error instanceof Error
-            ? error.message
-            : "Could not establish a secure session. Please retry."
-        );
-        setSessionLoading(false);
-        toast.error("Could not establish a secure session. Please retry.");
-      }
-    })();
-
-    sessionSyncRef.current = { controller, promise: syncPromise };
     return () => {
-      controller.abort();
-      if (sessionSyncRef.current?.controller === controller) {
+      activeController?.abort();
+      if (activeController && sessionSyncRef.current?.controller === activeController) {
         sessionSyncRef.current = null;
       }
+      unsubscribe();
     };
-  }, [user, sessionRetryCount]);
+  }, [sessionRetryCount]);
 
   useEffect(() => {
     if (!user) return;

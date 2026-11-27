@@ -1,331 +1,332 @@
 rules_version = '2';
 service cloud.firestore {
-  function signedIn() {
-    return request.auth != null;
-  }
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
 
-  function verifiedSignedIn() {
-    return signedIn() && request.auth.token.email_verified == true;
-  }
+    function verifiedSignedIn() {
+      return signedIn() &&
+        ("email" in request.auth.token) &&
+        request.auth.token.email != null;
+    }
 
-  function hasActiveClaim() {
-    return signedIn() &&
-      "active" in request.auth.token &&
-      request.auth.token.active == true;
-  }
+    function hasActiveClaim() {
+      return signedIn() &&
+        "active" in request.auth.token &&
+        request.auth.token.active == true;
+    }
 
-  function hasRoleClaim(role) {
-    return signedIn() &&
-      "role" in request.auth.token &&
-      request.auth.token.role == role;
-  }
+    function hasRoleClaim(role) {
+      return signedIn() &&
+        "role" in request.auth.token &&
+        request.auth.token.role == role;
+    }
 
-  function memberDirectory() {
-    return exists(/databases/$(database)/documents/settings/members)
-      ? get(/databases/$(database)/documents/settings/members).data
-      : {};
-  }
+    function memberDirectory() {
+      return exists(/databases/$(database)/documents/settings/members)
+        ? get(/databases/$(database)/documents/settings/members).data
+        : {};
+    }
 
-  function directoryMembers() {
-    return memberDirectory().get("members", null);
-  }
+    function directoryMembers() {
+      return memberDirectory().get("members", null);
+    }
 
-  function containsDirectoryEmail(field) {
-    let emails = memberDirectory().get(field, []);
-    let email = request.auth.token.email;
-    return email != null &&
-      emails is list &&
-      emails.hasAny([email, email.lower()]);
-  }
+    function containsDirectoryEmail(field) {
+      let emails = memberDirectory().get(field, []);
+      let email = request.auth.token.email;
+      return email != null &&
+        emails is list &&
+        emails.hasAny([email, email.lower()]);
+    }
 
-  function isActiveDirectoryRecord(member) {
-    return member is map &&
-      member.get("status", "active") != "inactive" &&
-      member.get("status", "active") != "removed" &&
-      member.get("active", true) != false &&
-      member.get("isBlocked", false) != true &&
-      member.get("isRemoved", false) != true;
-  }
+    function isActiveDirectoryRecord(member) {
+      return member is map &&
+        member.get("status", "active") != "inactive" &&
+        member.get("status", "active") != "removed" &&
+        member.get("active", true) != false &&
+        member.get("isBlocked", false) != true &&
+        member.get("isRemoved", false) != true;
+    }
 
-  function isAdminDirectoryRecord(member) {
-    return isActiveDirectoryRecord(member) &&
-      (
-        member.get("isAdmin", false) == true ||
-        member.get("role", "") in ["admin", "super_admin"]
-      );
-  }
-
-  function isDirectoryRosterActiveMember() {
-    let members = directoryMembers();
-    let email = request.auth.token.email;
-    return verifiedSignedIn() &&
-      email != null &&
-      (
+    function isAdminDirectoryRecord(member) {
+      return isActiveDirectoryRecord(member) &&
         (
-          members is map &&
-          (
-            (email.lower() in members && isActiveDirectoryRecord(members.get(email.lower(), {}))) ||
-            (email in members && isActiveDirectoryRecord(members.get(email, {})))
-          )
-        ) ||
-        (members is list && members.hasAny([email, email.lower()]))
-      );
-  }
+          member.get("isAdmin", false) == true ||
+          member.get("role", "") in ["admin", "super_admin"]
+        );
+    }
 
-  function isDirectoryRosterAdmin() {
-    let members = directoryMembers();
-    let email = request.auth.token.email;
-    return verifiedSignedIn() &&
-      email != null &&
-      members is map &&
-      (
-        (email.lower() in members && isAdminDirectoryRecord(members.get(email.lower(), {}))) ||
-        (email in members && isAdminDirectoryRecord(members.get(email, {})))
-      );
-  }
-
-  function isSuperAdmin() {
-    // Keep this deployed email synchronized with NEXT_PUBLIC_ADMIN_EMAIL.
-    // Firestore rules cannot read Next.js environment variables at runtime.
-    return signedIn() &&
-      (
-        (
-          verifiedSignedIn() &&
-          hasRoleClaim("super_admin") &&
-          hasActiveClaim()
-        ) ||
-        (
-          request.auth.token.email != null &&
-          request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower()
-        )
-      );
-  }
-
-  function isDirectoryActiveMember() {
-    return verifiedSignedIn() &&
-      request.auth.token.email != null &&
-      (
-        containsDirectoryEmail("activeEmails") ||
-        isDirectoryRosterActiveMember()
-      );
-  }
-
-  function isActiveMember() {
-    return isSuperAdmin() ||
-      (
-        verifiedSignedIn() &&
-        request.auth.token.email != null &&
-        (hasActiveClaim() || isDirectoryActiveMember())
-      );
-  }
-
-  function isAdmin() {
-    return isSuperAdmin() ||
-      (
-        verifiedSignedIn() &&
+    function isDirectoryRosterActiveMember() {
+      let members = directoryMembers();
+      let email = request.auth.token.email;
+      return verifiedSignedIn() &&
+        email != null &&
         (
           (
-            (hasRoleClaim("admin") || hasRoleClaim("super_admin")) &&
+            members is map &&
+            (
+              (email.lower() in members && isActiveDirectoryRecord(members.get(email.lower(), {}))) ||
+              (email in members && isActiveDirectoryRecord(members.get(email, {})))
+            )
+          ) ||
+          (members is list && members.hasAny([email, email.lower()]))
+        );
+    }
+
+    function isDirectoryRosterAdmin() {
+      let members = directoryMembers();
+      let email = request.auth.token.email;
+      return verifiedSignedIn() &&
+        email != null &&
+        members is map &&
+        (
+          (email.lower() in members && isAdminDirectoryRecord(members.get(email.lower(), {}))) ||
+          (email in members && isAdminDirectoryRecord(members.get(email, {})))
+        );
+    }
+
+    function isSuperAdmin() {
+      return signedIn() &&
+        (
+          (
+            verifiedSignedIn() &&
+            hasRoleClaim("super_admin") &&
             hasActiveClaim()
           ) ||
           (
-            isDirectoryActiveMember() &&
+            ("email" in request.auth.token) &&
+            request.auth.token.email != null &&
+            request.auth.token.email.lower() == "md.kamrujjaman092@gmail.com".lower()
+          )
+        );
+    }
+
+    function isDirectoryActiveMember() {
+      return verifiedSignedIn() &&
+        (
+          containsDirectoryEmail("activeEmails") ||
+          isDirectoryRosterActiveMember()
+        );
+    }
+
+    function isActiveMember() {
+      return isSuperAdmin() ||
+        (
+          verifiedSignedIn() &&
+          (hasActiveClaim() || isDirectoryActiveMember())
+        );
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() ||
+        (
+          verifiedSignedIn() &&
+          (
             (
-              containsDirectoryEmail("adminEmails") ||
-              isDirectoryRosterAdmin()
+              (hasRoleClaim("admin") || hasRoleClaim("super_admin")) &&
+              hasActiveClaim()
+            ) ||
+            (
+              isDirectoryActiveMember() &&
+              (
+                containsDirectoryEmail("adminEmails") ||
+                isDirectoryRosterAdmin()
+              )
             )
           )
-        )
-      );
-  }
+        );
+    }
 
-  function validAuditLog(data) {
-    return data.keys().hasAll([
-        "action",
-        "category",
-        "actorEmail",
-        "actorName",
-        "summary",
-        "monthKey",
-        "createdAt"
-      ]) &&
-      data.keys().hasOnly([
-        "action",
-        "category",
-        "actorEmail",
-        "actorName",
-        "summary",
-        "monthKey",
-        "createdAt"
-      ]) &&
-      data.action is string &&
-      data.action.size() > 0 &&
-      data.action.size() <= 80 &&
-      data.category in ["meals", "bazar", "deposits", "fixed_costs", "members"] &&
-      data.actorEmail is string &&
-      data.actorEmail.size() > 0 &&
-      data.actorEmail.size() <= 254 &&
-      data.actorEmail == request.auth.token.email.lower() &&
-      data.actorName is string &&
-      data.actorName.size() > 0 &&
-      data.actorName.size() <= 120 &&
-      data.summary is string &&
-      data.summary.size() > 0 &&
-      data.summary.size() <= 500 &&
-      data.monthKey is string &&
-      data.monthKey.matches("^[0-9]{4}-(0[1-9]|1[0-2])$") &&
-      data.createdAt is timestamp &&
-      data.createdAt == request.time;
-  }
+    function validAuditLog(data) {
+      return data.keys().hasAll([
+          "action",
+          "category",
+          "actorEmail",
+          "actorName",
+          "summary",
+          "monthKey",
+          "createdAt"
+        ]) &&
+        data.keys().hasOnly([
+          "action",
+          "category",
+          "actorEmail",
+          "actorName",
+          "summary",
+          "monthKey",
+          "createdAt"
+        ]) &&
+        data.action is string &&
+        data.action.size() > 0 &&
+        data.action.size() <= 80 &&
+        data.category in ["meals", "bazar", "deposits", "fixed_costs", "members"] &&
+        data.actorEmail is string &&
+        data.actorEmail.size() > 0 &&
+        data.actorEmail.size() <= 254 &&
+        data.actorEmail == request.auth.token.email.lower() &&
+        data.actorName is string &&
+        data.actorName.size() > 0 &&
+        data.actorName.size() <= 120 &&
+        data.summary is string &&
+        data.summary.size() > 0 &&
+        data.summary.size() <= 500 &&
+        data.monthKey is string &&
+        data.monthKey.matches("^[0-9]{4}-(0[1-9]|1[0-2])$") &&
+        data.createdAt is timestamp &&
+        data.createdAt == request.time;
+    }
 
-  function memberDirectoryUpdateIsSafe() {
-    let affectedKeys = request.resource.data.diff(resource.data).affectedKeys();
-    return !affectedKeys.hasAny(['adminEmails']) &&
-      (!affectedKeys.hasAny(['activeEmails']) || affectedKeys.hasAny(['members']));
-  }
+    function memberDirectoryUpdateIsSafe() {
+      let affectedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      return !affectedKeys.hasAny(['adminEmails']) &&
+        (!affectedKeys.hasAny(['activeEmails']) || affectedKeys.hasAny(['members']));
+    }
 
-  function isSelf(userId) {
-    return signedIn() && request.auth.uid == userId;
-  }
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
 
-  function validEntryDate(monthKey, date) {
-    return date is string &&
-      date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
-      date.substring(0, 7) == monthKey &&
-      !isFutureDate(date);
-  }
+    function validEntryDate(monthKey, date) {
+      return date is string &&
+        date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        date.substring(0, 7) == monthKey &&
+        !isFutureDate(date);
+    }
 
-  function isPreviousMonth(sourceMonthKey, targetMonthKey) {
-    return sourceMonthKey.matches('^[0-9]{4}-(0[1-9]|1[0-2])$') &&
-      targetMonthKey.matches('^[0-9]{4}-(0[1-9]|1[0-2])$') &&
-      (
+    function isPreviousMonth(sourceMonthKey, targetMonthKey) {
+      return sourceMonthKey.matches('^[0-9]{4}-(0[1-9]|1[0-2])$') &&
+        targetMonthKey.matches('^[0-9]{4}-(0[1-9]|1[0-2])$') &&
         (
-          sourceMonthKey.substring(0, 4) == targetMonthKey.substring(0, 4) &&
-          int(sourceMonthKey.substring(5, 7)) + 1 == int(targetMonthKey.substring(5, 7))
-        ) ||
-        (
-          int(sourceMonthKey.substring(5, 7)) == 12 &&
-          int(targetMonthKey.substring(5, 7)) == 1 &&
-          int(targetMonthKey.substring(0, 4)) == int(sourceMonthKey.substring(0, 4)) + 1
-        )
-      );
-  }
+          (
+            sourceMonthKey.substring(0, 4) == targetMonthKey.substring(0, 4) &&
+            int(sourceMonthKey.substring(5, 7)) + 1 == int(targetMonthKey.substring(5, 7))
+          ) ||
+          (
+            int(sourceMonthKey.substring(5, 7)) == 12 &&
+            int(targetMonthKey.substring(5, 7)) == 1 &&
+            int(targetMonthKey.substring(0, 4)) == int(sourceMonthKey.substring(0, 4)) + 1
+          )
+        );
+    }
 
-  function validCarryForwardDeposit(monthKey, entryId, data) {
-    return data.keys().hasAll([
-        "memberId",
-        "memberName",
-        "amount",
-        "date",
-        "note",
-        "carryForwardFrom"
-      ]) &&
-      isPreviousMonth(data.carryForwardFrom, monthKey) &&
-      entryId.matches("^cf_" + data.carryForwardFrom + "_.*$") &&
-      data.memberId is string &&
-      data.memberId.size() > 0 &&
-      data.memberId.size() <= 254 &&
-      data.memberName is string &&
-      data.memberName.size() > 0 &&
-      data.memberName.size() <= 120 &&
-      data.amount is number &&
-      data.amount != 0 &&
-      data.date == monthKey + "-01" &&
-      data.note is string &&
-      data.note.matches("^Carry forward from .{1,120}$");
-  }
+    function validCarryForwardDeposit(monthKey, entryId, data) {
+      return data.keys().hasAll([
+          "memberId",
+          "memberName",
+          "amount",
+          "date",
+          "note",
+          "carryForwardFrom"
+        ]) &&
+        isPreviousMonth(data.carryForwardFrom, monthKey) &&
+        entryId.matches("^cf_" + data.carryForwardFrom + "_.*$") &&
+        data.memberId is string &&
+        data.memberId.size() > 0 &&
+        data.memberId.size() <= 254 &&
+        data.memberName is string &&
+        data.memberName.size() > 0 &&
+        data.memberName.size() <= 120 &&
+        data.amount is number &&
+        data.amount != 0 &&
+        data.date == monthKey + "-01" &&
+        data.note is string &&
+        data.note.matches("^Carry forward from .{1,120}$");
+    }
 
-  function isFutureDate(date) {
-    let year = int(date.substring(0, 4));
-    let month = int(date.substring(5, 7));
-    let day = int(date.substring(8, 10));
-    return year > request.time.year() ||
-      (year == request.time.year() && month > request.time.month()) ||
-      (year == request.time.year() && month == request.time.month() && day > request.time.day());
-  }
+    function isFutureDate(date) {
+      let year = int(date.substring(0, 4));
+      let month = int(date.substring(5, 7));
+      let day = int(date.substring(8, 10));
+      return year > request.time.year() ||
+        (year == request.time.year() && month > request.time.month()) ||
+        (year == request.time.year() && month == request.time.month() && day > request.time.day());
+    }
 
-  function validMoney(value) {
-    return value is number && value >= 0;
-  }
+    function validMoney(value) {
+      return value is number && value >= 0;
+    }
 
-  function validOptionalMoney(data, field) {
-    return !(field in data) || validMoney(data[field]);
-  }
+    function validOptionalMoney(data, field) {
+      return !(field in data) || validMoney(data[field]);
+    }
 
-  match /settings/members {
-    allow read: if verifiedSignedIn() || isSuperAdmin();
-    allow create: if isSuperAdmin();
-    allow update: if isSuperAdmin() ||
-      (isAdmin() && memberDirectoryUpdateIsSafe());
-    allow delete: if isSuperAdmin();
-  }
+    match /settings/members {
+      allow read: if signedIn();
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin() ||
+        (isAdmin() && memberDirectoryUpdateIsSafe());
+      allow delete: if isSuperAdmin();
+    }
 
-  match /users/{userId} {
-    allow read: if (verifiedSignedIn() && isSelf(userId)) || isAdmin();
-    allow create: if isSuperAdmin();
-    allow update: if isSuperAdmin() ||
-      (isAdmin() &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin'])) ||
-      (verifiedSignedIn() && isSelf(userId) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'email', 'isAdmin', 'status', 'active', 'isBlocked', 'isRemoved'
-        ]));
-    allow delete: if isSuperAdmin();
-  }
+    match /users/{userId} {
+      allow read: if isSelf(userId) || isAdmin();
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin() ||
+        (isAdmin() &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin'])) ||
+        (verifiedSignedIn() && isSelf(userId) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'email', 'isAdmin', 'status', 'active', 'isBlocked', 'isRemoved'
+          ]));
+      allow delete: if isSuperAdmin();
+    }
 
-  match /months/{monthKey} {
-    allow read: if isActiveMember() || isSuperAdmin();
-    allow create, update: if isAdmin() &&
-      validOptionalMoney(request.resource.data, 'houseRent') &&
-      validOptionalMoney(request.resource.data, 'buaBill') &&
-      validOptionalMoney(request.resource.data, 'otherBills');
-    allow delete: if isAdmin();
-  }
+    match /months/{monthKey} {
+      allow read: if isActiveMember();
+      allow create, update: if isAdmin() &&
+        validOptionalMoney(request.resource.data, 'houseRent') &&
+        validOptionalMoney(request.resource.data, 'buaBill') &&
+        validOptionalMoney(request.resource.data, 'otherBills');
+      allow delete: if isAdmin();
+    }
 
-  match /months/{monthKey}/dailyMeals/{date} {
-    allow read: if isActiveMember() || isSuperAdmin();
-    allow create, update: if isAdmin() &&
-      validEntryDate(monthKey, request.resource.data.date) &&
-      request.resource.data.meals is map;
-    allow delete: if isAdmin();
-  }
+    match /months/{monthKey}/dailyMeals/{date} {
+      allow read: if isActiveMember();
+      allow create, update: if isAdmin() &&
+        validEntryDate(monthKey, request.resource.data.date) &&
+        request.resource.data.meals is map;
+      allow delete: if isAdmin();
+    }
 
-  match /months/{monthKey}/bazar/{entryId} {
-    allow read: if isActiveMember() || isSuperAdmin();
-    allow create, update: if isAdmin() &&
-      validEntryDate(monthKey, request.resource.data.date) &&
-      validMoney(request.resource.data.amount) &&
-      request.resource.data.amount > 0;
-    allow delete: if isAdmin();
-  }
-
-  match /months/{monthKey}/deposits/{entryId} {
-    allow read: if isActiveMember() || isSuperAdmin();
-    allow create, update: if isAdmin() && (
-      (
+    match /months/{monthKey}/bazar/{entryId} {
+      allow read: if isActiveMember();
+      allow create, update: if isAdmin() &&
         validEntryDate(monthKey, request.resource.data.date) &&
         validMoney(request.resource.data.amount) &&
-        request.resource.data.amount > 0
-      ) ||
-      validCarryForwardDeposit(monthKey, entryId, request.resource.data)
-    );
-    allow delete: if isAdmin();
-  }
+        request.resource.data.amount > 0;
+      allow delete: if isAdmin();
+    }
 
-  match /activity_logs/{logId} {
-    allow read: if isActiveMember() || isSuperAdmin();
-    allow create: if isAdmin() &&
-      request.resource.data.action is string &&
-      request.resource.data.details is string &&
-      request.resource.data.performedBy is string &&
-      request.resource.data.performedBy == request.auth.token.email &&
-      request.resource.data.timestamp is string;
-    allow update, delete: if isSuperAdmin();
-  }
+    match /months/{monthKey}/deposits/{entryId} {
+      allow read: if isActiveMember();
+      allow create, update: if isAdmin() && (
+        (
+          validEntryDate(monthKey, request.resource.data.date) &&
+          validMoney(request.resource.data.amount) &&
+          request.resource.data.amount > 0
+        ) ||
+        validCarryForwardDeposit(monthKey, entryId, request.resource.data)
+      );
+      allow delete: if isAdmin();
+    }
 
-  match /audit_logs/{logId} {
-    allow read: if isAdmin();
-    allow create: if isAdmin() && validAuditLog(request.resource.data);
-    allow update, delete: if false;
+    match /activity_logs/{logId} {
+      allow read: if isActiveMember();
+      allow create: if isAdmin() &&
+        request.resource.data.action is string &&
+        request.resource.data.details is string &&
+        request.resource.data.performedBy is string &&
+        request.resource.data.performedBy == request.auth.token.email &&
+        request.resource.data.timestamp is string;
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validAuditLog(request.resource.data);
+      allow update, delete: if false;
+    }
   }
 }

@@ -198,19 +198,26 @@ function DashboardContent() {
     activeAdminSection
   );
   useEffect(() => {
-    if (!user || !hasAccess || sessionLoading) return;
+    if (!user || !hasAccess) return;
     const unsub = subscribeToMonthData(
       monthKey,
       (data) => {
         setMonthData(data);
         setMonthLoadedKey(monthKey);
         setDataLoading(false);
+        setDataError(null);
       },
       (error) => {
         const code = "code" in error && typeof error.code === "string"
           ? error.code
           : "unknown";
         console.error("Failed to load month data:", { code });
+        if (
+          sessionLoading &&
+          (code === "permission-denied" || code.endsWith("/permission-denied"))
+        ) {
+          return;
+        }
         setDataLoading(false);
         setDataError({
           monthKey,
@@ -560,7 +567,7 @@ function DashboardContent() {
     [setMobileNavOpen]
   );
 
-  if (loading || sessionLoading || accessLoading || !user) {
+  if (loading || accessLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-brand" />
